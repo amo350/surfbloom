@@ -1,8 +1,14 @@
 import { Button } from "@/components/ui/button";
-import React from "react";
+import { useTRPC } from "@/trpc/client";
+import { useQuery } from "@tanstack/react-query";
 
 const HomePage = () => {
-  return <Button>HomePage</Button>;
+  return (
+    <>
+      <div>hi</div>
+      <Button>HomePage</Button>
+    </>
+  );
 };
 
 export default HomePage;
