@@ -7,10 +7,10 @@ export default function AuthLayoutWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  const { title, subtitle, footer } = useAuthContext();
+  const { title, subtitle } = useAuthContext();
 
   return (
-    <AuthLayout title={title} subtitle={subtitle} footer={footer}>
+    <AuthLayout title={title} subtitle={subtitle}>
       {children}
     </AuthLayout>
   );

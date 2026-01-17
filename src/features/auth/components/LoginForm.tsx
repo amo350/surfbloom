@@ -56,10 +56,16 @@ const LoginForm = () => {
   const isPending = form.formState.isSubmitting;
 
   return (
-    <AuthProvider title="Welcome Back" subtitle="Log in or Create account">
+    <AuthProvider>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="grid gap-6">
+            <div className="text-center mb-1">
+              <h2 className="text-3xl font-bold mb-2 text-black/60">
+                Welcome Back
+              </h2>
+              <p className="text-muted-foreground">Login or Create Account</p>
+            </div>
             <div className="flex flex-col gap-4">
               <Button
                 variant="outline"

@@ -63,149 +63,129 @@ const SignUpForm = () => {
 
   const isPending = form.formState.isSubmitting;
 
-  const footer = (
-    <>
-      <p className="text-xs text-center text-muted-foreground/70">
-        By clicking "Create Account" above, you acknowledge that you have read
-        and understood, and agree to SurfBloom's{" "}
-        <Link href="/terms" className="underline">
-          Terms of Service
-        </Link>{" "}
-        and{" "}
-        <Link href="/privacy" className="underline">
-          Privacy Notice
-        </Link>
-        .
-      </p>
-      <p className="text-xs text-center text-muted-foreground/70">
-        This site is protected by reCAPTCHA and the{" "}
-        <Link
-          href="https://policies.google.com/privacy"
-          className="underline"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Google Privacy Policy
-        </Link>{" "}
-        and{" "}
-        <Link
-          href="https://policies.google.com/terms"
-          className="underline"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Terms of Service
-        </Link>{" "}
-        apply.
-      </p>
-    </>
-  );
-
   return (
-    <AuthProvider
-      title="Get Started"
-      subtitle="Create account or Login"
-      footer={footer}
-    >
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <div className="grid gap-6">
-            <div className="flex flex-col gap-4">
-              <Button
-                variant="outline"
-                className="w-full shadow-md"
-                type="button"
-                disabled={isPending}
-              >
-                <FcGoogle className="mr-2 h-5 w-5" />
-                Continue with Google
-              </Button>
-            </div>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-card px-2 text-muted-foreground">or</span>
-              </div>
-            </div>
+    <>
+      <AuthProvider title="Get Started" subtitle="Create Account or Login">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
             <div className="grid gap-6">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder=""
-                        className="shadow-md"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder=""
-                        className="shadow-md"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder=""
-                        className="shadow-md"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button
-                type="submit"
-                variant="secondary"
-                className="w-full shadow-md"
-                disabled={isPending}
-              >
-                Create Account
-              </Button>
+              <div className="text-center mb-1">
+                <h2 className="text-3xl font-bold mb-2 text-black/60">
+                  Get Started
+                </h2>
+                <p className="text-muted-foreground">Create Account or Login</p>
+              </div>
+              <div className="flex flex-col gap-4">
+                <Button
+                  variant="outline"
+                  className="w-full shadow-md"
+                  type="button"
+                  disabled={isPending}
+                >
+                  <FcGoogle className="mr-2 h-5 w-5" />
+                  Continue with Google
+                </Button>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+              <div className="grid gap-6">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder=""
+                          className="shadow-md"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder=""
+                          className="shadow-md"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder=""
+                          className="shadow-md"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  className="w-full shadow-md"
+                  disabled={isPending}
+                >
+                  Create Account
+                </Button>
+              </div>
+              <div className="text-center text-sm">
+                Already have an account?{" "}
+                <Link
+                  href="/login"
+                  className="underline underline-offset-4 text-primary"
+                >
+                  Login
+                </Link>
+              </div>
             </div>
-            <div className="text-center text-sm">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="underline underline-offset-4 text-primary"
-              >
-                Login
-              </Link>
-            </div>
-          </div>
-        </form>
-      </Form>
-    </AuthProvider>
+          </form>
+        </Form>
+      </AuthProvider>
+      <div className="auth-footer w-full max-w-[30.8rem] mt-6 space-y-2 mx-auto">
+        <p className="text-xs text-center text-muted-foreground/70">
+          By clicking "Create Account" above, you acknowledge that you have read
+          and understood, and agree to SurfBloom's{" "}
+          <Link href="/terms" className="underline">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline">
+            Privacy Notice
+          </Link>
+          .
+        </p>
+      </div>
+    </>
   );
 };
 
