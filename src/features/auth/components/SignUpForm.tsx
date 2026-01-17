@@ -1,18 +1,10 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Image from "next/image";
-import z, { email } from "zod";
+import z from "zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { Form, FormMessage } from "@/components/ui/form"; // ✅ shadcn Form
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Form, FormMessage } from "@/components/ui/form";
+import { FcGoogle } from "react-icons/fc";
 import { Button } from "@/components/ui/button";
 import {
   FormControl,
@@ -24,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { AuthProvider } from "./AuthContext";
 
 const signUpSchema = z
   .object({
@@ -70,83 +63,149 @@ const SignUpForm = () => {
 
   const isPending = form.formState.isSubmitting;
 
+  const footer = (
+    <>
+      <p className="text-xs text-center text-muted-foreground/70">
+        By clicking "Create Account" above, you acknowledge that you have read
+        and understood, and agree to SurfBloom's{" "}
+        <Link href="/terms" className="underline">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline">
+          Privacy Notice
+        </Link>
+        .
+      </p>
+      <p className="text-xs text-center text-muted-foreground/70">
+        This site is protected by reCAPTCHA and the{" "}
+        <Link
+          href="https://policies.google.com/privacy"
+          className="underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Google Privacy Policy
+        </Link>{" "}
+        and{" "}
+        <Link
+          href="https://policies.google.com/terms"
+          className="underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Terms of Service
+        </Link>{" "}
+        apply.
+      </p>
+    </>
+  );
+
   return (
-    <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle>Set Sail, and Get Started!</CardTitle>
-          <CardDescription>Create an account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <div className="grid gap-6">
-                <div className="flex flex-col gap 4">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    type="button"
-                    disabled={isPending}
-                  >
-                    Continue with Google
-                  </Button>
-                </div>
-                <div className="grip gap-6">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" disabled={isPending}>
-                    Create Account
-                  </Button>
-                </div>
-                <div className="text-center text-sm">
-                  Already have an account?{" "}
-                  <Link href="/login" className="underline underline-offset-4">
-                    Login
-                  </Link>
-                </div>
+    <AuthProvider
+      title="Get Started"
+      subtitle="Create account or Login"
+      footer={footer}
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="grid gap-6">
+            <div className="flex flex-col gap-4">
+              <Button
+                variant="outline"
+                className="w-full shadow-md"
+                type="button"
+                disabled={isPending}
+              >
+                <FcGoogle className="mr-2 h-5 w-5" />
+                Continue with Google
+              </Button>
+            </div>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
               </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-    </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-card px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+            <div className="grid gap-6">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder=""
+                        className="shadow-md"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder=""
+                        className="shadow-md"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder=""
+                        className="shadow-md"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button
+                type="submit"
+                variant="secondary"
+                className="w-full shadow-md"
+                disabled={isPending}
+              >
+                Create Account
+              </Button>
+            </div>
+            <div className="text-center text-sm">
+              Already have an account?{" "}
+              <Link
+                href="/login"
+                className="underline underline-offset-4 text-primary"
+              >
+                Login
+              </Link>
+            </div>
+          </div>
+        </form>
+      </Form>
+    </AuthProvider>
   );
 };
 
