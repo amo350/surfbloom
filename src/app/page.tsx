@@ -1,12 +1,16 @@
-import { Button } from "@/components/ui/button";
-import { useTRPC } from "@/trpc/client";
-import { useQuery } from "@tanstack/react-query";
+import { requireAuth } from "@/lib/auth-utils";
+import { caller } from "@/trpc/server";
+import LogoutButton from "./logout";
 
-const HomePage = () => {
+const HomePage = async () => {
+  const session = await requireAuth();
+
+  const data = await caller.getUsers();
   return (
     <>
-      <div>hi</div>
-      <Button>HomePage</Button>
+      protected server component
+      {JSON.stringify(data)}
+      <LogoutButton />
     </>
   );
 };
