@@ -16,21 +16,36 @@ export const execute = inngest.createFunction(
     const {steps: geminiSteps} = await step.ai.wrap('gemini-generate-text', generateText, {
       model: google('gemini-2.5-flash'),
       system: 'You are a helpful assistant', 
-      prompt: 'whats pi r squared'
-    }
-  )
+      prompt: 'whats pi r squared',
+        experimental_telemetry: {
+          isEnabled: true,
+          recordInputs: true,
+          recordOutputs: true,
+        },
+      });
+    
     const {steps: openAiSteps} = await step.ai.wrap('openAi-generate-text', generateText, {
       model: openAi('gpt-4'),
       system: 'You are a helpful assistant', 
-      prompt: 'what is lo que sea'
-    }
-  )
+      prompt: 'what is lo que sea',
+      experimental_telemetry: {
+        isEnabled: true,
+        recordInputs: true,
+        recordOutputs: true,
+      },
+    });
+    
     const {steps: xAiSteps} = await step.ai.wrap('xAi-generate-text', generateText, {
       model: xAi('grok-3'),
       system: 'You are a sports analyst', 
-      prompt: 'what happened to bo nix'
-    }
-  )
-  return {openAiSteps, xAiSteps, geminiSteps}
+      prompt: 'what happened to bo nix',
+      experimental_telemetry: {
+        isEnabled: true,
+        recordInputs: true,
+        recordOutputs: true,
+      },
+    });
+    
+    return {openAiSteps, xAiSteps, geminiSteps};
   }
 );
