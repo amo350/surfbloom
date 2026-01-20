@@ -11,22 +11,21 @@ type Props = {
   searchParams: Promise<SearchParams>;
 }
 
-const WorkFlowPage = async({searchParams}: Props) => {
+const WorkFlowPage = async ({ searchParams }: Props) => {
   await requireAuth();
 
   const params = await workflowsParamsLoader(searchParams)
   prefetchWorkflows(params)
-  
+
   return (
     <WorkflowsContainer>
-
-    <HydrateClient>
-      <ErrorBoundary fallback={<WorkflowsError />}>
-      <Suspense fallback={<WorkflowsLoading />}>
-        <WorkflowsList />
-      </Suspense>
-      </ErrorBoundary>
-    </HydrateClient>
+      <HydrateClient>
+        <ErrorBoundary fallback={<WorkflowsError />}>
+          <Suspense fallback={<WorkflowsLoading />}>
+            <WorkflowsList />
+          </Suspense>
+        </ErrorBoundary>
+      </HydrateClient>
     </WorkflowsContainer>
   )
 

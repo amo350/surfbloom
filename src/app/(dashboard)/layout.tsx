@@ -2,13 +2,13 @@ import AppSidebar from '@/components/AppSidebar'
 import { Sidebar, SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import React from 'react'
 
-const Layout = ({children}: {children:React.ReactNode}) => {
+const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset className='bg-accent/20'>
-            {children}
-        </SidebarInset>
+      <AppSidebar />
+      <SidebarInset className='bg-accent/20'>
+        {children}
+      </SidebarInset>
     </SidebarProvider>
   )
 }
