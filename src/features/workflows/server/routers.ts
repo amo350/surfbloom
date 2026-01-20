@@ -18,7 +18,7 @@ export const workflowsRouter = createTRPCRouter({
   remove: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(({ ctx, input }) => {
-      return prisma.workflow.deleteMany({
+      return prisma.workflow.delete({
         where: { id: input.id, userId: ctx.auth.user.id },
       });
     }),
@@ -79,33 +79,6 @@ export const workflowsRouter = createTRPCRouter({
           },
         }),
       ]);
-      if (search && totalCount === 0) {
-        const [defaultItems, defaultTotalCount] = await Promise.all([
-          prisma.workflow.findMany({
-            skip: (page - 1) * pageSize,
-            take: pageSize,
-            where: {
-              userId: ctx.auth.user.id,
-            },
-            orderBy: { updatedAt: "desc" },
-          }),
-          prisma.workflow.count({
-            where: {
-              userId: ctx.auth.user.id,
-            },
-          }),
-        ]);
-        const defaultTotalPages = Math.ceil(defaultTotalCount / pageSize);
-        return {
-          items: defaultItems,
-          page,
-          pageSize,
-          totalCount: defaultTotalCount,
-          totalPages: defaultTotalPages,
-          hasNextPage: page < defaultTotalPages,
-          hasPreviousPage: page > 1,
-        };
-      }
 
       const totalPages = Math.ceil(totalCount / pageSize);
       const hasNextPage = page < totalPages;
