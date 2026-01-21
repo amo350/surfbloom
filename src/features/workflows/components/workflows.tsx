@@ -8,39 +8,39 @@ import { useWorkflowsParams } from "../hooks/use-workflows-params"
 import { useEntitySearch } from "@/hooks/use-entity-search"
 import type { Workflow } from "@/generated/prisma/client"
 import { WorkflowIcon } from "lucide-react"
-import {formatDistanceToNow} from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 
 export const WorkflowsSearch = () => {
   const [params, setParams] = useWorkflowsParams()
-  const {searchValue, onSearchChange} = useEntitySearch({
-    params, 
+  const { searchValue, onSearchChange } = useEntitySearch({
+    params,
     setParams,
   })
   return (
-    <EntitySearch 
-    value={searchValue}
-    onChange={onSearchChange}
-    placeholder="Search workflows"/>
+    <EntitySearch
+      value={searchValue}
+      onChange={onSearchChange}
+      placeholder="Search workflows" />
   )
 }
 
 export const WorkflowsList = () => {
-    const workflows = useSuspenseWorkflows()
+  const workflows = useSuspenseWorkflows()
 
-   return (
+  return (
     <EntityList
-    items={workflows.data.items}
-    getKey = {(workflows) => workflows.id}
-    renderItem={(workflow) => <WorkflowItem data={workflow} />}
-    emptyView={<WorkflowsEmpty />}
+      items={workflows.data.items}
+      getKey={(workflows) => workflows.id}
+      renderItem={(workflow) => <WorkflowItem data={workflow} />}
+      emptyView={<WorkflowsEmpty />}
     />
-   )
+  )
 }
 
-export const WorkflowsHeader = ({disabled}: {disabled?: boolean }) => {
-  const createWorkflow = useCreateWorkflow() 
+export const WorkflowsHeader = ({ disabled }: { disabled?: boolean }) => {
+  const createWorkflow = useCreateWorkflow()
   const router = useRouter()
-  const {handleError, modal} = useUpgradeModal()
+  const { handleError, modal } = useUpgradeModal()
   const handleCreate = () => {
     createWorkflow.mutate(undefined, {
       onSuccess: (data) => {
@@ -48,21 +48,21 @@ export const WorkflowsHeader = ({disabled}: {disabled?: boolean }) => {
       },
       onError: (error) => {
         handleError(error)
-        
+
       }
     })
   }
-   return (
+  return (
     <>
-    {modal}
-    <EntityHeader
-      title="Workflows"
-      description="Create and manage your workflows"
-      onNew={handleCreate}
-      newButtonLabel="New workflow"
-      disabled={disabled}
-      isCreating={createWorkflow.isPending}
-    /> 
+      {modal}
+      <EntityHeader
+        title="Workflows"
+        description="Create and manage your workflows"
+        onNew={handleCreate}
+        newButtonLabel="New workflow"
+        disabled={disabled}
+        isCreating={createWorkflow.isPending}
+      />
     </>
   )
 }
@@ -98,67 +98,67 @@ export const WorkflowsContainer = ({
 };
 
 export const WorkflowsLoading = () => {
-  return <LoadingView message="Loading workflows..." /> 
+  return <LoadingView message="Loading workflows..." />
 }
 export const WorkflowsError = () => {
-  return <ErrorView message="Error Loading workflows..." /> 
+  return <ErrorView message="Error Loading workflows..." />
 }
 
 export const WorkflowsEmpty = () => {
-const createWorkflow = useCreateWorkflow()
-const {handleError, modal} = useUpgradeModal()
-
-const handleCreate = () => {
+  const createWorkflow = useCreateWorkflow()
   const router = useRouter()
-  createWorkflow.mutate(undefined, {
-    onError: (error) => {
-      handleError(error)
-    },
-    onSuccess: (data) => {
-      router.push(`/workflows/${data.id}`)
-    }
-  })
-}
+  const { handleError, modal } = useUpgradeModal()
+
+  const handleCreate = () => {
+    createWorkflow.mutate(undefined, {
+      onError: (error) => {
+        handleError(error)
+      },
+      onSuccess: (data) => {
+        router.push(`/workflows/${data.id}`)
+      }
+    })
+  }
 
   return (
     <>
-    {modal}
-    <EmptyView 
-    onNew={handleCreate}
-    message="You have yet to create any workflows. Get started by creating your fist workflow"
-    />
+      {modal}
+      <EmptyView
+        onNew={handleCreate}
+        message="You have yet to create any workflows. Get started by creating your fist workflow"
+      />
     </>
   )
 }
 
 export const WorkflowItem = ({
-  data, 
+  data,
 
-}: {data: Workflow}) => {
+}: { data: Workflow }) => {
   const removeWorkflow = useRemoveWorkflow()
 
   const handleRemove = () => {
-    removeWorkflow.mutate({id: data.id})
+    removeWorkflow.mutate({ id: data.id })
   }
   return (
-    <EntityItem 
-    href={`/workflows/${data.id}`}
-    title={data.name}
-    subtitle={
-      <>
-      Updated {formatDistanceToNow(data.updatedAt, {addSuffix: true} )}{' '}
-      &bull; Created{' '}
-      {formatDistanceToNow(data.createdAt, {addSuffix: true} )}
-      </>
-    }
-    image={
-      <div className="size-8 flex items-center justify-center">
-        <WorkflowIcon className="size-5 text-muted-foreground" />
-      </div>
-    }
+    <EntityItem
+      href={`/workflows/${data.id}`}
+      title={data.name}
+      subtitle={
+        <>
+          Updated {formatDistanceToNow(data.updatedAt, { addSuffix: true })}{' '}
+          &bull; Created{' '}
+          {formatDistanceToNow(data.createdAt, { addSuffix: true })}
+        </>
+      }
+      image={
+        <div className="size-8 flex items-center justify-center">
+          <WorkflowIcon className="size-5 text-muted-foreground" />
+        </div>
+      }
 
-    onRemove={handleRemove}
-    isRemoving={removeWorkflow.isPending}
+      onRemove={handleRemove}
+      isRemoving={removeWorkflow.isPending}
     />
   )
 }
