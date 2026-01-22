@@ -1,51 +1,49 @@
-import { inngest } from "./client";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
-import { createOpenAI } from '@ai-sdk/openai';
-import { createXai } from '@ai-sdk/xai';
+import { NonRetriableError } from "inngest";
+import { getExecutor } from "@/features/executions/lib/executor-registry";
+import { NodeType } from "@/generated/prisma/enums";
+import { prisma } from "@/lib/prisma";
+import { inngest } from "./client";
+import { topologicalSort } from "./utils";
 
-const google = createGoogleGenerativeAI()
-const openAi = createOpenAI()
-const xAi = createXai()
-
-export const execute = inngest.createFunction(
-  { id: "execute-ai" },
-  { event: "execute/ai", retries: 5 },
+export const executeWorkflow = inngest.createFunction(
+  { id: "execute-workflow" },
+  { event: "workflows/execute.workflow", retries: 5 },
   async ({ event, step }) => {
-    await step.sleep('sleep', '3s')
-    const {steps: geminiSteps} = await step.ai.wrap('gemini-generate-text', generateText, {
-      model: google('gemini-2.5-flash'),
-      system: 'You are a helpful assistant', 
-      prompt: 'whats pi r squared',
-        experimental_telemetry: {
-          isEnabled: true,
-          recordInputs: true,
-          recordOutputs: true,
+    const workflowId = event.data.workflowId;
+    if (!workflowId) {
+      throw new NonRetriableError("Workflow Id is missing");
+    }
+
+    const sortedNodes = await step.run("prepare workflow", async () => {
+      const workflow = await prisma.workflow.findUniqueOrThrow({
+        where: { id: workflowId },
+        include: {
+          nodes: true,
+          connections: true,
         },
       });
-    
-    const {steps: openAiSteps} = await step.ai.wrap('openAi-generate-text', generateText, {
-      model: openAi('gpt-4'),
-      system: 'You are a helpful assistant', 
-      prompt: 'what is lo que sea',
-      experimental_telemetry: {
-        isEnabled: true,
-        recordInputs: true,
-        recordOutputs: true,
-      },
+      return topologicalSort(workflow.nodes, workflow.connections);
     });
-    
-    const {steps: xAiSteps} = await step.ai.wrap('xAi-generate-text', generateText, {
-      model: xAi('grok-3'),
-      system: 'You are a sports analyst', 
-      prompt: 'what happened to bo nix',
-      experimental_telemetry: {
-        isEnabled: true,
-        recordInputs: true,
-        recordOutputs: true,
-      },
-    });
-    
-    return {openAiSteps, xAiSteps, geminiSteps};
-  }
+
+    //Initialize the context with any ititial data from the trigger
+    let context = event.data.initialData || {};
+
+    //execute nodes
+    for (const node of sortedNodes) {
+      const executor = getExecutor(node.type as NodeType);
+      context = await executor({
+        data: (node.data || {}) as Record<string, unknown>,
+        nodeId: node.id,
+        context,
+        step,
+      });
+    }
+
+    return {
+      workflowId,
+      result: context,
+
+    };
+  },
 );
