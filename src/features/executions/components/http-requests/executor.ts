@@ -12,9 +12,9 @@ Handlebars.registerHelper("json", (context) => {
 })
 
 type HttpRequestData = {
-    variableName: string;
-    endpoint: string;
-    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+    variableName?: string;
+    endpoint?: string;
+    method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
     body?: string;
 };
 
@@ -33,35 +33,36 @@ export const HttpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
         })
     )
 
-    if (!data.endpoint) {
-        await publish(
-            httpRequestChannel().status({
-                nodeId,
-                status: "error"
-            })
-        )
-        throw new NonRetriableError("No endpoint configured");
-    }
-    if (!data.variableName) {
-        await publish(
-            httpRequestChannel().status({
-                nodeId,
-                status: "error"
-            })
-        )
-        throw new NonRetriableError("Variable name not configured");
-    }
-    if (!data.method) {
-        await publish(
-            httpRequestChannel().status({
-                nodeId,
-                status: "error"
-            })
-        )
-        throw new NonRetriableError("Method not configured");
-    }
     try {
         const result = await step.run("http-request", async () => {
+
+            if (!data.endpoint) {
+                await publish(
+                    httpRequestChannel().status({
+                        nodeId,
+                        status: "error"
+                    })
+                )
+                throw new NonRetriableError("No endpoint configured");
+            }
+            if (!data.variableName) {
+                await publish(
+                    httpRequestChannel().status({
+                        nodeId,
+                        status: "error"
+                    })
+                )
+                throw new NonRetriableError("Variable name not configured");
+            }
+            if (!data.method) {
+                await publish(
+                    httpRequestChannel().status({
+                        nodeId,
+                        status: "error"
+                    })
+                )
+                throw new NonRetriableError("Method not configured");
+            }
             //http://...
             const endpoint = Handlebars.compile(data.endpoint)(context);
             console.log("Endpoint", { endpoint });

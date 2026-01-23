@@ -1,6 +1,6 @@
 import { channel, topic } from "@inngest/realtime"
 
-export const googleFormTriggerChannel = channel('google-form-trigger-execution')
+export const stripeTriggerChannel = channel('stripe-trigger-execution')
     .addTopic(
         topic('status').type<{
             nodeId: string;
