@@ -53,6 +53,24 @@ const executionNodes: NodeTypeOption[] = [
     description: "Makes an HTTP request",
     icon: GlobeIcon,
   },
+  {
+    type: NodeType.OPENAI,
+    label: "ChatGPT (recommended)",
+    description: "Use ChatGPT to generate text",
+    icon: "/logos/openai.svg",
+  },
+  {
+    type: NodeType.GEMINI,
+    label: "Gemini",
+    description: "Use Google Gemini to generate text",
+    icon: "/logos/gemini.svg",
+  },
+  {
+    type: NodeType.GROK,
+    label: "xAi",
+    description: "Use Grok to generate text",
+    icon: "/logos/grok.svg",
+  },
 ];
 
 interface NodeSelectorProps {
