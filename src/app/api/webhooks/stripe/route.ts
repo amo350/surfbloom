@@ -16,30 +16,30 @@ export async function POST(request: NextRequest) {
             );
         }
         const body = await request.json();
-        const formData = {
-            formId: body.formId,
-            formTitle: body.formTitle,
-            responseId: body.responseId,
-            timestamp: body.timestamp,
-            respondentEmail: body.respondentEmail,
-            responses: body.responses,
-            raw: body,
+        const stripeData = {
+            //event meta data
+            eventID: body.id,
+            eventType: body.type,
+            timestamp: body.created,
+            livemode: body.livemode,
+            raw: body.data?.object
         };
         //Trigger an Inngest Job
         await sendWorkflowExecution({
             workflowId,
             initialData: {
-                googleForm: formData,
+                stripe: stripeData
             }
         });
+
         return NextResponse.json(
             { success: true },
             { status: 200 },
         );
     } catch (error) {
-        console.log("Google Form Webhook Error", error);
+        console.log("Stripe Webhook Error", error);
         return NextResponse.json(
-            { success: false, error: "Failed to Proecess Google Form Submission" },
+            { success: false, error: "Failed to Proecess Stipe event Submission" },
             { status: 500 },
         );
     }
