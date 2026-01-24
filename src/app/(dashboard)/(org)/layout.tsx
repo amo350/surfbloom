@@ -1,14 +1,14 @@
-import AppHeader from '@/components/AppHeader'
-import AppSidebar from '@/components/AppSidebar'
-import React from 'react'
+import AppHeader from "@/components/AppHeader";
+import AppSidebar from "@/components/AppSidebar";
+import React from "react";
 
-const Layout = ({children}: {children:React.ReactNode}) => {
+const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
-    <AppHeader />
-    <main className='flex-1'> {children}</main>
+      <AppHeader />
+      <main className="flex-1"> {children}</main>
     </>
-  )
-}
+  );
+};
 
-export default Layout
+export default Layout;

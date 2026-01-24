@@ -7,10 +7,10 @@ import { inngest } from "@/inngest/client";
 export type OpenAiToken = Realtime.Token<typeof openAiChannel, ["status"]>;
 
 export async function fetchOpenAiRealtimeToken(): Promise<OpenAiToken> {
-    const token = await getSubscriptionToken(inngest, {
-        channel: openAiChannel(),
-        topics: ["status"],
-    });
+  const token = await getSubscriptionToken(inngest, {
+    channel: openAiChannel(),
+    topics: ["status"],
+  });
 
-    return token;
+  return token;
 }

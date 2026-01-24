@@ -1,16 +1,18 @@
-import AppSidebar from '@/components/AppSidebar'
-import { Sidebar, SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import React from 'react'
+import AppSidebar from "@/components/AppSidebar";
+import {
+  Sidebar,
+  SidebarInset,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
+import React from "react";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className='bg-accent/20'>
-        {children}
-      </SidebarInset>
+      <SidebarInset className="bg-accent/20">{children}</SidebarInset>
     </SidebarProvider>
-  )
-}
+  );
+};
 
-export default Layout
+export default Layout;

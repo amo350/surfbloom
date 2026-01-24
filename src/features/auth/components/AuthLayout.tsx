@@ -20,7 +20,7 @@ export default function AuthLayout({
       child &&
       typeof child === "object" &&
       "props" in child &&
-      child.props?.className?.includes("auth-footer")
+      child.props?.className?.includes("auth-footer"),
   );
   const formContent = childrenArray.filter(
     (child) =>
@@ -29,7 +29,7 @@ export default function AuthLayout({
         typeof child === "object" &&
         "props" in child &&
         child.props?.className?.includes("auth-footer")
-      )
+      ),
   );
 
   return (
