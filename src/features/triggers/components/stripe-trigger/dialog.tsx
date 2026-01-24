@@ -67,7 +67,7 @@ export const StripeTriggerDialog = ({ open, onOpenChange }: Props) => {
               </Button>
             </div>
           </div>
-          <div className="rounded-lg bg-muted p-4 space-y-2">
+          <div className="rounded-2xl bg-muted p-4 space-y-2">
             <h4 className="font-medium text-sm">Setup instructions</h4>
             <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
               <li>Open your Stripe Dashboard</li>
@@ -80,31 +80,31 @@ export const StripeTriggerDialog = ({ open, onOpenChange }: Props) => {
               <li>Save and copy the signing secret</li>
             </ol>
           </div>
-          <div className="rounded border border-border/50 p-3 space-y-2">
+          <div className="rounded-2xl border border-border/50 p-3 space-y-2">
             <h4 className="text-xs font-medium text-muted-foreground">
               Available Variables
             </h4>
             <ul className="text-xs text-muted-foreground/80 space-y-1">
               <li>
-                <code className="bg-background px-1 py-0.5 rounded">
+                <code className="bg-background px-1 py-0.5 rounded-lg">
                   {"{{stripe.amount}}"}
                 </code>{" "}
                 - Payment amount
               </li>
               <li>
-                <code className="bg-background px-1 py-0.5 rounded">
+                <code className="bg-background px-1 py-0.5 rounded-lg">
                   {"{{stripe.customerID}}"}
                 </code>{" "}
                 - Customer ID
               </li>
               <li>
-                <code className="bg-background px-1 py-0.5 rounded">
+                <code className="bg-background px-1 py-0.5 rounded-lg">
                   {"{{json stripe}}"}
                 </code>{" "}
                 - Full event data as JSON
               </li>
               <li>
-                <code className="bg-background px-1 py-0.5 rounded">
+                <code className="bg-background px-1 py-0.5 rounded-lg">
                   {"{{stripe.eventType}}"}
                 </code>{" "}
                 - type (e.g, payment_intent.succeeded)
