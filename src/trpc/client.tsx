@@ -7,7 +7,7 @@ import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { useState } from "react";
 import { makeQueryClient } from "./query-client";
 import type { AppRouter } from "./routers/_app";
-import superjson from 'superjson'
+import superjson from "superjson";
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 let browserQueryClient: QueryClient;
 function getQueryClient() {
@@ -33,7 +33,7 @@ function getUrl() {
 export function TRPCReactProvider(
   props: Readonly<{
     children: React.ReactNode;
-  }>
+  }>,
 ) {
   // NOTE: Avoid useState when initializing the query client if you don't
   //       have a suspense boundary between this and the code that may
@@ -48,7 +48,7 @@ export function TRPCReactProvider(
           url: getUrl(),
         }),
       ],
-    })
+    }),
   );
   return (
     <QueryClientProvider client={queryClient}>

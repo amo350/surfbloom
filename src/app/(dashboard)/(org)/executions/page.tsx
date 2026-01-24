@@ -1,11 +1,9 @@
-import { requireAuth } from '@/lib/auth-utils';
-import React from 'react'
+import { requireAuth } from "@/lib/auth-utils";
+import React from "react";
 
-const Executions = async() => {
+const Executions = async () => {
   await requireAuth();
-  return (
-    <div>Executions</div>
-  )
-}
+  return <div>Executions</div>;
+};
 
-export default Executions
+export default Executions;

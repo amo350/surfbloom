@@ -8,19 +8,19 @@ import { toast } from "sonner";
 const Page = () => {
   const trpc = useTRPC();
 
-  const testAI = useMutation(trpc.testAi.mutationOptions({
-    onSuccess: () => {
-        toast.success('success')
-    },
-    onError: ({message}) => {
-        toast.error(message)
-    }
-  }));
+  const testAI = useMutation(
+    trpc.testAi.mutationOptions({
+      onSuccess: () => {
+        toast.success("success");
+      },
+      onError: ({ message }) => {
+        toast.error(message);
+      },
+    }),
+  );
 
   return (
-    <Button onClick={() => testAI.mutate()}>
-      Click to test subscription
-    </Button>
+    <Button onClick={() => testAI.mutate()}>Click to test subscription</Button>
   );
 };
 

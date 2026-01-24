@@ -57,7 +57,7 @@ const SignUpForm = () => {
         onError: (ctx) => {
           toast.error(ctx.error.message);
         },
-      }
+      },
     );
   };
 

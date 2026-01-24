@@ -10,14 +10,14 @@ import { StripeTriggerNode } from "@/features/triggers/components/stripe-trigger
 import { NodeType } from "@/generated/prisma/enums";
 
 export const nodeComponents = {
-    [NodeType.INITIAL]: InitialNode,
-    [NodeType.HTTP_REQUEST]: HttpRequestNode,
-    [NodeType.MANUAL_TRIGGER]: ManualTriggerNode,
-    [NodeType.GOOGLE_FORM_TRIGGER]: GoogleFormTrigger,
-    [NodeType.STRIPE_TRIGGER]: StripeTriggerNode,
-    [NodeType.GEMINI]: GeminiNode,
-    [NodeType.OPENAI]: OpenAiNode,
-    [NodeType.GROK]: XAiNode,
+  [NodeType.INITIAL]: InitialNode,
+  [NodeType.HTTP_REQUEST]: HttpRequestNode,
+  [NodeType.MANUAL_TRIGGER]: ManualTriggerNode,
+  [NodeType.GOOGLE_FORM_TRIGGER]: GoogleFormTrigger,
+  [NodeType.STRIPE_TRIGGER]: StripeTriggerNode,
+  [NodeType.GEMINI]: GeminiNode,
+  [NodeType.OPENAI]: OpenAiNode,
+  [NodeType.GROK]: XAiNode,
 } as const satisfies NodeTypes;
 
 export type RegisteredNodeType = keyof typeof nodeComponents;

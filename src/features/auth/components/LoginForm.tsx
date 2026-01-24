@@ -49,7 +49,7 @@ const LoginForm = () => {
         onError: (ctx) => {
           toast.error(ctx.error.message);
         },
-      }
+      },
     );
   };
 

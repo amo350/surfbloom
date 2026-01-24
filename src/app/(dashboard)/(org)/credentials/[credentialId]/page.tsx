@@ -1,19 +1,15 @@
 import { requireAuth } from "@/lib/auth-utils";
 
 type PageProps = {
-    params: Promise<{
-        credentialId: string;
-    }>
-}
+  params: Promise<{
+    credentialId: string;
+  }>;
+};
 
-
-
-const CredentialId = async ({params}: PageProps) => {
+const CredentialId = async ({ params }: PageProps) => {
   await requireAuth();
-    const {credentialId} = await params;
-  return (
-    <div>CredentialId: {credentialId}</div>
-  )
-}
+  const { credentialId } = await params;
+  return <div>CredentialId: {credentialId}</div>;
+};
 
-export default CredentialId
+export default CredentialId;

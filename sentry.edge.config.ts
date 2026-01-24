@@ -9,7 +9,7 @@ Sentry.init({
   dsn: "https://77ca71f50e3dcc65f054a205d530bbf5@o4510737988714496.ingest.us.sentry.io/4510737999659008",
 
   integrations: [
-    Sentry.consoleLoggingIntegration({levels: ['log', 'warn', 'error']}),
+    Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
   ],
 
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.

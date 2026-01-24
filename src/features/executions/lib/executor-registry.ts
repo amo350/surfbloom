@@ -9,21 +9,21 @@ import { xAiExecutor } from "../components/xAi/executor";
 import { NodeExecutor } from "../types";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
-    [NodeType.INITIAL]: manualTriggerExecutor,
-    [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
-    [NodeType.HTTP_REQUEST]: HttpRequestExecutor,
-    [NodeType.GOOGLE_FORM_TRIGGER]: googleFormTriggerExecutor,
-    [NodeType.STRIPE_TRIGGER]: stripeTriggerExecutor,
-    [NodeType.GEMINI]: geminiExecutor,
-    [NodeType.OPENAI]: openAiExecutor,
-    // TODO: Implement these executors
-    [NodeType.GROK]: xAiExecutor,
+  [NodeType.INITIAL]: manualTriggerExecutor,
+  [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
+  [NodeType.HTTP_REQUEST]: HttpRequestExecutor,
+  [NodeType.GOOGLE_FORM_TRIGGER]: googleFormTriggerExecutor,
+  [NodeType.STRIPE_TRIGGER]: stripeTriggerExecutor,
+  [NodeType.GEMINI]: geminiExecutor,
+  [NodeType.OPENAI]: openAiExecutor,
+  // TODO: Implement these executors
+  [NodeType.GROK]: xAiExecutor,
 };
 
 export const getExecutor = (type: NodeType): NodeExecutor => {
-    const executor = executorRegistry[type];
-    if (!executor) {
-        throw new Error(`No executor found for node type: ${type}`);
-    }
-    return executor;
+  const executor = executorRegistry[type];
+  if (!executor) {
+    throw new Error(`No executor found for node type: ${type}`);
+  }
+  return executor;
 };
