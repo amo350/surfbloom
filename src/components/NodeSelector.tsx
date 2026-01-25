@@ -71,6 +71,12 @@ const executionNodes: NodeTypeOption[] = [
     description: "Use Grok to generate text",
     icon: "/logos/grok.svg",
   },
+  {
+    type: NodeType.SLACK,
+    label: "Slack",
+    description: "Send a message to Slack",
+    icon: "/logos/slack.svg",
+  },
 ];
 
 interface NodeSelectorProps {

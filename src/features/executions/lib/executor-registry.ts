@@ -7,6 +7,7 @@ import { HttpRequestExecutor } from "../components/http-requests/executor";
 import { openAiExecutor } from "../components/openAi/executor";
 import { xAiExecutor } from "../components/xAi/executor";
 import { NodeExecutor } from "../types";
+import { slackExecutor } from "../components/slack/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
   [NodeType.INITIAL]: manualTriggerExecutor,
@@ -18,6 +19,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
   [NodeType.OPENAI]: openAiExecutor,
   // TODO: Implement these executors
   [NodeType.GROK]: xAiExecutor,
+  [NodeType.SLACK]: slackExecutor,
 };
 
 export const getExecutor = (type: NodeType): NodeExecutor => {

@@ -12,6 +12,7 @@ import { stripeTriggerChannel } from "./channels/stripe-trigger";
 import { xAiChannel } from "./channels/xAi";
 import { inngest } from "./client";
 import { topologicalSort } from "./utils";
+import { slackChannel } from "./channels/slack";
 
 export const executeWorkflow = inngest.createFunction(
   { id: "execute-workflow" },
@@ -26,6 +27,7 @@ export const executeWorkflow = inngest.createFunction(
       geminiChannel(),
       openAiChannel(),
       xAiChannel(),
+      slackChannel(),
     ],
   },
   async ({ event, step, publish }) => {
