@@ -10,6 +10,7 @@ import {
   ExecutionsError,
   ExecutionsList,
   ExecutionsLoading,
+  ExecutionsPageHeader,
 } from "@/features/executions/components/executions";
 
 type Props = {
@@ -21,15 +22,18 @@ const Executions = async ({ searchParams }: Props) => {
   const params = await executionsParamsLoader(searchParams);
   prefetchExecutions(params);
   return (
-    <ExecutionsContainer>
-      <HydrateClient>
-        <ErrorBoundary fallback={<ExecutionsError />}>
-          <Suspense fallback={<ExecutionsLoading />}>
-            <ExecutionsList />
-          </Suspense>
-        </ErrorBoundary>
-      </HydrateClient>
-    </ExecutionsContainer>
+    <>
+      <ExecutionsPageHeader />
+      <ExecutionsContainer>
+        <HydrateClient>
+          <ErrorBoundary fallback={<ExecutionsError />}>
+            <Suspense fallback={<ExecutionsLoading />}>
+              <ExecutionsList />
+            </Suspense>
+          </ErrorBoundary>
+        </HydrateClient>
+      </ExecutionsContainer>
+    </>
   );
 };
 

@@ -1,7 +1,11 @@
 "use client";
 
 import {
-  EntityHeader,
+  AppHeader,
+  AppHeaderTitle,
+  AppHeaderActions,
+} from "@/components/AppHeader";
+import {
   EntityContainer,
   EntitySearch,
   EntityPagination,
@@ -11,6 +15,7 @@ import {
   EntityList,
   EntityItem,
 } from "@/components/EntityComponents";
+import { Button } from "@/components/ui/button";
 import {
   useSuspenseWorkflows,
   useCreateWorkflow,
@@ -21,7 +26,7 @@ import { useRouter } from "next/navigation";
 import { useWorkflowsParams } from "../hooks/use-workflows-params";
 import { useEntitySearch } from "@/hooks/use-entity-search";
 import type { Workflow } from "@/generated/prisma/client";
-import { WorkflowIcon } from "lucide-react";
+import { PlusIcon, WorkflowIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export const WorkflowsSearch = () => {
@@ -52,10 +57,16 @@ export const WorkflowsList = () => {
   );
 };
 
-export const WorkflowsHeader = ({ disabled }: { disabled?: boolean }) => {
+export const WorkflowsPageHeader = () => {
   const createWorkflow = useCreateWorkflow();
   const router = useRouter();
   const { handleError, modal } = useUpgradeModal();
+  const [params, setParams] = useWorkflowsParams();
+  const { searchValue, onSearchChange } = useEntitySearch({
+    params,
+    setParams,
+  });
+
   const handleCreate = () => {
     createWorkflow.mutate(undefined, {
       onSuccess: (data) => {
@@ -66,17 +77,27 @@ export const WorkflowsHeader = ({ disabled }: { disabled?: boolean }) => {
       },
     });
   };
+
   return (
     <>
       {modal}
-      <EntityHeader
-        title="Workflows"
-        description="Create and manage your workflows"
-        onNew={handleCreate}
-        newButtonLabel="New workflow"
-        disabled={disabled}
-        isCreating={createWorkflow.isPending}
-      />
+      <AppHeader>
+        <Button
+          size="sm"
+          onClick={handleCreate}
+          disabled={createWorkflow.isPending}
+        >
+          <PlusIcon className="size-4" />
+          New Workflow
+        </Button>
+        <div className="ml-auto">
+          <EntitySearch
+            value={searchValue}
+            onChange={onSearchChange}
+            placeholder="Search workflows"
+          />
+        </div>
+      </AppHeader>
     </>
   );
 };
@@ -101,11 +122,7 @@ export const WorkflowsContainer = ({
   children: React.ReactNode;
 }) => {
   return (
-    <EntityContainer
-      header={<WorkflowsHeader />}
-      search={<WorkflowsSearch />}
-      pagination={<WorkflowsPagination />}
-    >
+    <EntityContainer pagination={<WorkflowsPagination />}>
       {children}
     </EntityContainer>
   );

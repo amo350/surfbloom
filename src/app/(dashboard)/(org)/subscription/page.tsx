@@ -1,5 +1,6 @@
 "use client";
 
+import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { useTRPC } from "@/trpc/client";
 import { useMutation } from "@tanstack/react-query";
@@ -20,7 +21,14 @@ const Page = () => {
   );
 
   return (
-    <Button onClick={() => testAI.mutate()}>Click to test subscription</Button>
+    <>
+      <AppHeader>
+        <AppHeaderTitle title="Subscription" description="Manage your subscription" />
+      </AppHeader>
+      <div className="p-6">
+        <Button onClick={() => testAI.mutate()}>Click to test subscription</Button>
+      </div>
+    </>
   );
 };
 

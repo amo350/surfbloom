@@ -22,14 +22,16 @@ const WorkflowId = async ({ params }: PageProps) => {
   prefetchWorkflow(workflowId);
   return (
     <HydrateClient>
-      <ErrorBoundary fallback={<EditorError />}>
-        <Suspense fallback={<EditorLoading />}>
-          <EditorHeader workflowId={workflowId} />
-          <main className="flex-1">
-            <Editor workflowId={workflowId} />
-          </main>
-        </Suspense>
-      </ErrorBoundary>
+      <div className="flex flex-col h-full">
+        <ErrorBoundary fallback={<EditorError />}>
+          <Suspense fallback={<EditorLoading />}>
+            <EditorHeader workflowId={workflowId} />
+            <div className="flex-1 relative">
+              <Editor workflowId={workflowId} />
+            </div>
+          </Suspense>
+        </ErrorBoundary>
+      </div>
     </HydrateClient>
   );
 };

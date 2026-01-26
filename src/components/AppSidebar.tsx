@@ -5,11 +5,19 @@ import {
   HistoryIcon,
   KeyIcon,
   LogOutIcon,
+  Settings2Icon,
   StarIcon,
+  Users2Icon,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import {
+  GoCheckCircle,
+  GoCheckCircleFill,
+  GoHome,
+  GoHomeFill,
+} from "react-icons/go";
 import {
   Sidebar,
   SidebarContent,
@@ -23,7 +31,25 @@ import {
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
+
 const menuItems = [
+  {
+    title: "Main",
+    items: [
+      {
+        title: "Home",
+        icon: GoHome,
+        activeIcon: GoHomeFill,
+        url: "/",
+      },
+      {
+        title: "My Tasks",
+        icon: GoCheckCircle,
+        activeIcon: GoCheckCircleFill,
+        url: "/tasks",
+      },
+    ],
+  },
   {
     title: "Workflows",
     items: [
@@ -44,6 +70,21 @@ const menuItems = [
       },
     ],
   },
+  {
+    title: "Organization",
+    items: [
+      {
+        title: "Settings",
+        icon: Settings2Icon,
+        url: "/settings",
+      },
+      {
+        title: "Members",
+        icon: Users2Icon,
+        url: "/members",
+      },
+    ],
+  },
 ];
 
 const AppSidebar = () => {
@@ -61,7 +102,7 @@ const AppSidebar = () => {
                 alt="logo"
                 width={105}
                 height={105}
-                className="pr-5 -ml-[3px]"
+                className="pr-5 -ml-[3.5px]"
                 priority
               />
             </Link>

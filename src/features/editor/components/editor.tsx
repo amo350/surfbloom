@@ -77,7 +77,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
   }, [nodes]);
 
   return (
-    <div className="size-full">
+    <div className="absolute inset-0">
       <ReactFlow
         nodes={nodes}
         edges={edges}
