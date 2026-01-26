@@ -1,3 +1,4 @@
+import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
 import { requireAuth } from "@/lib/auth-utils";
 
 type PageProps = {
@@ -9,7 +10,14 @@ type PageProps = {
 const CredentialId = async ({ params }: PageProps) => {
   await requireAuth();
   const { credentialId } = await params;
-  return <div>CredentialId: {credentialId}</div>;
+  return (
+    <>
+      <AppHeader>
+        <AppHeaderTitle title="Credential Details" />
+      </AppHeader>
+      <div className="p-6">CredentialId: {credentialId}</div>
+    </>
+  );
 };
 
 export default CredentialId;

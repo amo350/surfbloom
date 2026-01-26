@@ -1,3 +1,4 @@
+import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
 import { ExecutionView } from "@/features/executions/components/execution";
 import {
   ExecutionsError,
@@ -20,17 +21,22 @@ const ExecutionId = async ({ params }: PageProps) => {
   const { executionId } = await params;
   prefetchExecution(executionId);
   return (
-    <div className="p-4 md:px-10 md:py-6 h-full">
-      <div className="mx-auto max-w-screen-md w-full flex flex-col gap-y-8 h-full">
-        <HydrateClient>
-          <ErrorBoundary fallback={<ExecutionsError />}>
-            <Suspense fallback={<ExecutionsLoading />}>
-              <ExecutionView executionId={executionId} />
-            </Suspense>
-          </ErrorBoundary>
-        </HydrateClient>
+    <>
+      <AppHeader>
+        <AppHeaderTitle title="Execution Details" />
+      </AppHeader>
+      <div className="p-4 md:px-10 md:py-6 flex-1 overflow-auto">
+        <div className="mx-auto max-w-screen-md w-full flex flex-col gap-y-8">
+          <HydrateClient>
+            <ErrorBoundary fallback={<ExecutionsError />}>
+              <Suspense fallback={<ExecutionsLoading />}>
+                <ExecutionView executionId={executionId} />
+              </Suspense>
+            </ErrorBoundary>
+          </HydrateClient>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

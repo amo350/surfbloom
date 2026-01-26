@@ -1,9 +1,12 @@
 "use client";
 
 import {
+  AppHeader,
+  AppHeaderTitle,
+} from "@/components/AppHeader";
+import {
   EmptyView,
   EntityContainer,
-  EntityHeader,
   EntityItem,
   EntityList,
   EntityPagination,
@@ -35,12 +38,14 @@ export const ExecutionsList = () => {
   );
 };
 
-export const ExecutionsHeader = () => {
+export const ExecutionsPageHeader = () => {
   return (
-    <EntityHeader
-      title="Executions"
-      description="View your workflow execution history"
-    />
+    <AppHeader>
+      <AppHeaderTitle
+        title="Executions"
+        description="View your workflow execution history"
+      />
+    </AppHeader>
   );
 };
 
@@ -64,10 +69,7 @@ export const ExecutionsContainer = ({
   children: React.ReactNode;
 }) => {
   return (
-    <EntityContainer
-      header={<ExecutionsHeader />}
-      pagination={<ExecutionsPagination />}
-    >
+    <EntityContainer pagination={<ExecutionsPagination />}>
       {children}
     </EntityContainer>
   );
