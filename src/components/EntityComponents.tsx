@@ -31,7 +31,7 @@ import {
 type EntityHeaderProps = {
   title: string;
   description?: string;
-  newButtonLabel: string;
+  newButtonLabel?: string;
   disabled?: boolean;
   isCreating?: boolean;
 } & (
@@ -196,15 +196,15 @@ type EmptyViewProps = StateViewProps & {
 
 export const EmptyView = ({ message, onNew }: EmptyViewProps) => {
   return (
-    <Empty className="border border-dashed bg-white">
+    <Empty className="bg-white rounded-3xl p-16 md:p-24 min-w-[500px] max-w-[600px] shadow-xl border border-border/20">
       <EmptyHeader>
-        <EmptyMedia variant="icon">
+        <EmptyMedia variant="icon" className="size-24 mb-6 rounded-3xl [&_svg:not([class*='size-'])]:size-12">
           <PackageOpenIcon />
         </EmptyMedia>
       </EmptyHeader>
-      <EmptyTitle>No items</EmptyTitle>
-      {!!message && <EmptyDescription>{message}</EmptyDescription>}
-      {!!onNew && <Button onClick={onNew}>Add item</Button>}
+      <EmptyTitle className="text-2xl">No items</EmptyTitle>
+      {!!message && <EmptyDescription className="text-lg">{message}</EmptyDescription>}
+      {!!onNew && <Button onClick={onNew} className="mt-4" size="lg">Add item</Button>}
     </Empty>
   );
 };
@@ -227,7 +227,7 @@ export function EntityList<T>({
   if (items.length === 0 && emptyView) {
     return (
       <div className="flex-1 flex justify-center items-center">
-        <div className="max-w-sm mx-auto">{emptyView}</div>
+        <div className="w-full flex justify-center">{emptyView}</div>
       </div>
     );
   }
