@@ -1,18 +1,18 @@
 import { generateText } from "ai";
 import { NonRetriableError } from "inngest";
-import { getExecutor } from "@/features/executions/lib/executor-registry";
+import { getExecutor } from "@/features/nodes/lib/executor-registry";
 import { ExecutionStatus, NodeType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { geminiChannel } from "./channels/gemini";
-import { googleFormTriggerChannel } from "./channels/google-form-trigger";
-import { httpRequestChannel } from "./channels/http-request";
-import { manualTriggerChannel } from "./channels/manual-trigger";
-import { openAiChannel } from "./channels/openAi";
-import { stripeTriggerChannel } from "./channels/stripe-trigger";
-import { xAiChannel } from "./channels/xAi";
+import { geminiChannel } from "@/features/nodes/channels/gemini";
+import { googleFormTriggerChannel } from "@/features/nodes/channels/google-form-trigger";
+import { httpRequestChannel } from "@/features/nodes/channels/http-request";
+import { manualTriggerChannel } from "@/features/nodes/channels/manual-trigger";
+import { openAiChannel } from "@/features/nodes/channels/openAi";
+import { stripeTriggerChannel } from "@/features/nodes/channels/stripe-trigger";
+import { xAiChannel } from "@/features/nodes/channels/xAi";
 import { inngest } from "./client";
 import { topologicalSort } from "./utils";
-import { slackChannel } from "./channels/slack";
+import { slackChannel } from "@/features/nodes/channels/slack";
 
 export const executeWorkflow = inngest.createFunction(
   { id: "execute-workflow" },
