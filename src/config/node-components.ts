@@ -1,14 +1,14 @@
 import { NodeTypes } from "@xyflow/react";
 import { InitialNode } from "@/components/InitialNode";
-import { GeminiNode } from "@/features/executions/components/gemini/node";
-import { HttpRequestNode } from "@/features/executions/components/http-requests/node";
-import { OpenAiNode } from "@/features/executions/components/openAi/node";
-import { XAiNode } from "@/features/executions/components/xAi/node";
-import { GoogleFormTrigger } from "@/features/triggers/components/google-form-trigger/node";
-import { ManualTriggerNode } from "@/features/triggers/components/manual-trigger/node";
-import { StripeTriggerNode } from "@/features/triggers/components/stripe-trigger/node";
+import { GeminiNode } from "@/features/nodes/gemini/node";
+import { HttpRequestNode } from "@/features/nodes/http-requests/node";
+import { OpenAiNode } from "@/features/nodes/openAi/node";
+import { XAiNode } from "@/features/nodes/xAi/node";
+import { GoogleFormTrigger } from "@/features/nodes/google-form-trigger/node";
+import { ManualTriggerNode } from "@/features/nodes/manual-trigger/node";
+import { StripeTriggerNode } from "@/features/nodes/stripe-trigger/node";
 import { NodeType } from "@/generated/prisma/enums";
-import { SlackNode } from "@/features/executions/components/slack/node";
+import { SlackNode } from "@/features/nodes/slack/node";
 
 export const nodeComponents = {
   [NodeType.INITIAL]: InitialNode,
