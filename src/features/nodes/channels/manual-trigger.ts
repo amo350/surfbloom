@@ -1,6 +1,8 @@
 import { channel, topic } from "@inngest/realtime";
 
-export const manualTriggerChannel = channel("http-request-execution").addTopic(
+export const manualTriggerChannel = channel(
+  "manual-trigger-execution",
+).addTopic(
   topic("status").type<{
     nodeId: string;
     status: "loading" | "success" | "error";

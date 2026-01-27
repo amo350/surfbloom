@@ -10,7 +10,7 @@ export const ManualTriggerNode = memo((props: NodeProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const nodeStatus = useNodeStatus({
     nodeId: props.id,
-    channel: "http-request-execution",
+    channel: "manual-trigger-execution",
     topic: "status",
     refreshToken: fetchManualTriggerRealtimeToken,
   });

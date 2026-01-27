@@ -12,22 +12,24 @@ import EditorHeader from "@/features/editor/components/EditorHeader";
 
 type PageProps = {
   params: Promise<{
+    workspaceId: string;
     workflowId: string;
   }>;
 };
 
 const WorkflowId = async ({ params }: PageProps) => {
   await requireAuth();
-  const { workflowId } = await params;
-  prefetchWorkflow(workflowId);
+  const { workflowId, workspaceId } = await params;
+
+  prefetchWorkflow(workflowId, workspaceId);
   return (
     <HydrateClient>
       <div className="flex flex-col h-full">
         <ErrorBoundary fallback={<EditorError />}>
           <Suspense fallback={<EditorLoading />}>
-            <EditorHeader workflowId={workflowId} />
+            <EditorHeader workflowId={workflowId} workspaceId={workspaceId} />
             <div className="flex-1 relative">
-              <Editor workflowId={workflowId} />
+              <Editor workflowId={workflowId} workspaceId={workspaceId} />
             </div>
           </Suspense>
         </ErrorBoundary>

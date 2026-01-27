@@ -48,11 +48,11 @@ const SignUpForm = () => {
         name: values.email,
         email: values.email,
         password: values.password,
-        callbackURL: "/",
+        callbackURL: "/index/locations",
       },
       {
         onSuccess: () => {
-          router.push("/");
+          router.push("/index/locations");
         },
         onError: (ctx) => {
           toast.error(ctx.error.message);

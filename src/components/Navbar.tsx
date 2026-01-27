@@ -4,7 +4,6 @@ import { Menu } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { MobileSidebar } from "./MobileSidebar";
 
 const Navbar = () => {
   const { toggleSidebar } = useSidebar();
@@ -19,7 +18,6 @@ const Navbar = () => {
       >
         <Menu className="size-5" />
       </Button>
-      <MobileSidebar />
       <Separator orientation="vertical" className="h-6" />
       {/* TODO: Add breadcrumbs, search, user menu, etc. */}
     </nav>

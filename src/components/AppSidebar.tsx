@@ -40,13 +40,15 @@ const menuItems = [
         title: "Home",
         icon: GoHome,
         activeIcon: GoHomeFill,
-        url: "/",
+        getUrl: () => "#",
+        getActivePattern: () => /^\/$/,
       },
       {
         title: "My Tasks",
         icon: GoCheckCircle,
         activeIcon: GoCheckCircleFill,
-        url: "/tasks",
+        getUrl: () => "/tasks",
+        getActivePattern: () => /^\/tasks/,
       },
     ],
   },
@@ -56,17 +58,28 @@ const menuItems = [
       {
         title: "Workflows",
         icon: FolderOpenIcon,
-        url: "/workflows",
+        getUrl: (workspaceId?: string) =>
+          workspaceId ? `/workspaces/${workspaceId}/workflows` : "/index/locations",
+        getActivePattern: (workspaceId?: string) =>
+          workspaceId
+            ? new RegExp(`^/workspaces/${workspaceId}/workflows`)
+            : /^\/workflows/,
       },
       {
         title: "Credentials",
         icon: KeyIcon,
-        url: "/credentials",
+        getUrl: () => "/credentials",
+        getActivePattern: () => /^\/credentials/,
       },
       {
         title: "Executions",
         icon: HistoryIcon,
-        url: "/executions",
+        getUrl: (workspaceId?: string) =>
+          workspaceId ? `/workspaces/${workspaceId}/executions` : "/index/locations",
+        getActivePattern: (workspaceId?: string) =>
+          workspaceId
+            ? new RegExp(`^/workspaces/${workspaceId}/executions`)
+            : /^\/executions/,
       },
     ],
   },
@@ -76,12 +89,14 @@ const menuItems = [
       {
         title: "Settings",
         icon: Settings2Icon,
-        url: "/settings",
+        getUrl: () => "/settings",
+        getActivePattern: () => /^\/settings/,
       },
       {
         title: "Members",
         icon: Users2Icon,
-        url: "/members",
+        getUrl: () => "/members",
+        getActivePattern: () => /^\/members/,
       },
     ],
   },
@@ -91,12 +106,23 @@ const AppSidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { hasActiveSubscription, isLoading } = useHasActiveSubscription();
+
+  // Extract workspaceId from pathname
+  const workspaceIdMatch = pathname?.match(/^\/workspaces\/([^/]+)/);
+  const workspaceId = workspaceIdMatch ? workspaceIdMatch[1] : undefined;
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenuItem>
           <SidebarMenuButton asChild className="gap-x-4 h-10 px-4">
-            <Link href="/workflows" prefetch>
+            <Link
+              href={
+                workspaceId
+                  ? `/workspaces/${workspaceId}/workflows`
+                  : "/index/locations"
+              }
+              prefetch
+            >
               <Image
                 src="/fullLogo.png"
                 alt="logo"
@@ -116,19 +142,22 @@ const AppSidebar = () => {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {group.items.map((item) => {
+                    const url = item.getUrl(workspaceId);
+                    const activePattern = item.getActivePattern(workspaceId);
+                    const isActive =
+                      pathname && activePattern
+                        ? activePattern.test(pathname)
+                        : false;
+
                     return (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                           tooltip={item.title}
-                          isActive={
-                            item.url === "/"
-                              ? pathname === "/"
-                              : pathname.startsWith(item.url)
-                          }
+                          isActive={isActive}
                           asChild
                           className="gap-x-4 h-10 px-4"
                         >
-                          <Link href={item.url} prefetch>
+                          <Link href={url} prefetch>
                             <item.icon className="size-4" />
                             <span>{item.title}</span>
                           </Link>

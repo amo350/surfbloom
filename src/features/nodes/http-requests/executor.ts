@@ -61,9 +61,7 @@ export const HttpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
         );
         throw new NonRetriableError("Method not configured");
       }
-      //http://...
       const endpoint = Handlebars.compile(data.endpoint)(context);
-      console.log("Endpoint", { endpoint });
 
       const method = data.method;
 
@@ -71,7 +69,12 @@ export const HttpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
       if (["POST", "PUT", "PATCH"].includes(method)) {
         const resolved = Handlebars.compile(data.body || "{}")(context);
-        JSON.parse(resolved);
+        // Validate JSON before sending
+        try {
+          JSON.parse(resolved);
+        } catch {
+          throw new NonRetriableError("Invalid JSON in request body");
+        }
         if (data.body) {
           options.body = resolved;
           options.headers = {
@@ -79,6 +82,8 @@ export const HttpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
           };
         }
       }
+      // Add timeout to prevent hanging requests
+      options.timeout = 30000;
       const response = await ky(endpoint, options);
       const contentType = response.headers.get("content-type");
       const responseData = contentType?.includes("application/json")

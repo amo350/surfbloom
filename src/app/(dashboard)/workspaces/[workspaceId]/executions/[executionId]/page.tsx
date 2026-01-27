@@ -6,20 +6,35 @@ import {
 } from "@/features/executions/components/executions";
 import { prefetchExecution } from "@/features/executions/server/prefetch";
 import { requireAuth } from "@/lib/auth-utils";
+import { prisma } from "@/lib/prisma";
 import { HydrateClient } from "@/trpc/server";
 import { Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
+import { redirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{
+    workspaceId: string;
     executionId: string;
   }>;
 };
 
 const ExecutionId = async ({ params }: PageProps) => {
-  await requireAuth();
-  const { executionId } = await params;
+  const session = await requireAuth();
+  const { workspaceId, executionId } = await params;
+
+  // Validate workspace belongs to user
+  const workspace = await prisma.workspace.findFirst({
+    where: { id: workspaceId, userId: session.user.id },
+    select: { id: true },
+  });
+
+  if (!workspace) {
+    redirect("/index/locations");
+  }
+
   prefetchExecution(executionId);
+
   return (
     <>
       <AppHeader>

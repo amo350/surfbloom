@@ -21,7 +21,13 @@ import {
 } from "@/features/workflows/hooks/use-workflows";
 import { editorAtom } from "../store/atoms";
 
-export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
+export const EditorSaveButton = ({
+  workflowId,
+  workspaceId,
+}: {
+  workflowId: string;
+  workspaceId: string;
+}) => {
   const editor = useAtomValue(editorAtom);
   const saveWorkflow = useUpdateWorkflow();
 
@@ -34,6 +40,7 @@ export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
 
     saveWorkflow.mutate({
       id: workflowId,
+      workspaceId,
       nodes,
       edges,
     });
@@ -47,8 +54,14 @@ export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
   );
 };
 
-export const EditorNameInput = ({ workflowId }: { workflowId: string }) => {
-  const { data: workflow } = useSuspenseWorkflow(workflowId);
+export const EditorNameInput = ({
+  workflowId,
+  workspaceId,
+}: {
+  workflowId: string;
+  workspaceId: string;
+}) => {
+  const { data: workflow } = useSuspenseWorkflow(workflowId, workspaceId);
   const updateWorkflow = useUpdateWorkflowName();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -77,6 +90,7 @@ export const EditorNameInput = ({ workflowId }: { workflowId: string }) => {
     try {
       await updateWorkflow.mutateAsync({
         id: workflowId,
+        workspaceId,
         name,
       });
     } catch {
@@ -118,30 +132,42 @@ export const EditorNameInput = ({ workflowId }: { workflowId: string }) => {
     </BreadcrumbItem>
   );
 };
-export const EditorBreadcrumbs = ({ workflowId }: { workflowId: string }) => {
+export const EditorBreadcrumbs = ({
+  workflowId,
+  workspaceId,
+}: {
+  workflowId: string;
+  workspaceId: string;
+}) => {
   return (
     <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <Link prefetch href="/workflows">
+            <Link prefetch href={`/workspaces/${workspaceId}/workflows`}>
               Workflows
             </Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
-        <EditorNameInput workflowId={workflowId} />
+        <EditorNameInput workflowId={workflowId} workspaceId={workspaceId} />
       </BreadcrumbList>
     </Breadcrumb>
   );
 };
 
-const EditorHeader = ({ workflowId }: { workflowId: string }) => {
+const EditorHeader = ({
+  workflowId,
+  workspaceId,
+}: {
+  workflowId: string;
+  workspaceId: string;
+}) => {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 bg-background">
       <div className="flex flex-row items-center justify-between gap-x-4 w-full">
-        <EditorBreadcrumbs workflowId={workflowId} />
-        <EditorSaveButton workflowId={workflowId} />
+        <EditorBreadcrumbs workflowId={workflowId} workspaceId={workspaceId} />
+        <EditorSaveButton workflowId={workflowId} workspaceId={workspaceId} />
       </div>
     </header>
   );
