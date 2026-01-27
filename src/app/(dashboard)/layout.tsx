@@ -9,7 +9,7 @@ const DashboardLayout = async ({ children }: DashboardLayoutProps) => {
   await requireAuth();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <div className="flex flex-col h-screen">{children}</div>
     </div>
   );

@@ -1,16 +1,32 @@
 "use client";
 
-import { Menu } from "lucide-react";
-import { useSidebar } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import UserDropdown from "./navbarComponents/UserDropdown";
 import NotificationsBell from "./navbarComponents/NotificationsBell";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
 import { authClient } from "@/lib/auth-client";
-import UserDropdown from "./navbarComponents/UserDropdown";
 
-const Navbar = () => {
-  const { toggleSidebar } = useSidebar();
+const indexMenuItems = [
+  {
+    title: "Locations",
+    href: "/index/locations",
+  },
+  {
+    title: "Members",
+    href: "/index/members",
+  },
+  {
+    title: "Account",
+    href: "/index/account",
+  },
+];
+
+const IndexNavbar = () => {
+  const pathname = usePathname();
   const { hasActiveSubscription, isLoading } = useHasActiveSubscription();
 
   // Get current plan name dynamically
@@ -25,16 +41,37 @@ const Navbar = () => {
 
   return (
     <nav className="relative flex items-center gap-x-4 px-9 py-2.5 border-b bg-background">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleSidebar}
-        className="size-8"
-      >
-        <Menu className="size-5" />
-      </Button>
+      <Link href="/index/locations" prefetch className="flex items-center">
+        <Image
+          src="/sloganLogo.png"
+          alt="Surfbloom"
+          width={120}
+          height={28}
+          priority
+        />
+      </Link>
       <Separator orientation="vertical" className="h-6" />
-      {/* TODO: Add breadcrumbs, search, user menu, etc. */}
+      <div className="flex items-center gap-1">
+        {indexMenuItems.map((item) => {
+          const isActive = pathname?.startsWith(item.href) ?? false;
+
+          return (
+            <div key={item.title} className="relative">
+              <Button asChild variant="ghost" size="sm">
+                <Link href={item.href} prefetch>
+                  {item.title}
+                </Link>
+              </Button>
+              {/* Orange indicator bar on the navbar border */}
+              {isActive && (
+                <div className="absolute -bottom-2.5 left-0 right-0 h-0.5 bg-secondary" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Push to far right */}
       <div className="ml-auto pr-2 flex items-center gap-1">
         <NotificationsBell />
         {!hasActiveSubscription && !isLoading && (
@@ -58,4 +95,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar;
+export default IndexNavbar;

@@ -11,7 +11,7 @@ const WorkspaceLayout = ({ children }: WorkspaceLayoutProps) => {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="bg-[#F7F8FA]">
         <Navbar />
         <div className="flex flex-col flex-1 overflow-hidden">{children}</div>
       </SidebarInset>

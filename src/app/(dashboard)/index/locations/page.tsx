@@ -6,7 +6,6 @@ import {
   WorkspacesError,
   WorkspacesList,
   WorkspacesLoading,
-  WorkspacesPageHeader,
 } from "@/features/workspaces/components/workspaces";
 import { workspacesParamsLoader } from "@/features/workspaces/server/params-loader";
 import { prefetchWorkspaces } from "@/features/workspaces/server/prefetch";
@@ -25,11 +24,6 @@ const LocationsPage = async ({ searchParams }: Props) => {
 
   return (
     <>
-      <HydrateClient>
-        <Suspense fallback={null}>
-          <WorkspacesPageHeader />
-        </Suspense>
-      </HydrateClient>
       <WorkspacesContainer>
         <HydrateClient>
           <ErrorBoundary fallback={<WorkspacesError />}>
