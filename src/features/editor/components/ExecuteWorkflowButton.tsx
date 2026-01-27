@@ -4,13 +4,15 @@ import { useExecuteWorkflow } from "@/features/workflows/hooks/use-workflows";
 
 export const ExecuteWorkflowButton = ({
   workflowId,
+  workspaceId,
 }: {
   workflowId: string;
+  workspaceId: string;
 }) => {
   const executeWorkflow = useExecuteWorkflow();
 
   const handleExecute = () => {
-    executeWorkflow.mutate({ id: workflowId });
+    executeWorkflow.mutate({ id: workflowId, workspaceId });
   };
   return (
     <Button

@@ -8,12 +8,16 @@ export const executionsRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .query(({ ctx, input }) => {
       return prisma.execution.findUniqueOrThrow({
-        where: { id: input.id, workflow: { userId: ctx.auth.user.id } },
+        where: {
+          id: input.id,
+          workflow: { workspace: { userId: ctx.auth.user.id } },
+        },
         include: {
           workflow: {
             select: {
               id: true,
               name: true,
+              workspaceId: true,
             },
           },
         },
@@ -22,6 +26,7 @@ export const executionsRouter = createTRPCRouter({
   getMany: protectedProcedure
     .input(
       z.object({
+        workspaceId: z.string(),
         page: z.number().default(PAGINATION.DEFAULT_PAGE),
         pageSize: z
           .number()
@@ -31,13 +36,16 @@ export const executionsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const { page, pageSize } = input;
+      const { workspaceId, page, pageSize } = input;
       const [items, totalCount] = await Promise.all([
         prisma.execution.findMany({
           skip: (page - 1) * pageSize,
           take: pageSize,
           where: {
-            workflow: { userId: ctx.auth.user.id },
+            workflow: {
+              workspaceId,
+              workspace: { userId: ctx.auth.user.id },
+            },
           },
           orderBy: { startedAt: "desc" },
           include: {
@@ -45,13 +53,17 @@ export const executionsRouter = createTRPCRouter({
               select: {
                 id: true,
                 name: true,
+                workspaceId: true,
               },
             },
           },
         }),
         prisma.execution.count({
           where: {
-            workflow: { userId: ctx.auth.user.id },
+            workflow: {
+              workspaceId,
+              workspace: { userId: ctx.auth.user.id },
+            },
           },
         }),
       ]);

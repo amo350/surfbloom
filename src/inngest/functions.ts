@@ -56,46 +56,66 @@ export const executeWorkflow = inngest.createFunction(
       });
     });
 
-    const sortedNodes = await step.run("prepare workflow", async () => {
-      const workflow = await prisma.workflow.findUniqueOrThrow({
-        where: { id: workflowId },
-        include: {
-          nodes: true,
-          connections: true,
-        },
+    try {
+      const sortedNodes = await step.run("prepare workflow", async () => {
+        const workflow = await prisma.workflow.findUniqueOrThrow({
+          where: { id: workflowId },
+          include: {
+            nodes: true,
+            connections: true,
+          },
+        });
+        return topologicalSort(workflow.nodes, workflow.connections);
       });
-      return topologicalSort(workflow.nodes, workflow.connections);
-    });
 
-    //Initialize the context with any ititial data from the trigger
-    let context = event.data.initialData || {};
+      //Initialize the context with any ititial data from the trigger
+      let context = event.data.initialData || {};
 
-    //execute nodes
-    for (const node of sortedNodes) {
-      const executor = getExecutor(node.type as NodeType);
-      context = await executor({
-        data: (node.data || {}) as Record<string, unknown>,
-        nodeId: node.id,
-        context,
-        step,
-        publish,
+      //execute nodes
+      for (const node of sortedNodes) {
+        const executor = getExecutor(node.type as NodeType);
+        context = await executor({
+          data: (node.data || {}) as Record<string, unknown>,
+          nodeId: node.id,
+          context,
+          step,
+          publish,
+        });
+      }
+
+      await step.run("update-execution", async () => {
+        return prisma.execution.update({
+          where: { inngestEventId, workflowId },
+          data: {
+            status: ExecutionStatus.SUCCESS,
+            completeAt: new Date(),
+            output: context,
+          },
+        });
       });
+
+      return {
+        workflowId,
+        result: context,
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+
+      // Mirror the success update shape, but for failures.
+      await step.run("fail-execution", async () => {
+        return prisma.execution.update({
+          where: { inngestEventId, workflowId },
+          data: {
+            status: ExecutionStatus.FAILED,
+            completeAt: new Date(),
+            error: message,
+            errorStack: stack,
+          },
+        });
+      });
+
+      throw err;
     }
-
-    await step.run("update-execution", async () => {
-      return prisma.execution.update({
-        where: { inngestEventId, workflowId },
-        data: {
-          status: ExecutionStatus.SUCCESS,
-          completeAt: new Date(),
-          output: context,
-        },
-      });
-    });
-
-    return {
-      workflowId,
-      result: context,
-    };
   },
 );

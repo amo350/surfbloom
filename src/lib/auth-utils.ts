@@ -18,7 +18,7 @@ export const requireUnAuth = async () => {
   });
 
   if (session) {
-    redirect("/");
+    redirect("/index/locations");
   }
   return session;
 };

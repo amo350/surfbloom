@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -18,7 +17,8 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
-  workflows     Workflow[]
+  workspaces    Workspace[]
+  createdWorkflows Workflow[]
 
   @@unique([email])
   @@map("user")
@@ -72,18 +72,39 @@ model Verification {
   @@map("verification")
 }
 
-model Workflow {
+model Workspace {
   id        String   @id @default(cuid())
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   userId    String
 
-  nodes Node[]
-  connections Connection[]
-  executions Execution[]
+  workflows Workflow[]
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("workspace")
+}
+
+model Workflow {
+  id          String   @id @default(cuid())
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  workspaceId String
+  createdById String
+
+  nodes       Node[]
+  connections Connection[]
+  executions  Execution[]
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([createdById])
+  @@map("workflow")
 }
 
 enum NodeType {
@@ -113,6 +134,9 @@ model Node {
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([workflowId])
+  @@map("node")
 }
 
 model Connection {
@@ -132,6 +156,8 @@ model Connection {
   updatedAt  DateTime @updatedAt
 
   @@unique([fromNodeId, toNodeId, fromOutput, toInput])
+  @@index([workflowId])
+  @@map("connection")
 }
 
 enum ExecutionStatus {
@@ -156,4 +182,7 @@ model Execution {
   inngestEventId String @unique
 
   output Json?
+
+  @@index([workflowId])
+  @@map("execution")
 }

@@ -25,14 +25,20 @@ import {
   XCircleIcon,
 } from "lucide-react";
 
-export const ExecutionsList = () => {
-  const executions = useSuspenseExecutions();
+type WorkspaceProps = {
+  workspaceId: string;
+};
+
+export const ExecutionsList = ({ workspaceId }: WorkspaceProps) => {
+  const executions = useSuspenseExecutions(workspaceId);
 
   return (
     <EntityList
       items={executions.data.items}
       getKey={(execution) => execution.id}
-      renderItem={(execution) => <ExecutionItem data={execution} />}
+      renderItem={(execution) => (
+        <ExecutionItem data={execution} workspaceId={workspaceId} />
+      )}
       emptyView={<ExecutionsEmpty />}
     />
   );
@@ -49,8 +55,8 @@ export const ExecutionsPageHeader = () => {
   );
 };
 
-export const ExecutionsPagination = () => {
-  const executions = useSuspenseExecutions();
+export const ExecutionsPagination = ({ workspaceId }: WorkspaceProps) => {
+  const executions = useSuspenseExecutions(workspaceId);
   const [params, setParams] = useExecutionsParams();
 
   return (
@@ -65,11 +71,13 @@ export const ExecutionsPagination = () => {
 
 export const ExecutionsContainer = ({
   children,
+  workspaceId,
 }: {
   children: React.ReactNode;
+  workspaceId: string;
 }) => {
   return (
-    <EntityContainer pagination={<ExecutionsPagination />}>
+    <EntityContainer pagination={<ExecutionsPagination workspaceId={workspaceId} />}>
       {children}
     </EntityContainer>
   );
@@ -106,13 +114,16 @@ const formatStatus = (status: ExecutionStatus) => {
 
 export const ExecutionItem = ({
   data,
+  workspaceId,
 }: {
   data: Execution & {
     workflow: {
       id: string;
       name: string;
+      workspaceId: string;
     };
   };
+  workspaceId: string;
 }) => {
   const duration = data.completeAt
     ? Math.round(
@@ -131,7 +142,7 @@ export const ExecutionItem = ({
   );
   return (
     <EntityItem
-      href={`/executions/${data.id}`}
+      href={`/workspaces/${data.workflow.workspaceId}/executions/${data.id}`}
       title={formatStatus(data.status)}
       subtitle={subtitle}
       image={

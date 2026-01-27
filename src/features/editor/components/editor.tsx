@@ -48,8 +48,14 @@ const initialNodes = [
 
 const initialEdges = [{ id: "n1-n2", source: "n1", target: "n2" }];
 
-export const Editor = ({ workflowId }: { workflowId: string }) => {
-  const { data: workflow } = useSuspenseWorkflow(workflowId);
+export const Editor = ({
+  workflowId,
+  workspaceId,
+}: {
+  workflowId: string;
+  workspaceId: string;
+}) => {
+  const { data: workflow } = useSuspenseWorkflow(workflowId, workspaceId);
 
   const setEditor = useSetAtom(editorAtom);
 
@@ -100,7 +106,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
         </Panel>
         {hasManualTrigger && (
           <Panel position="bottom-center">
-            <ExecuteWorkflowButton workflowId={workflowId} />
+            <ExecuteWorkflowButton workflowId={workflowId} workspaceId={workspaceId} />
           </Panel>
         )}
       </ReactFlow>

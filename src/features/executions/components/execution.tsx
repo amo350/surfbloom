@@ -74,7 +74,7 @@ export const ExecutionView = ({ executionId }: { executionId: string }) => {
             <Link
               prefetch
               className="text-sm hover:underline text-primary"
-              href={`/workflows/${execution.workflowId}`}
+              href={`/workspaces/${execution.workflow.workspaceId}/workflows/${execution.workflowId}`}
             >
               {execution.workflow.name}
             </Link>
@@ -112,7 +112,7 @@ export const ExecutionView = ({ executionId }: { executionId: string }) => {
             <p className="text-sm font-medium text-muted-foreground">
               Event ID
             </p>
-            <p className="text-sm">{execution.inngestEventId}s</p>
+            <p className="text-sm">{execution.inngestEventId}</p>
           </div>
         </div>
         {execution.error && (

@@ -1,21 +1,17 @@
-import AppSidebar from "@/components/AppSidebar";
-import Navbar from "@/components/Navbar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { requireAuth } from "@/lib/auth-utils";
 import React from "react";
 
 type DashboardLayoutProps = {
   children: React.ReactNode;
 };
 
-const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+const DashboardLayout = async ({ children }: DashboardLayoutProps) => {
+  await requireAuth();
+
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <Navbar />
-        <div className="flex flex-col flex-1 overflow-hidden">{children}</div>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen bg-background">
+      <div className="flex flex-col h-screen">{children}</div>
+    </div>
   );
 };
 

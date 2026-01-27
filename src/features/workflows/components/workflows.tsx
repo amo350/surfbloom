@@ -29,6 +29,10 @@ import type { Workflow } from "@/generated/prisma/client";
 import { PlusIcon, WorkflowIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+type WorkspaceProps = {
+  workspaceId: string;
+};
+
 export const WorkflowsSearch = () => {
   const [params, setParams] = useWorkflowsParams();
   const { searchValue, onSearchChange } = useEntitySearch({
@@ -44,20 +48,22 @@ export const WorkflowsSearch = () => {
   );
 };
 
-export const WorkflowsList = () => {
-  const workflows = useSuspenseWorkflows();
+export const WorkflowsList = ({ workspaceId }: WorkspaceProps) => {
+  const workflows = useSuspenseWorkflows(workspaceId);
 
   return (
     <EntityList
       items={workflows.data.items}
       getKey={(workflows) => workflows.id}
-      renderItem={(workflow) => <WorkflowItem data={workflow} />}
-      emptyView={<WorkflowsEmpty />}
+      renderItem={(workflow) => (
+        <WorkflowItem data={workflow} workspaceId={workspaceId} />
+      )}
+      emptyView={<WorkflowsEmpty workspaceId={workspaceId} />}
     />
   );
 };
 
-export const WorkflowsPageHeader = () => {
+export const WorkflowsPageHeader = ({ workspaceId }: WorkspaceProps) => {
   const createWorkflow = useCreateWorkflow();
   const router = useRouter();
   const { handleError, modal } = useUpgradeModal();
@@ -68,14 +74,17 @@ export const WorkflowsPageHeader = () => {
   });
 
   const handleCreate = () => {
-    createWorkflow.mutate(undefined, {
-      onSuccess: (data) => {
-        router.push(`/workflows/${data.id}`);
+    createWorkflow.mutate(
+      { workspaceId },
+      {
+        onSuccess: (data) => {
+          router.push(`/workspaces/${workspaceId}/workflows/${data.id}`);
+        },
+        onError: (error) => {
+          handleError(error);
+        },
       },
-      onError: (error) => {
-        handleError(error);
-      },
-    });
+    );
   };
 
   return (
@@ -102,8 +111,8 @@ export const WorkflowsPageHeader = () => {
   );
 };
 
-export const WorkflowsPagination = () => {
-  const workflows = useSuspenseWorkflows();
+export const WorkflowsPagination = ({ workspaceId }: WorkspaceProps) => {
+  const workflows = useSuspenseWorkflows(workspaceId);
   const [params, setParams] = useWorkflowsParams();
 
   return (
@@ -118,11 +127,15 @@ export const WorkflowsPagination = () => {
 
 export const WorkflowsContainer = ({
   children,
+  workspaceId,
 }: {
   children: React.ReactNode;
+  workspaceId: string;
 }) => {
   return (
-    <EntityContainer pagination={<WorkflowsPagination />}>
+    <EntityContainer
+      pagination={<WorkflowsPagination workspaceId={workspaceId} />}
+    >
       {children}
     </EntityContainer>
   );
@@ -135,20 +148,23 @@ export const WorkflowsError = () => {
   return <ErrorView message="Error Loading workflows..." />;
 };
 
-export const WorkflowsEmpty = () => {
+export const WorkflowsEmpty = ({ workspaceId }: WorkspaceProps) => {
   const createWorkflow = useCreateWorkflow();
   const router = useRouter();
   const { handleError, modal } = useUpgradeModal();
 
   const handleCreate = () => {
-    createWorkflow.mutate(undefined, {
-      onError: (error) => {
-        handleError(error);
+    createWorkflow.mutate(
+      { workspaceId },
+      {
+        onError: (error) => {
+          handleError(error);
+        },
+        onSuccess: (data) => {
+          router.push(`/workspaces/${workspaceId}/workflows/${data.id}`);
+        },
       },
-      onSuccess: (data) => {
-        router.push(`/workflows/${data.id}`);
-      },
-    });
+    );
   };
 
   return (
@@ -162,15 +178,21 @@ export const WorkflowsEmpty = () => {
   );
 };
 
-export const WorkflowItem = ({ data }: { data: Workflow }) => {
+export const WorkflowItem = ({
+  data,
+  workspaceId,
+}: {
+  data: Workflow;
+  workspaceId: string;
+}) => {
   const removeWorkflow = useRemoveWorkflow();
 
   const handleRemove = () => {
-    removeWorkflow.mutate({ id: data.id });
+    removeWorkflow.mutate({ id: data.id, workspaceId });
   };
   return (
     <EntityItem
-      href={`/workflows/${data.id}`}
+      href={`/workspaces/${workspaceId}/workflows/${data.id}`}
       title={data.name}
       subtitle={
         <>
