@@ -28,6 +28,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
@@ -59,23 +60,21 @@ const menuItems = [
         title: "Workflows",
         icon: FolderOpenIcon,
         getUrl: (workspaceId?: string) =>
-          workspaceId ? `/workspaces/${workspaceId}/workflows` : "/index/locations",
+          workspaceId
+            ? `/workspaces/${workspaceId}/workflows`
+            : "/index/locations",
         getActivePattern: (workspaceId?: string) =>
           workspaceId
             ? new RegExp(`^/workspaces/${workspaceId}/workflows`)
             : /^\/workflows/,
       },
       {
-        title: "Credentials",
-        icon: KeyIcon,
-        getUrl: () => "/credentials",
-        getActivePattern: () => /^\/credentials/,
-      },
-      {
         title: "Executions",
         icon: HistoryIcon,
         getUrl: (workspaceId?: string) =>
-          workspaceId ? `/workspaces/${workspaceId}/executions` : "/index/locations",
+          workspaceId
+            ? `/workspaces/${workspaceId}/executions`
+            : "/index/locations",
         getActivePattern: (workspaceId?: string) =>
           workspaceId
             ? new RegExp(`^/workspaces/${workspaceId}/executions`)
@@ -110,9 +109,26 @@ const AppSidebar = () => {
   // Extract workspaceId from pathname
   const workspaceIdMatch = pathname?.match(/^\/workspaces\/([^/]+)/);
   const workspaceId = workspaceIdMatch ? workspaceIdMatch[1] : undefined;
+
+  // Get current plan name dynamically
+  // TODO: Update this to fetch actual plan name from subscription data when available
+  const getCurrentPlanName = () => {
+    if (hasActiveSubscription) {
+      // TODO: Return actual plan name from subscription data
+      return "Pro Plan";
+    }
+    return "Free Plan";
+  };
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
+    <Sidebar
+      collapsible="icon"
+      style={
+        {
+          "--sidebar-width": "14rem",
+        } as React.CSSProperties
+      }
+    >
+      <SidebarHeader className="relative h-14 flex flex-col p-2">
         <SidebarMenuItem>
           <SidebarMenuButton asChild className="gap-x-4 h-10 px-4">
             <Link
@@ -134,6 +150,7 @@ const AppSidebar = () => {
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
+        <SidebarSeparator className="absolute bottom-0 left-0 right-0 -mb-px" />
       </SidebarHeader>
       <SidebarContent>
         {menuItems.map((group) => {
@@ -155,7 +172,7 @@ const AppSidebar = () => {
                           tooltip={item.title}
                           isActive={isActive}
                           asChild
-                          className="gap-x-4 h-10 px-4"
+                          className={`gap-x-4 h-10 px-4 ${isActive ? "font-semibold" : ""}`}
                         >
                           <Link href={url} prefetch>
                             <item.icon className="size-4" />
@@ -173,18 +190,6 @@ const AppSidebar = () => {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          {!hasActiveSubscription && !isLoading && (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Upgrade to Pro"
-                className="gap-x-4 h-10 px-4"
-                onClick={() => authClient.checkout({ slug: "Pro" })}
-              >
-                <StarIcon className="h-4 w-4" />
-                <span>Upgrade to Pro</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="Billing Portal"

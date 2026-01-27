@@ -28,13 +28,13 @@
   --chart-3: oklch(0.55 0.22 263);
   --chart-4: oklch(0.49 0.22 264);
   --chart-5: oklch(0.42 0.18 266);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar: #FAF6F1;
+  --sidebar-foreground: oklch(0.18 0.015 250);
   --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-primary-foreground: oklch(0.18 0.015 250);
+  --sidebar-accent: #F5F0E8;
+  --sidebar-accent-foreground: oklch(0.18 0.015 250);
+  --sidebar-border: #F0EAE0;
   --sidebar-ring: oklch(0.708 0 0);
   --font-sans:
     var(--font-inter), ui-sans-serif, system-ui, -apple-system,
@@ -188,7 +188,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    @apply text-foreground;
+    background-color: #F7F8FA;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
   }
 }
