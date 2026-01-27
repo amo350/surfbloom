@@ -1,5 +1,5 @@
 import z from "zod";
-import PAGINATION from "@/config/constants";
+import { PAGINATION } from "@/config/constants";
 import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 
@@ -93,7 +93,7 @@ export const workspacesRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        name: z.string().min(1),
+        name: z.string().trim().min(1),
       }),
     )
     .mutation(({ ctx, input }) => {

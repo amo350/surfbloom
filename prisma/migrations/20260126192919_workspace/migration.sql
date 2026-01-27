@@ -1,4 +1,45 @@
 /*
+  =====================================================================
+  RESET-ONLY MIGRATION - DATA LOSS WARNING
+  =====================================================================
+  
+  This migration performs a DESTRUCTIVE schema change and should ONLY be
+  run on fresh databases or when data loss is acceptable.
+  
+  Tables Dropped:
+    - Connection (foreign keys: Connection_fromNodeId_fkey, Connection_toNodeId_fkey, Connection_workflowId_fkey)
+    - Execution (foreign keys: Execution_workflowId_fkey)
+    - Node (foreign keys: Node_workflowId_fkey)
+    - Workflow (foreign keys: Workflow_userId_fkey)
+  
+  For production databases with existing data, DO NOT run this migration directly.
+  Instead, follow this staged migration approach:
+  
+  1. BACKUP: Export all data from Workflow, Node, Connection, and Execution tables
+     Example: pg_dump --data-only -t "Workflow" -t "Node" -t "Connection" -t "Execution" > backup.sql
+  
+  2. CREATE NEW TABLES: Run only the CREATE TABLE statements below (lines 40-104)
+     to create workspace, workflow, node, connection, execution with new schema
+  
+  3. BACKFILL DATA: Run a backfill script to migrate data:
+     - Create workspaces for each unique userId in Workflow
+     - Migrate Workflow records to workflow, mapping userId -> workspaceId and createdById
+     - Migrate Node records to node (schema compatible)
+     - Migrate Connection records to connection (schema compatible)
+     - Migrate Execution records to execution (schema compatible)
+  
+  4. VERIFY: Confirm row counts and data integrity match between old and new tables
+  
+  5. DROP OLD TABLES: Only after verification, drop the old tables
+  
+  Migration Metadata:
+    - reset_only: true
+    - requires_backfill: true
+    - affected_tables: Workflow, Node, Connection, Execution
+    - target_tables: workspace, workflow, node, connection, execution
+  
+  =====================================================================
+
   Warnings:
 
   - You are about to drop the `Connection` table. If the table is not empty, all the data it contains will be lost.

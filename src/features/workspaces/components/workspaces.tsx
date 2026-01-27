@@ -109,13 +109,13 @@ export const WorkspacesPageHeader = () => {
       <AppHeader>
         <Button size="sm" onClick={() => setDialogOpen(true)}>
           <PlusIcon className="size-4" />
-          Add Location
+          Add Workspace
         </Button>
         <AppHeaderActions>
           <EntitySearch
             value={searchValue}
             onChange={onSearchChange}
-            placeholder="Search locations"
+            placeholder="Search workspaces"
           />
         </AppHeaderActions>
       </AppHeader>
@@ -132,11 +132,11 @@ export const WorkspacesContainer = ({
 };
 
 export const WorkspacesLoading = () => {
-  return <LoadingView message="Loading locations..." />;
+  return <LoadingView message="Loading workspaces..." />;
 };
 
 export const WorkspacesError = () => {
-  return <ErrorView message="Error loading locations..." />;
+  return <ErrorView message="Error loading workspaces..." />;
 };
 
 export const WorkspacesEmpty = () => {
@@ -151,16 +151,16 @@ export const WorkspacesEmpty = () => {
             <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
               <BuildingIcon className="size-8 text-muted-foreground" />
             </div>
-            <CardTitle className="text-xl">No locations yet</CardTitle>
+            <CardTitle className="text-xl">No workspaces yet</CardTitle>
             <CardDescription>
-              Create your first location to get started managing workflows,
+              Create your first workspace to get started managing workflows,
               tasks, and more.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => setDialogOpen(true)} size="lg">
               <PlusIcon className="size-4" />
-              Add Location
+              Add Workspace
             </Button>
           </CardContent>
         </Card>

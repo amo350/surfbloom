@@ -1,7 +1,7 @@
 import type { Edge, Node } from "@xyflow/react";
 import { generateSlug } from "random-word-slugs";
 import z from "zod";
-import PAGINATION from "@/config/constants";
+import { PAGINATION } from "@/config/constants";
 import { NodeType } from "@/generated/prisma/client";
 import { sendWorkflowExecution } from "@/inngest/utils";
 import { prisma } from "@/lib/prisma";
@@ -28,7 +28,19 @@ export const workflowsRouter = createTRPCRouter({
 
   create: protectedProcedure
     .input(z.object({ workspaceId: z.string() }))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Verify the user owns or has access to the workspace
+      const workspace = await prisma.workspace.findUnique({
+        where: {
+          id: input.workspaceId,
+          userId: ctx.auth.user.id,
+        },
+      });
+
+      if (!workspace) {
+        throw new Error("Unauthorized: You do not have access to this workspace");
+      }
+
       return prisma.workflow.create({
         data: {
           name: generateSlug(3),

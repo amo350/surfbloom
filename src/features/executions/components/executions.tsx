@@ -37,7 +37,7 @@ export const ExecutionsList = ({ workspaceId }: WorkspaceProps) => {
       items={executions.data.items}
       getKey={(execution) => execution.id}
       renderItem={(execution) => (
-        <ExecutionItem data={execution} workspaceId={workspaceId} />
+        <ExecutionItem data={execution} />
       )}
       emptyView={<ExecutionsEmpty />}
     />
@@ -114,7 +114,6 @@ const formatStatus = (status: ExecutionStatus) => {
 
 export const ExecutionItem = ({
   data,
-  workspaceId,
 }: {
   data: Execution & {
     workflow: {
@@ -123,7 +122,6 @@ export const ExecutionItem = ({
       workspaceId: string;
     };
   };
-  workspaceId: string;
 }) => {
   const duration = data.completeAt
     ? Math.round(

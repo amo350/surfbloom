@@ -85,7 +85,7 @@ export const executeWorkflow = inngest.createFunction(
 
       await step.run("update-execution", async () => {
         return prisma.execution.update({
-          where: { inngestEventId, workflowId },
+          where: { inngestEventId },
           data: {
             status: ExecutionStatus.SUCCESS,
             completeAt: new Date(),
@@ -105,7 +105,7 @@ export const executeWorkflow = inngest.createFunction(
       // Mirror the success update shape, but for failures.
       await step.run("fail-execution", async () => {
         return prisma.execution.update({
-          where: { inngestEventId, workflowId },
+          where: { inngestEventId },
           data: {
             status: ExecutionStatus.FAILED,
             completeAt: new Date(),
