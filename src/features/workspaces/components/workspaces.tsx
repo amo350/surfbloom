@@ -76,7 +76,6 @@ export const WorkspacesSearch = () => {
 };
 
 export const WorkspacesList = () => {
-  const [dialogOpen, setDialogOpen] = useState(false);
   const workspaces = useSuspenseWorkspaces();
 
   if (workspaces.data.items.length === 0) {
@@ -84,28 +83,25 @@ export const WorkspacesList = () => {
   }
 
   return (
-    <>
-      <CreateWorkspaceDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-      <div className="w-full max-w-5xl mx-auto">
-        <div className="mb-4">
-          <h2 className="text-sm font-semibold mt-4">
-            My Locations ({workspaces.data.items.length})
-          </h2>
-        </div>
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <AddWorkspaceButton />
-          <div className="flex-1 flex justify-end">
-            <SearchWorkspace />
-          </div>
-        </div>
-        <Separator className="mb-6" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {workspaces.data.items.map((workspace) => (
-            <WorkspaceCard key={workspace.id} data={workspace} />
-          ))}
+    <div className="w-full max-w-5xl mx-auto">
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold mt-4">
+          My Locations ({workspaces.data.items.length})
+        </h2>
+      </div>
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <AddWorkspaceButton />
+        <div className="flex-1 flex justify-end">
+          <SearchWorkspace />
         </div>
       </div>
-    </>
+      <Separator className="mb-6" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {workspaces.data.items.map((workspace) => (
+          <WorkspaceCard key={workspace.id} data={workspace} />
+        ))}
+      </div>
+    </div>
   );
 };
 
