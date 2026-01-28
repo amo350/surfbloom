@@ -69,3 +69,39 @@ export const useUpdateWorkspaceName = () => {
     }),
   );
 };
+
+export const useJoinWorkspace = () => {
+  const queryClient = useQueryClient();
+  const trpc = useTRPC();
+
+  return useMutation(
+    trpc.workspaces.join.mutationOptions({
+      onSuccess: (data) => {
+        toast.success(`Joined ${data.name}`);
+        queryClient.invalidateQueries(trpc.workspaces.getMany.queryOptions({}));
+      },
+      onError: (error) => {
+        toast.error(`Failed to join workspace: ${error.message}`);
+      },
+    }),
+  );
+};
+
+export const useResetInviteCode = () => {
+  const queryClient = useQueryClient();
+  const trpc = useTRPC();
+
+  return useMutation(
+    trpc.workspaces.resetInviteCode.mutationOptions({
+      onSuccess: (data) => {
+        toast.success("Invite code reset");
+        queryClient.invalidateQueries(
+          trpc.workspaces.getOne.queryOptions({ id: data.id }),
+        );
+      },
+      onError: (error) => {
+        toast.error(`Failed to reset invite code: ${error.message}`);
+      },
+    }),
+  );
+};
