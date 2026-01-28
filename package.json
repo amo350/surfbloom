@@ -52,6 +52,7 @@
     "@trpc/client": "^11.8.1",
     "@trpc/server": "^11.8.1",
     "@trpc/tanstack-react-query": "^11.8.1",
+    "@uploadthing/react": "^7.3.3",
     "@xyflow/react": "^12.10.0",
     "ai": "^6.0.39",
     "better-auth": "^1.4.15",
@@ -87,6 +88,7 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "toposort": "^2.0.2",
+    "uploadthing": "^7.7.4",
     "vaul": "^1.1.2",
     "zod": "^4.3.5"
   },

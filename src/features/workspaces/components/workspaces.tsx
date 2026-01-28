@@ -4,13 +4,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { formatDistanceToNow } from "date-fns";
 import {
   BuildingIcon,
+  Edit2Icon,
   MoreVerticalIcon,
   PlusIcon,
   TrashIcon,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import z from "zod";
 import { AppHeader, AppHeaderActions } from "@/components/AppHeader";
@@ -20,6 +22,7 @@ import {
   ErrorView,
   LoadingView,
 } from "@/components/EntityComponents";
+import { ImageUpload } from "@/components/ImageUpload";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -51,11 +54,13 @@ import {
   useCreateWorkspace,
   useRemoveWorkspace,
   useSuspenseWorkspaces,
+  useUpdateWorkspaceName,
 } from "../hooks/use-workspaces";
 import { useWorkspacesParams } from "../hooks/use-workspaces-params";
 
 const createWorkspaceSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
+  imageUrl: z.string().optional(),
 });
 
 type CreateWorkspaceFormValues = z.infer<typeof createWorkspaceSchema>;
@@ -186,7 +191,14 @@ export const WorkspacesEmpty = () => {
 };
 
 export const WorkspaceCard = ({ data }: { data: Workspace }) => {
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const removeWorkspace = useRemoveWorkspace();
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditDialogOpen(true);
+  };
 
   const handleRemove = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -195,13 +207,28 @@ export const WorkspaceCard = ({ data }: { data: Workspace }) => {
   };
 
   return (
-    <Link href={`/workspaces/${data.id}/workflows`} prefetch>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+    <>
+      <EditWorkspaceDialog
+        workspace={data}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+      />
+      <Link href={`/workspaces/${data.id}/workflows`} prefetch>
+        <Card className="hover:shadow-md transition-shadow cursor-pointer">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                <BuildingIcon className="size-5 text-muted-foreground" />
+              <div className="relative flex size-10 items-center justify-center rounded-lg bg-muted overflow-hidden">
+                {data.imageUrl ? (
+                  <Image
+                    src={data.imageUrl}
+                    alt={data.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <BuildingIcon className="size-5 text-muted-foreground" />
+                )}
               </div>
               <CardTitle className="text-base font-medium">
                 {data.name}
@@ -219,6 +246,10 @@ export const WorkspaceCard = ({ data }: { data: Workspace }) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleEdit}>
+                  <Edit2Icon className="size-4" />
+                  Edit
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleRemove}
                   disabled={removeWorkspace.isPending}
@@ -239,6 +270,7 @@ export const WorkspaceCard = ({ data }: { data: Workspace }) => {
         </CardContent>
       </Card>
     </Link>
+    </>
   );
 };
 
@@ -258,6 +290,7 @@ export const CreateWorkspaceDialog = ({
     resolver: zodResolver(createWorkspaceSchema),
     defaultValues: {
       name: "",
+      imageUrl: "",
     },
   });
 
@@ -303,6 +336,24 @@ export const CreateWorkspaceDialog = ({
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="imageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Image</FormLabel>
+                      <FormControl>
+                        <ImageUpload
+                          value={field.value}
+                          onChange={field.onChange}
+                          fallback={form.watch("name")?.[0]?.toUpperCase() || "W"}
+                          disabled={createWorkspace.isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <Separator />
                 <div className="flex items-center justify-between">
                   <Button
@@ -322,6 +373,131 @@ export const CreateWorkspaceDialog = ({
                     {createWorkspace.isPending
                       ? "Creating..."
                       : "Create Workspace"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+type EditWorkspaceDialogProps = {
+  workspace: Workspace;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
+export const EditWorkspaceDialog = ({
+  workspace,
+  open,
+  onOpenChange,
+}: EditWorkspaceDialogProps) => {
+  const updateWorkspace = useUpdateWorkspaceName();
+
+  const form = useForm<CreateWorkspaceFormValues>({
+    resolver: zodResolver(createWorkspaceSchema),
+    defaultValues: {
+      name: workspace.name,
+      imageUrl: workspace.imageUrl || "",
+    },
+  });
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: workspace.name,
+        imageUrl: workspace.imageUrl || "",
+      });
+    }
+  }, [open, workspace.name, workspace.imageUrl, form]);
+
+  const handleSubmit = (values: CreateWorkspaceFormValues) => {
+    updateWorkspace.mutate(
+      {
+        id: workspace.id,
+        name: values.name,
+        imageUrl: values.imageUrl,
+      },
+      {
+        onSuccess: () => {
+          onOpenChange(false);
+        },
+      },
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="p-0 gap-0 overflow-hidden">
+        <DialogTitle className="sr-only">Edit workspace</DialogTitle>
+        <Card className="border-0 shadow-none">
+          <CardHeader className="p-7 pb-0">
+            <CardTitle className="text-xl font-bold">
+              Edit workspace
+            </CardTitle>
+          </CardHeader>
+          <div className="px-7 py-4">
+            <Separator />
+          </div>
+          <CardContent className="p-7 pt-0">
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(handleSubmit)}
+                className="space-y-6"
+              >
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Workspace Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter workspace name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="imageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Image</FormLabel>
+                      <FormControl>
+                        <ImageUpload
+                          value={field.value}
+                          onChange={field.onChange}
+                          fallback={form.watch("name")?.[0]?.toUpperCase() || "W"}
+                          disabled={updateWorkspace.isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="secondary"
+                    onClick={() => onOpenChange(false)}
+                    disabled={updateWorkspace.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={updateWorkspace.isPending}
+                  >
+                    {updateWorkspace.isPending
+                      ? "Saving..."
+                      : "Save Changes"}
                   </Button>
                 </div>
               </form>

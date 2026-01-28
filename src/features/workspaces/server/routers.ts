@@ -5,11 +5,14 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 
 export const workspacesRouter = createTRPCRouter({
   create: protectedProcedure
-    .input(z.object({ name: z.string().trim().min(1, "Required") }))
+    .input(z.object({ name: z.string().trim().min(1, "Required"),
+      imageUrl: z.string().optional(),
+     }))
     .mutation(({ ctx, input }) => {
       return prisma.workspace.create({
         data: {
           name: input.name,
+           imageUrl: input.imageUrl,
           userId: ctx.auth.user.id,
         },
       });
@@ -94,6 +97,7 @@ export const workspacesRouter = createTRPCRouter({
       z.object({
         id: z.string(),
         name: z.string().trim().min(1),
+        imageUrl: z.string().optional(),
       }),
     )
     .mutation(({ ctx, input }) => {
@@ -102,7 +106,10 @@ export const workspacesRouter = createTRPCRouter({
           id: input.id,
           userId: ctx.auth.user.id,
         },
-        data: { name: input.name },
+        data: {
+          name: input.name,
+          imageUrl: input.imageUrl,
+        },
       });
     }),
 });
