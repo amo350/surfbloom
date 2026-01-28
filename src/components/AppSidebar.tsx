@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
+import { WorkspaceSwitcher } from "./WorkplaceSwitcher";
 
 const menuItems = [
   {
@@ -139,14 +140,7 @@ const AppSidebar = () => {
               }
               prefetch
             >
-              <Image
-                src="/fullLogo.png"
-                alt="logo"
-                width={105}
-                height={105}
-                className="pr-5 -ml-[3.5px]"
-                priority
-              />
+              <WorkspaceSwitcher />
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
