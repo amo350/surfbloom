@@ -24,9 +24,15 @@ export const ImageUpload = ({ value, onChange, fallback = "?", disabled }: Image
         onChange(res[0].url);
         toast.success("Image uploaded");
       }
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
     },
     onUploadError: (error) => {
       toast.error(`Upload failed: ${error.message}`);
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
     },
   });
 
