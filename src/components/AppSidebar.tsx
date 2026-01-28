@@ -129,19 +129,10 @@ const AppSidebar = () => {
         } as React.CSSProperties
       }
     >
-      <SidebarHeader className="relative h-14 flex flex-col p-2">
+      <SidebarHeader className="relative h-14 flex flex-col p-0">
         <SidebarMenuItem>
-          <SidebarMenuButton asChild className="gap-x-4 h-10 px-4">
-            <Link
-              href={
-                workspaceId
-                  ? `/workspaces/${workspaceId}/workflows`
-                  : "/index/locations"
-              }
-              prefetch
-            >
-              <WorkspaceSwitcher />
-            </Link>
+          <SidebarMenuButton asChild className="h-14 px-0">
+            <WorkspaceSwitcher />
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarSeparator className="absolute bottom-0 left-0 right-0 -mb-px" />
