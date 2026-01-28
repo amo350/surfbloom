@@ -24,7 +24,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="relative flex items-center gap-x-4 px-9 py-2.5 border-b bg-background">
+    <nav className="relative flex items-center gap-x-4 px-3 py-2.5 border-b bg-background">
       <Button
         variant="ghost"
         size="icon"
@@ -33,7 +33,7 @@ const Navbar = () => {
       >
         <Menu className="size-5" />
       </Button>
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6 -mx-2" />
       {/* TODO: Add breadcrumbs, search, user menu, etc. */}
       <div className="ml-auto pr-2 flex items-center gap-1">
         <NotificationsBell />

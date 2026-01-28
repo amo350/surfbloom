@@ -83,7 +83,7 @@ export const Editor = ({
   }, [nodes]);
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 bg-white">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -98,7 +98,7 @@ export const Editor = ({
         panOnDrag={false}
         selectionOnDrag
       >
-        <Background />
+        <Background bgColor="#ffffff" />
         <Controls />
         <MiniMap />
         <Panel position="top-right">
