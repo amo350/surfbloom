@@ -65,6 +65,90 @@ const createWorkspaceSchema = z.object({
 
 type CreateWorkspaceFormValues = z.infer<typeof createWorkspaceSchema>;
 
+interface CreateWorkspaceFormProps {
+  onCancel?: () => void;
+  onSuccess?: (workspaceId: string) => void;
+}
+
+export const CreateWorkspaceForm = ({ onCancel, onSuccess }: CreateWorkspaceFormProps) => {
+  const router = useRouter();
+  const createWorkspace = useCreateWorkspace();
+
+  const form = useForm<CreateWorkspaceFormValues>({
+    resolver: zodResolver(createWorkspaceSchema),
+    defaultValues: {
+      name: "",
+      imageUrl: "",
+    },
+  });
+
+  const handleSubmit = (values: CreateWorkspaceFormValues) => {
+    createWorkspace.mutate(values, {
+      onSuccess: (data) => {
+        if (onSuccess) {
+          onSuccess(data.id);
+        } else {
+          router.push(`/workspaces/${data.id}/workflows`);
+        }
+        form.reset();
+      },
+    });
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Workspace Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter workspace name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Image</FormLabel>
+              <FormControl>
+                <ImageUpload
+                  value={field.value}
+                  onChange={field.onChange}
+                  fallback={form.watch("name")?.[0]?.toUpperCase() || "W"}
+                  disabled={createWorkspace.isPending}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Separator />
+        <div className="flex items-center justify-between">
+          <Button
+            type="button"
+            size="lg"
+            variant="secondary"
+            onClick={() => onCancel?.()}
+            disabled={createWorkspace.isPending}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" size="lg" disabled={createWorkspace.isPending}>
+            {createWorkspace.isPending ? "Creating..." : "Create Workspace"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+};
+
 export const WorkspacesSearch = () => {
   const [params, setParams] = useWorkspacesParams();
   const { searchValue, onSearchChange } = useEntitySearch({
@@ -284,25 +368,6 @@ export const CreateWorkspaceDialog = ({
   onOpenChange,
 }: CreateWorkspaceDialogProps) => {
   const router = useRouter();
-  const createWorkspace = useCreateWorkspace();
-
-  const form = useForm<CreateWorkspaceFormValues>({
-    resolver: zodResolver(createWorkspaceSchema),
-    defaultValues: {
-      name: "",
-      imageUrl: "",
-    },
-  });
-
-  const handleSubmit = (values: CreateWorkspaceFormValues) => {
-    createWorkspace.mutate(values, {
-      onSuccess: (data) => {
-        onOpenChange(false);
-        form.reset();
-        router.push(`/workspaces/${data.id}/workflows`);
-      },
-    });
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -318,65 +383,13 @@ export const CreateWorkspaceDialog = ({
             <Separator />
           </div>
           <CardContent className="p-7 pt-0">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(handleSubmit)}
-                className="space-y-6"
-              >
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Workspace Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter workspace name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="imageUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Image</FormLabel>
-                      <FormControl>
-                        <ImageUpload
-                          value={field.value}
-                          onChange={field.onChange}
-                          fallback={form.watch("name")?.[0]?.toUpperCase() || "W"}
-                          disabled={createWorkspace.isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant="secondary"
-                    onClick={() => onOpenChange(false)}
-                    disabled={createWorkspace.isPending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="lg"
-                    disabled={createWorkspace.isPending}
-                  >
-                    {createWorkspace.isPending
-                      ? "Creating..."
-                      : "Create Workspace"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+            <CreateWorkspaceForm
+              onCancel={() => onOpenChange(false)}
+              onSuccess={(workspaceId) => {
+                onOpenChange(false);
+                router.push(`/workspaces/${workspaceId}/workflows`);
+              }}
+            />
           </CardContent>
         </Card>
       </DialogContent>
