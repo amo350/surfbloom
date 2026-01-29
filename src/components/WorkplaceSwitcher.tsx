@@ -179,7 +179,7 @@ export const WorkspaceSwitcher = () => {
           <DropdownMenuSeparator />
 
           {/* Workspace list - scrollable after 3, no images */}
-          <div className="max-h-[144px] overflow-y-auto">
+          <div className="max-h-[144px] overflow-y-auto px-2">
             {filteredWorkspaces.length === 0 ? (
               <div className="px-2 py-3 text-sm text-muted-foreground text-center">
                 No locations found
