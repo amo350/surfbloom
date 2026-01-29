@@ -46,10 +46,11 @@ export const EditWorkspaceForm = ({
   });
 
   const onSubmit = (values: EditWorkspaceFormValues) => {
+    const imageUrl = values.imageUrl === "" ? null : values.imageUrl;
     updateWorkspace.mutate({
       id: workspaceId,
       name: values.name,
-      imageUrl: values.imageUrl,
+      imageUrl,
     });
   };
 

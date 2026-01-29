@@ -4,6 +4,27 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { MemberRole } from "@/generated/prisma/enums";
 import { TRPCError } from "@trpc/server";
 
+const TX_CONFLICT_CODES = ["P2034", "P2036", "P2037"];
+const MAX_TX_RETRIES = 3;
+
+async function withTxRetry<T>(
+  fn: () => Promise<T>,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < MAX_TX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastError = e;
+      const code = e && typeof e === "object" && "code" in e ? (e as { code: string }).code : "";
+      if (e instanceof TRPCError || !TX_CONFLICT_CODES.includes(code)) {
+        throw e;
+      }
+    }
+  }
+  throw lastError;
+}
+
 export const membersRouter = createTRPCRouter({
   // Get members of a workspace
   getByWorkspace: protectedProcedure
@@ -77,24 +98,34 @@ export const membersRouter = createTRPCRouter({
         });
       }
 
-      // Prevent demoting the last admin
+      // Prevent demoting the last admin: count + update atomically
       if (
         input.role !== MemberRole.ADMIN &&
         member.role === MemberRole.ADMIN
       ) {
-        const adminCount = await prisma.member.count({
-          where: {
-            workspaceId: input.workspaceId,
-            role: MemberRole.ADMIN,
-          },
-        });
-
-        if (adminCount <= 1) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Cannot demote the last admin",
-          });
-        }
+        return withTxRetry(() =>
+          prisma.$transaction(
+            async (tx) => {
+              const adminCount = await tx.member.count({
+                where: {
+                  workspaceId: input.workspaceId,
+                  role: MemberRole.ADMIN,
+                },
+              });
+              if (adminCount <= 1) {
+                throw new TRPCError({
+                  code: "FORBIDDEN",
+                  message: "Cannot demote the last admin",
+                });
+              }
+              return tx.member.update({
+                where: { id: member.id },
+                data: { role: input.role },
+              });
+            },
+            { isolationLevel: "Serializable" },
+          ),
+        );
       }
 
       return prisma.member.update({
@@ -145,18 +176,30 @@ export const membersRouter = createTRPCRouter({
         });
       }
 
-      // Prevent removing last admin
+      // Prevent removing last admin: count + delete atomically
       if (memberToRemove.role === MemberRole.ADMIN) {
-        const adminCount = await prisma.member.count({
-          where: { workspaceId: input.workspaceId, role: MemberRole.ADMIN },
-        });
-
-        if (adminCount <= 1) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Cannot remove the last admin",
-          });
-        }
+        return withTxRetry(() =>
+          prisma.$transaction(
+            async (tx) => {
+              const adminCount = await tx.member.count({
+                where: {
+                  workspaceId: input.workspaceId,
+                  role: MemberRole.ADMIN,
+                },
+              });
+              if (adminCount <= 1) {
+                throw new TRPCError({
+                  code: "BAD_REQUEST",
+                  message: "Cannot remove the last admin",
+                });
+              }
+              return tx.member.delete({
+                where: { id: memberToRemove.id },
+              });
+            },
+            { isolationLevel: "Serializable" },
+          ),
+        );
       }
 
       return prisma.member.delete({

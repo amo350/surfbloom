@@ -44,7 +44,21 @@ export const workspacesRouter = createTRPCRouter({
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      // ... membership check ...
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.id,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
 
       const workspace = await prisma.workspace.findUniqueOrThrow({
         where: { id: input.id },
@@ -53,7 +67,7 @@ export const workspacesRouter = createTRPCRouter({
       return {
         id: workspace.id,
         name: workspace.name,
-        imageUrl: workspace.imageUrl, // ← make sure this is included
+        imageUrl: workspace.imageUrl,
         inviteCode: workspace.inviteCode,
         createdAt: workspace.createdAt,
         updatedAt: workspace.updatedAt,
@@ -296,6 +310,13 @@ export const workspacesRouter = createTRPCRouter({
       const updateData: { name?: string; imageUrl?: string | null } = {};
       if (input.name !== undefined) updateData.name = input.name;
       if (input.imageUrl !== undefined) updateData.imageUrl = input.imageUrl;
+
+      if (Object.keys(updateData).length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No fields provided to update",
+        });
+      }
 
       return prisma.workspace.update({
         where: { id: input.id },

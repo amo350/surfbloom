@@ -8,8 +8,16 @@
 -- CreateEnum
 CREATE TYPE "MemberRole" AS ENUM ('ADMIN', 'MEMBER');
 
--- AlterTable
-ALTER TABLE "workspace" ADD COLUMN     "inviteCode" TEXT NOT NULL;
+-- AlterTable: add inviteCode as nullable first
+ALTER TABLE "workspace" ADD COLUMN "inviteCode" TEXT;
+
+-- Backfill existing workspace rows with unique values (where inviteCode IS NULL)
+UPDATE "workspace"
+SET "inviteCode" = upper(substring(encode(gen_random_bytes(4), 'hex') FROM 1 FOR 7))
+WHERE "inviteCode" IS NULL;
+
+-- Set NOT NULL after backfill
+ALTER TABLE "workspace" ALTER COLUMN "inviteCode" SET NOT NULL;
 
 -- CreateTable
 CREATE TABLE "member" (
@@ -32,7 +40,7 @@ CREATE INDEX "member_workspaceId_idx" ON "member"("workspaceId");
 -- CreateIndex
 CREATE UNIQUE INDEX "member_userId_workspaceId_key" ON "member"("userId", "workspaceId");
 
--- CreateIndex
+-- CreateIndex: UNIQUE on inviteCode after NOT NULL is set
 CREATE UNIQUE INDEX "workspace_inviteCode_key" ON "workspace"("inviteCode");
 
 -- AddForeignKey
