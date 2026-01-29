@@ -78,7 +78,7 @@ export const useJoinWorkspace = () => {
     trpc.workspaces.join.mutationOptions({
       onSuccess: (data) => {
         toast.success(`Joined ${data.name}`);
-        queryClient.invalidateQueries(trpc.workspaces.getMany.queryOptions({}));
+        queryClient.invalidateQueries(trpc.workspaces.getMany.queryFilter());
       },
       onError: (error) => {
         toast.error(`Failed to join workspace: ${error.message}`);
@@ -101,6 +101,26 @@ export const useResetInviteCode = () => {
       },
       onError: (error) => {
         toast.error(`Failed to reset invite code: ${error.message}`);
+      },
+    }),
+  );
+};
+
+export const useUpdateWorkspace = () => {
+  const queryClient = useQueryClient();
+  const trpc = useTRPC();
+
+  return useMutation(
+    trpc.workspaces.update.mutationOptions({
+      onSuccess: (data) => {
+        toast.success("Workspace updated");
+        queryClient.invalidateQueries(trpc.workspaces.getMany.queryFilter());
+        queryClient.invalidateQueries(
+          trpc.workspaces.getOne.queryOptions({ id: data.id }),
+        );
+      },
+      onError: (error) => {
+        toast.error(`Failed to update workspace: ${error.message}`);
       },
     }),
   );

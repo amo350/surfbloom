@@ -62,8 +62,43 @@ export const membersRouter = createTRPCRouter({
         });
       }
 
+      // Fetch the target member scoped to this workspace
+      const member = await prisma.member.findFirst({
+        where: {
+          id: input.memberId,
+          workspaceId: input.workspaceId,
+        },
+      });
+
+      if (!member) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Member not found",
+        });
+      }
+
+      // Prevent demoting the last admin
+      if (
+        input.role !== MemberRole.ADMIN &&
+        member.role === MemberRole.ADMIN
+      ) {
+        const adminCount = await prisma.member.count({
+          where: {
+            workspaceId: input.workspaceId,
+            role: MemberRole.ADMIN,
+          },
+        });
+
+        if (adminCount <= 1) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Cannot demote the last admin",
+          });
+        }
+      }
+
       return prisma.member.update({
-        where: { id: input.memberId },
+        where: { id: member.id },
         data: { role: input.role },
       });
     }),
@@ -77,8 +112,11 @@ export const membersRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const memberToRemove = await prisma.member.findUnique({
-        where: { id: input.memberId },
+      const memberToRemove = await prisma.member.findFirst({
+        where: {
+          id: input.memberId,
+          workspaceId: input.workspaceId,
+        },
       });
 
       if (!memberToRemove) {
@@ -122,7 +160,7 @@ export const membersRouter = createTRPCRouter({
       }
 
       return prisma.member.delete({
-        where: { id: input.memberId },
+        where: { id: memberToRemove.id },
       });
     }),
 });
