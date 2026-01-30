@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronDownIcon,
   MoreHorizontalIcon,
@@ -75,18 +75,28 @@ export const IndexMembers = ({ currentUserId }: { currentUserId: string }) => {
 
   const { data: membersData, isLoading: membersLoading, refetch } = useAccountMembers(search);
   const members = membersData ?? [];
+
+  // Current user role from full list so it persists when search filters out current user
+  const [currentUserRole, setCurrentUserRole] = useState<AccountRole | null>(null);
+  useEffect(() => {
+    if (members && currentUserId) {
+      const currentUser = members.find((m) => m.id === currentUserId);
+      if (currentUser) {
+        setCurrentUserRole(currentUser.accountRole);
+      }
+    }
+  }, [members, currentUserId]);
+
+  const isOwner = currentUserRole === AccountRole.OWNER;
+  const isManager = currentUserRole === AccountRole.MANAGER;
+  const isUser = currentUserRole === AccountRole.USER;
+
   const { data: memberWorkspaces, isLoading: workspacesLoading } = useMemberWorkspaces(editingMemberId);
   const updateRole = useUpdateAccountRole();
   const bulkUpdateRole = useBulkUpdateAccountRole();
   const bulkInvite = useBulkInviteToWorkspace();
   const bulkDelete = useBulkDeleteUsers();
   const setMainWorkspace = useSetMainWorkspace();
-
-  const currentUserData = members.find((m) => m.id === currentUserId);
-  const currentUserRole = currentUserData?.accountRole;
-  const isOwner = currentUserRole === AccountRole.OWNER;
-  const isManager = currentUserRole === AccountRole.MANAGER;
-  const isUser = currentUserRole === AccountRole.USER;
 
   const [DeleteDialog, confirmDelete] = useConfirm(
     "Delete Users",
@@ -247,15 +257,19 @@ export const IndexMembers = ({ currentUserId }: { currentUserId: string }) => {
                   <UserCogIcon className="size-4 mr-2" />
                   Change Account Role
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleBulkDelete}
-                  disabled={!hasSelection}
-                  className="text-destructive"
-                >
-                  <Trash2Icon className="size-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {isOwner && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleBulkDelete}
+                      disabled={!hasSelection}
+                      className="text-destructive"
+                    >
+                      <Trash2Icon className="size-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -398,9 +412,8 @@ export const IndexMembers = ({ currentUserId }: { currentUserId: string }) => {
                               Edit Profile
                             </DropdownMenuItem>
                           )}
-                          {/* Remove User - only for OWNER/MANAGER, not on own row */}
-                          {(isOwner || isManager) &&
-                            member.id !== currentUserId && (
+                          {/* Remove User - only for OWNER, not on own row */}
+                          {isOwner && member.id !== currentUserId && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

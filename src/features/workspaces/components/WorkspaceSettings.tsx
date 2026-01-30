@@ -30,7 +30,7 @@ export const InviteMembersCard = ({
   inviteCode,
 }: WorkspaceSettingsProps) => {
   const [copied, setCopied] = useState(false);
-  const [fullInviteLink, setFullInviteLink] = useState(`/join/${inviteCode}`);
+  const [fullInviteLink, setFullInviteLink] = useState("");
   const resetInviteCode = useResetInviteCode();
 
   useEffect(() => {
@@ -74,6 +74,7 @@ export const InviteMembersCard = ({
               variant="outline"
               size="icon"
               onClick={handleCopyInviteLink}
+              disabled={!fullInviteLink}
             >
               {copied ? (
                 <CheckIcon className="size-4" />
