@@ -234,13 +234,20 @@ export const invitationsRouter = createTRPCRouter({
           !currentUser.accountOwnerId &&
           currentUser.accountRole !== AccountRole.OWNER
         ) {
-          // Determine the account owner from the inviter
-          // If inviter is OWNER, they are the account owner
-          // If inviter has an accountOwnerId, use that
-          const accountOwnerId =
-            invitation.invitedBy.accountRole === AccountRole.OWNER
-              ? invitation.invitedBy.id
-              : invitation.invitedBy.accountOwnerId;
+          // Determine the account owner from the inviter (or invitedById if inviter relation is null, e.g. deleted)
+          const inviter =
+            invitation.invitedBy ??
+            (invitation.invitedById
+              ? await tx.user.findUnique({
+                  where: { id: invitation.invitedById },
+                  select: { id: true, accountRole: true, accountOwnerId: true },
+                })
+              : null);
+          const accountOwnerId = inviter
+            ? inviter.accountRole === AccountRole.OWNER
+              ? inviter.id
+              : inviter.accountOwnerId ?? null
+            : null;
 
           if (accountOwnerId) {
             await tx.user.update({

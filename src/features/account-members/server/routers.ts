@@ -164,13 +164,23 @@ export const accountMembersRouter = createTRPCRouter({
 
       if (isTransferringOwnership) {
         await prisma.$transaction([
+          prisma.user.updateMany({
+            where: { accountOwnerId: currentUser.id },
+            data: { accountOwnerId: input.userId },
+          }),
           prisma.user.update({
             where: { id: input.userId },
-            data: { accountRole: AccountRole.OWNER },
+            data: {
+              accountRole: AccountRole.OWNER,
+              accountOwnerId: null,
+            },
           }),
           prisma.user.update({
             where: { id: currentUser.id },
-            data: { accountRole: AccountRole.MANAGER },
+            data: {
+              accountRole: AccountRole.MANAGER,
+              accountOwnerId: input.userId,
+            },
           }),
         ]);
         return prisma.user.findUniqueOrThrow({
@@ -414,6 +424,16 @@ export const accountMembersRouter = createTRPCRouter({
       if (!currentUser) {
         throw new TRPCError({
           code: "FORBIDDEN",
+          message: "User not found",
+        });
+      }
+
+      const targetUser = await prisma.user.findUnique({
+        where: { id: input.userId },
+      });
+      if (!targetUser) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
           message: "User not found",
         });
       }

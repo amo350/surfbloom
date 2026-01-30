@@ -90,7 +90,6 @@ export const IndexMembers = () => {
   }, [members, currentUserId]);
 
   const isOwner = currentUserRole === AccountRole.OWNER;
-  console.log("currentUserRole:", currentUserRole, "isOwner:", isOwner);
 
   const [DeleteDialog, confirmDelete] = useConfirm(
     "Delete Users",
