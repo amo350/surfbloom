@@ -29,7 +29,7 @@ model User {
   // Relations
   sessions         Session[]
   accounts         Account[]
-  workspaces       Workspace[]
+  workspaces       Workspace[] @relation("CreatedWorkspaces")
   createdWorkflows Workflow[]
   members          Member[]
   sentInvitations  Invitation[] @relation("SentInvitations")
@@ -103,7 +103,7 @@ model Workspace {
   invitations Invitation[]
   usersWithMain    User[] @relation("MainWorkspace")
 
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User  @relation("CreatedWorkspaces", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("workspace")

@@ -25,12 +25,16 @@ type Props = {
 const ExecutionsPage = async ({ params, searchParams }: Props) => {
   const session = await requireAuth();
   const { workspaceId } = await params;
-  const workspace = await prisma.workspace.findFirst({
-    where: { id: workspaceId, userId: session.user.id },
-    select: { id: true },
+  const membership = await prisma.member.findUnique({
+    where: {
+      userId_workspaceId: {
+        userId: session.user.id,
+        workspaceId,
+      },
+    },
   });
 
-  if (!workspace) {
+  if (!membership) {
     redirect("/index/locations");
   }
 

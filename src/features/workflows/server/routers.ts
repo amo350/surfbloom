@@ -38,7 +38,9 @@ export const workflowsRouter = createTRPCRouter({
       });
 
       if (!workspace) {
-        throw new Error("Unauthorized: You do not have access to this workspace");
+        throw new Error(
+          "Unauthorized: You do not have access to this workspace",
+        );
       }
 
       return prisma.workflow.create({
