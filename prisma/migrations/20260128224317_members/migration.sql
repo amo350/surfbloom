@@ -1,3 +1,4 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 /*
   Warnings:
 
@@ -13,7 +14,7 @@ ALTER TABLE "workspace" ADD COLUMN "inviteCode" TEXT;
 
 -- Backfill existing workspace rows with unique values (where inviteCode IS NULL)
 UPDATE "workspace"
-SET "inviteCode" = upper(substring(encode(gen_random_bytes(4), 'hex') FROM 1 FOR 7))
+SET "inviteCode" = upper(substring(md5(random()::text || clock_timestamp()::text) FROM 1 FOR 7))
 WHERE "inviteCode" IS NULL;
 
 -- Set NOT NULL after backfill

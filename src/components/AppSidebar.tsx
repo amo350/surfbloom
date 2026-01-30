@@ -1,15 +1,12 @@
 "use client";
 import {
+  CogIcon,
   CreditCardIcon,
   FolderOpenIcon,
   HistoryIcon,
-  KeyIcon,
   LogOutIcon,
-  Settings2Icon,
-  StarIcon,
   Users2Icon,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -88,38 +85,46 @@ const menuItems = [
     items: [
       {
         title: "Settings",
-        icon: Settings2Icon,
-        getUrl: () => "/settings",
-        getActivePattern: () => /^\/settings/,
+        icon: CogIcon,
+        getUrl: (workspaceId?: string) =>
+          workspaceId
+            ? `/workspaces/${workspaceId}/settings`
+            : "/index/locations",
+        getActivePattern: (workspaceId?: string) =>
+          workspaceId
+            ? new RegExp(`^/workspaces/${workspaceId}/settings`)
+            : /^\/settings/,
       },
       {
         title: "Members",
         icon: Users2Icon,
-        getUrl: () => "/members",
-        getActivePattern: () => /^\/members/,
+        getUrl: (workspaceId?: string) =>
+          workspaceId
+            ? `/workspaces/${workspaceId}/members`
+            : "/index/locations",
+        getActivePattern: (workspaceId?: string) =>
+          workspaceId
+            ? new RegExp(`^/workspaces/${workspaceId}/members`)
+            : /^\/members/,
       },
     ],
   },
 ];
 
 const AppSidebar = () => {
-  const router = useRouter();
   const pathname = usePathname();
-  const { hasActiveSubscription, isLoading } = useHasActiveSubscription();
 
-  // Extract workspaceId from pathname
   const workspaceIdMatch = pathname?.match(/^\/workspaces\/([^/]+)/);
   const workspaceId = workspaceIdMatch ? workspaceIdMatch[1] : undefined;
 
-  // Get current plan name dynamically
-  // TODO: Update this to fetch actual plan name from subscription data when available
-  const getCurrentPlanName = () => {
-    if (hasActiveSubscription) {
-      // TODO: Return actual plan name from subscription data
-      return "Pro Plan";
-    }
-    return "Free Plan";
-  };
+  const projectGroups = menuItems.filter(
+    (group) => group.title !== "Organization",
+  );
+
+  const organizationGroup = menuItems.find(
+    (group) => group.title === "Organization",
+  );
+
   return (
     <Sidebar
       collapsible="icon"
@@ -129,7 +134,8 @@ const AppSidebar = () => {
         } as React.CSSProperties
       }
     >
-      <SidebarHeader className="relative h-14 flex flex-col p-0">
+      {/* ───────── Header ───────── */}
+      <SidebarHeader className="relative h-14 p-0">
         <SidebarMenuItem>
           <SidebarMenuButton asChild className="h-14 px-0">
             <WorkspaceSwitcher />
@@ -137,70 +143,87 @@ const AppSidebar = () => {
         </SidebarMenuItem>
         <SidebarSeparator className="absolute bottom-0 left-0 right-0 -mb-px" />
       </SidebarHeader>
-      <SidebarContent>
-        {menuItems.map((group) => {
-          return (
-            <SidebarGroup key={group.title}>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {group.items.map((item) => {
-                    const url = item.getUrl(workspaceId);
-                    const activePattern = item.getActivePattern(workspaceId);
-                    const isActive =
-                      pathname && activePattern
-                        ? activePattern.test(pathname)
-                        : false;
 
-                    return (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton
-                          tooltip={item.title}
-                          isActive={isActive}
-                          asChild
-                          className={`gap-x-4 h-10 px-4 ${isActive ? "font-semibold" : ""}`}
-                        >
-                          <Link href={url} prefetch>
-                            <item.icon className="size-4" />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          );
-        })}
+      {/* ───────── Main Content ───────── */}
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {projectGroups.flatMap((group) =>
+                group.items.map((item) => {
+                  const url = item.getUrl(workspaceId);
+                  const activePattern = item.getActivePattern(workspaceId);
+                  const isActive =
+                    pathname && activePattern
+                      ? activePattern.test(pathname)
+                      : false;
+
+                  const Icon = item.icon;
+
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        tooltip={item.title}
+                        isActive={isActive}
+                        asChild
+                        className="h-10 px-4 gap-x-4"
+                      >
+                        <Link href={url} prefetch>
+                          <Icon className="size-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                }),
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
+
+      {/* ───────── Footer ───────── */}
+      <SidebarFooter className="py-3">
+        <SidebarSeparator className="mb-2 w-full shrink-0" />
+        <SidebarMenu
+          className="
+            flex gap-1 px-3
+            flex-row justify-between
+            group-data-[collapsible=icon]:flex-col
+            group-data-[collapsible=icon]:items-center
+          "
+        >
+          {organizationGroup?.items.map((item) => {
+            const Icon = item.icon;
+            const url = item.getUrl(workspaceId);
+            const activePattern = item.getActivePattern(workspaceId);
+            const isActive =
+              pathname && activePattern ? activePattern.test(pathname) : false;
+
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  tooltip={item.title}
+                  isActive={isActive}
+                  asChild
+                  className="h-9 w-9 justify-center rounded-full transition-shadow data-[active=true]:ring-2 data-[active=true]:ring-primary/50 data-[active=true]:shadow-[0_0_12px_rgb(0_0_0/0.12)] dark:data-[active=true]:shadow-[0_0_14px_rgb(255_255_255/0.15)]"
+                >
+                  <Link href={url}>
+                    <Icon className="h-4 w-4" />
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+
+          {/* Billing */}
           <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip="Billing Portal"
-              className="gap-x-4 h-10 px-4"
+              tooltip="Billing"
+              className="h-9 w-9 justify-center"
               onClick={() => authClient.customer.portal()}
             >
               <CreditCardIcon className="h-4 w-4" />
-              <span>Billing Portal</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Sign out"
-              className="gap-x-4 h-10 px-4"
-              onClick={() =>
-                authClient.signOut({
-                  fetchOptions: {
-                    onSuccess: () => {
-                      router.push("/login");
-                    },
-                  },
-                })
-              }
-            >
-              <LogOutIcon className="h-4 w-4" />
-              <span>Sign out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
