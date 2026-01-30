@@ -1,6 +1,7 @@
 import { checkout, polar, portal } from "@polar-sh/better-auth";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { AccountRole } from "@/generated/prisma/enums";
 import { prisma } from "./prisma";
 import { polarClient } from "./polar";
 
@@ -28,4 +29,25 @@ export const auth = betterAuth({
       ],
     }),
   ],
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          try {
+            const existingOwner = await prisma.user.findFirst({
+              where: { accountRole: AccountRole.OWNER },
+            });
+            if (existingOwner === null) {
+              await prisma.user.update({
+                where: { id: user.id },
+                data: { accountRole: AccountRole.OWNER },
+              });
+            }
+          } catch (err) {
+            console.error("[auth] Failed to promote first user to OWNER:", err);
+          }
+        },
+      },
+    },
+  },
 });

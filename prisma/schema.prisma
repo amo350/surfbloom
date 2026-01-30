@@ -7,6 +7,12 @@ datasource db {
   provider = "postgresql"
 }
 
+enum AccountRole {
+  OWNER
+  MANAGER
+  USER
+}
+
 model User {
   id               String    @id
   name             String
@@ -15,11 +21,21 @@ model User {
   image            String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+  
+  // Account-level role
+  accountRole      AccountRole @default(USER)
+  mainWorkspaceId  String?     // Default/primary workspace
+  
+  // Relations
   sessions         Session[]
   accounts         Account[]
   workspaces       Workspace[]
   createdWorkflows Workflow[]
-  members          Member[]    
+  members          Member[]
+  sentInvitations  Invitation[] @relation("SentInvitations")
+  
+  // Reference to main workspace (optional, can be null)
+  mainWorkspace    Workspace? @relation("MainWorkspace", fields: [mainWorkspaceId], references: [id], onDelete: SetNull)
 
   @@unique([email])
   @@map("user")
@@ -84,6 +100,8 @@ model Workspace {
 
   members    Member[]
   workflows  Workflow[]
+  invitations Invitation[]
+  usersWithMain    User[] @relation("MainWorkspace")
 
   user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -211,4 +229,30 @@ model Execution {
 
   @@index([workflowId])
   @@map("execution")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+}
+
+model Invitation {
+  id          String           @id @default(cuid())
+  email       String
+  workspaceId String
+  role        MemberRole       @default(MEMBER)
+  invitedById String
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy   User      @relation("SentInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@unique([email, workspaceId])
+  @@index([email])
+  @@index([workspaceId])
+  @@map("invitation")
 }
