@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CopyIcon, CheckIcon } from "lucide-react";
 import {
@@ -30,15 +30,18 @@ export const InviteMembersCard = ({
   inviteCode,
 }: WorkspaceSettingsProps) => {
   const [copied, setCopied] = useState(false);
+  const [fullInviteLink, setFullInviteLink] = useState("");
   const resetInviteCode = useResetInviteCode();
+
+  useEffect(() => {
+    setFullInviteLink(`${window.location.origin}/join/${inviteCode}`);
+  }, [inviteCode]);
 
   const [ResetDialog, confirmReset] = useConfirm(
     "Reset Invite Link",
     "This will invalidate the current invite link. Any pending invites will no longer work.",
     "destructive",
   );
-
-  const fullInviteLink = `${typeof window !== "undefined" ? window.location.origin : ""}/join/${inviteCode}`;
 
   const handleCopyInviteLink = () => {
     navigator.clipboard.writeText(fullInviteLink);
@@ -71,6 +74,7 @@ export const InviteMembersCard = ({
               variant="outline"
               size="icon"
               onClick={handleCopyInviteLink}
+              disabled={!fullInviteLink}
             >
               {copied ? (
                 <CheckIcon className="size-4" />
