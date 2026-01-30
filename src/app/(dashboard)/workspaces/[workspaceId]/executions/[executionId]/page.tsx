@@ -23,13 +23,17 @@ const ExecutionId = async ({ params }: PageProps) => {
   const session = await requireAuth();
   const { workspaceId, executionId } = await params;
 
-  // Validate workspace belongs to user
-  const workspace = await prisma.workspace.findFirst({
-    where: { id: workspaceId, userId: session.user.id },
-    select: { id: true },
+  // Validate user is a member of this workspace
+  const membership = await prisma.member.findUnique({
+    where: {
+      userId_workspaceId: {
+        userId: session.user.id,
+        workspaceId,
+      },
+    },
   });
 
-  if (!workspace) {
+  if (!membership) {
     redirect("/index/locations");
   }
 

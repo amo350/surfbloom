@@ -45,8 +45,15 @@ export const useConfirm = (
     handleClose();
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      promise?.resolve(false);
+      handleClose();
+    }
+  };
+
   const ConfirmationDialog = () => (
-    <AlertDialog open={promise !== null} onOpenChange={handleClose}>
+    <AlertDialog open={promise !== null} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

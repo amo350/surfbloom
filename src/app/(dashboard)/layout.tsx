@@ -1,3 +1,4 @@
+import { AcceptInvitationsProvider } from "@/components/accept-invitations-provider";
 import { requireAuth } from "@/lib/auth-utils";
 import React from "react";
 
@@ -9,9 +10,11 @@ const DashboardLayout = async ({ children }: DashboardLayoutProps) => {
   await requireAuth();
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA]">
-      <div className="flex flex-col h-screen">{children}</div>
-    </div>
+    <AcceptInvitationsProvider>
+      <div className="min-h-screen bg-[#F7F8FA]">
+        <div className="flex flex-col h-screen">{children}</div>
+      </div>
+    </AcceptInvitationsProvider>
   );
 };
 
