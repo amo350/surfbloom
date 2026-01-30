@@ -23,7 +23,6 @@ const ExecutionId = async ({ params }: PageProps) => {
   const session = await requireAuth();
   const { workspaceId, executionId } = await params;
 
-  // Validate user is a member of this workspace
   const membership = await prisma.member.findUnique({
     where: {
       userId_workspaceId: {

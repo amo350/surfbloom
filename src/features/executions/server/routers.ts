@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import z from "zod";
 import PAGINATION from "@/config/constants";
 import { prisma } from "@/lib/prisma";
@@ -6,12 +7,9 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 export const executionsRouter = createTRPCRouter({
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .query(({ ctx, input }) => {
-      return prisma.execution.findUniqueOrThrow({
-        where: {
-          id: input.id,
-          workflow: { workspace: { userId: ctx.auth.user.id } },
-        },
+    .query(async ({ ctx, input }) => {
+      const execution = await prisma.execution.findUnique({
+        where: { id: input.id },
         include: {
           workflow: {
             select: {
@@ -22,6 +20,32 @@ export const executionsRouter = createTRPCRouter({
           },
         },
       });
+
+      if (!execution) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Execution not found",
+        });
+      }
+
+      // Verify user is a member of this workspace
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: execution.workflow.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
+      return execution;
     }),
   getMany: protectedProcedure
     .input(
@@ -36,16 +60,30 @@ export const executionsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      // Verify user is a member of this workspace
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
       const { workspaceId, page, pageSize } = input;
       const [items, totalCount] = await Promise.all([
         prisma.execution.findMany({
           skip: (page - 1) * pageSize,
           take: pageSize,
           where: {
-            workflow: {
-              workspaceId,
-              workspace: { userId: ctx.auth.user.id },
-            },
+            workflow: { workspaceId },
           },
           orderBy: { startedAt: "desc" },
           include: {
@@ -60,10 +98,7 @@ export const executionsRouter = createTRPCRouter({
         }),
         prisma.execution.count({
           where: {
-            workflow: {
-              workspaceId,
-              workspace: { userId: ctx.auth.user.id },
-            },
+            workflow: { workspaceId },
           },
         }),
       ]);

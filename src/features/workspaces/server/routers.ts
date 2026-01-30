@@ -3,8 +3,11 @@ import PAGINATION from "@/config/constants";
 import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { generateInviteCode } from "@/lib/utils";
-import { MemberRole } from "@/generated/prisma/enums";
+import { AccountRole, MemberRole } from "@/generated/prisma/enums";
 import { TRPCError } from "@trpc/server";
+
+// TODO: Premium/billing is per-workspace, not per-account
+// When checking premium features, check workspace.isPremium, not user subscription
 
 export const workspacesRouter = createTRPCRouter({
   create: protectedProcedure
@@ -153,7 +156,21 @@ export const workspacesRouter = createTRPCRouter({
   remove: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Verify user is admin
+      // Get user's account role
+      const currentUser = await prisma.user.findUnique({
+        where: { id: ctx.auth.user.id },
+        select: { accountRole: true },
+      });
+
+      // Only OWNER (account level) can delete workspaces
+      if (!currentUser || currentUser.accountRole !== AccountRole.OWNER) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only account owners can delete workspaces",
+        });
+      }
+
+      // Verify user has access to this workspace
       const membership = await prisma.member.findUnique({
         where: {
           userId_workspaceId: {
@@ -163,10 +180,10 @@ export const workspacesRouter = createTRPCRouter({
         },
       });
 
-      if (!membership || membership.role !== MemberRole.ADMIN) {
+      if (!membership) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Only admins can delete workspaces",
+          message: "You do not have access to this workspace",
         });
       }
 
@@ -184,7 +201,6 @@ export const workspacesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Verify user is admin
       const membership = await prisma.member.findUnique({
         where: {
           userId_workspaceId: {
@@ -194,10 +210,11 @@ export const workspacesRouter = createTRPCRouter({
         },
       });
 
+      // ADMIN (workspace level) can update settings
       if (!membership || membership.role !== MemberRole.ADMIN) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Only admins can update workspace name",
+          message: "Only workspace admins can update settings",
         });
       }
 
@@ -257,7 +274,6 @@ export const workspacesRouter = createTRPCRouter({
   resetInviteCode: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Verify user is admin
       const membership = await prisma.member.findUnique({
         where: {
           userId_workspaceId: {
@@ -267,10 +283,11 @@ export const workspacesRouter = createTRPCRouter({
         },
       });
 
+      // ADMIN (workspace level) can update settings
       if (!membership || membership.role !== MemberRole.ADMIN) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Only admins can reset invite code",
+          message: "Only workspace admins can update settings",
         });
       }
 
@@ -289,7 +306,6 @@ export const workspacesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Verify user is admin
       const membership = await prisma.member.findUnique({
         where: {
           userId_workspaceId: {
@@ -299,10 +315,11 @@ export const workspacesRouter = createTRPCRouter({
         },
       });
 
+      // ADMIN (workspace level) can update settings
       if (!membership || membership.role !== MemberRole.ADMIN) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Only admins can update workspace settings",
+          message: "Only workspace admins can update settings",
         });
       }
 

@@ -34,17 +34,27 @@ export const auth = betterAuth({
       create: {
         after: async (user) => {
           try {
-            const existingOwner = await prisma.user.findFirst({
-              where: { accountRole: AccountRole.OWNER },
-            });
-            if (existingOwner === null) {
-              await prisma.user.update({
-                where: { id: user.id },
-                data: { accountRole: AccountRole.OWNER },
+            await prisma.$transaction(async (tx) => {
+              // Check if any OWNER exists
+              const ownerExists = await tx.user.findFirst({
+                where: { accountRole: AccountRole.OWNER },
               });
-            }
-          } catch (err) {
-            console.error("[auth] Failed to promote first user to OWNER:", err);
+
+              if (!ownerExists) {
+                // First user becomes OWNER (no accountOwnerId - they own themselves)
+                await tx.user.update({
+                  where: { id: user.id },
+                  data: {
+                    accountRole: AccountRole.OWNER,
+                    // accountOwnerId stays null - they are the account owner
+                  },
+                });
+              }
+              // Other users start as USER with no accountOwnerId
+              // Their accountOwnerId gets set when they accept an invitation
+            });
+          } catch (error) {
+            console.error("Error in user create hook:", error);
           }
         },
       },

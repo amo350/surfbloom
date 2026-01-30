@@ -13,9 +13,9 @@ export const accountMembersRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      // Remove the USER restriction - all authenticated users can view the list
       const currentUser = await prisma.user.findUnique({
         where: { id: ctx.auth.user.id },
+        select: { id: true },
       });
 
       if (!currentUser) {
@@ -25,8 +25,29 @@ export const accountMembersRouter = createTRPCRouter({
         });
       }
 
+      // All users (Owner, Manager, Member) see the same list: everyone who shares
+      // at least one workspace/location with the current user.
+      const memberships = await prisma.member.findMany({
+        where: { userId: currentUser.id },
+        select: { workspaceId: true },
+      });
+      const workspaceIds = memberships.map((m) => m.workspaceId);
+
+      const workspaceMembers = await prisma.member.findMany({
+        where: { workspaceId: { in: workspaceIds } },
+        select: { userId: true },
+      });
+      const userIds = [
+        ...new Set([
+          currentUser.id,
+          ...workspaceMembers.map((m) => m.userId),
+        ]),
+      ];
+
+      // Fetch users
       const users = await prisma.user.findMany({
         where: {
+          id: { in: userIds },
           OR: [
             { name: { contains: input.search, mode: "insensitive" } },
             { email: { contains: input.search, mode: "insensitive" } },
@@ -34,14 +55,9 @@ export const accountMembersRouter = createTRPCRouter({
         },
         include: {
           mainWorkspace: { select: { id: true, name: true } },
-          members: {
-            select: { workspaceId: true },
-          },
+          members: { select: { workspaceId: true } },
         },
-        orderBy: [
-          { accountRole: "asc" }, // OWNER first, then MANAGER, then USER
-          { createdAt: "asc" },
-        ],
+        orderBy: [{ accountRole: "asc" }, { createdAt: "asc" }],
       });
 
       return users.map((user) => ({
@@ -54,42 +70,6 @@ export const accountMembersRouter = createTRPCRouter({
         locationCount: user.members.length,
         createdAt: user.createdAt,
       }));
-    }),
-
-  // Get workspaces for a member (for Set Main Location dialog)
-  getMemberWorkspaces: protectedProcedure
-    .input(z.object({ userId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const currentUser = await prisma.user.findUnique({
-        where: { id: ctx.auth.user.id },
-      });
-
-      if (!currentUser) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "User not found",
-        });
-      }
-
-      // USERs can only view their own workspaces (for setting main location)
-      const isSelf = input.userId === ctx.auth.user.id;
-      if (currentUser.accountRole === AccountRole.USER && !isSelf) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You do not have permission to view this",
-        });
-      }
-
-      const memberships = await prisma.member.findMany({
-        where: { userId: input.userId },
-        include: {
-          workspace: {
-            select: { id: true, name: true },
-          },
-        },
-      });
-
-      return memberships.map((m) => m.workspace);
     }),
 
   // Update account role
@@ -118,25 +98,6 @@ export const accountMembersRouter = createTRPCRouter({
           code: "NOT_FOUND",
           message: "Target user not found",
         });
-      }
-
-      const isSelf = currentUser.id === input.userId;
-
-      // USERs can only change their own role
-      if (currentUser.accountRole === AccountRole.USER) {
-        if (!isSelf) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "You can only change your own role",
-          });
-        }
-        // USERs cannot make themselves OWNER
-        if (input.role === AccountRole.OWNER) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "You cannot assign yourself as owner",
-          });
-        }
       }
 
       // Only OWNER can assign OWNER role
@@ -190,27 +151,40 @@ export const accountMembersRouter = createTRPCRouter({
         }
       }
 
-      // When transferring OWNER, demote current OWNER to MANAGER
-      if (input.role === AccountRole.OWNER && currentUser.accountRole === AccountRole.OWNER) {
+      // When an owner gives up ownership (changing own role), demote to Manager
+      const isOwnerGivingUpOwnership =
+        targetUser.id === currentUser.id &&
+        targetUser.accountRole === AccountRole.OWNER &&
+        input.role !== AccountRole.OWNER;
+      // When an owner assigns Owner to someone else = transfer ownership: demote self to Manager
+      const isTransferringOwnership =
+        currentUser.accountRole === AccountRole.OWNER &&
+        input.role === AccountRole.OWNER &&
+        targetUser.id !== currentUser.id;
+
+      if (isTransferringOwnership) {
         await prisma.$transaction([
-          // Demote current owner to MANAGER
-          prisma.user.update({
-            where: { id: currentUser.id },
-            data: { accountRole: AccountRole.MANAGER },
-          }),
-          // Promote target user to OWNER
           prisma.user.update({
             where: { id: input.userId },
             data: { accountRole: AccountRole.OWNER },
           }),
+          prisma.user.update({
+            where: { id: currentUser.id },
+            data: { accountRole: AccountRole.MANAGER },
+          }),
         ]);
-        
-        return { transferred: true };
+        return prisma.user.findUniqueOrThrow({
+          where: { id: input.userId },
+        });
       }
+
+      const roleToSet = isOwnerGivingUpOwnership
+        ? AccountRole.MANAGER
+        : input.role;
 
       return prisma.user.update({
         where: { id: input.userId },
-        data: { accountRole: input.role },
+        data: { accountRole: roleToSet },
       });
     }),
 
@@ -385,10 +359,11 @@ export const accountMembersRouter = createTRPCRouter({
     .input(
       z.object({
         userId: z.string(),
-        workspaceId: z.string().nullable(), // Allow null to clear
+        workspaceId: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // User can set their own, or MANAGER/OWNER can set others
       const currentUser = await prisma.user.findUnique({
         where: { id: ctx.auth.user.id },
       });
@@ -397,40 +372,70 @@ export const accountMembersRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      const isSelf = currentUser.id === input.userId;
+      const isSelf = input.userId === ctx.auth.user.id;
+      const canManage = currentUser.accountRole !== AccountRole.USER;
 
-      // USERs can only set their own main workspace
-      if (currentUser.accountRole === AccountRole.USER && !isSelf) {
+      if (!isSelf && !canManage) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "You can only set your own main location",
+          message: "You can only set your own main workspace",
         });
       }
 
-      // MANAGERs and OWNERs can set anyone's
-
-      // If workspaceId is provided, verify user is member of that workspace
-      if (input.workspaceId) {
-        const membership = await prisma.member.findUnique({
-          where: {
-            userId_workspaceId: {
-              userId: input.userId,
-              workspaceId: input.workspaceId,
-            },
+      // Verify user is member of workspace
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: input.userId,
+            workspaceId: input.workspaceId,
           },
-        });
+        },
+      });
 
-        if (!membership) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "User is not a member of this workspace",
-          });
-        }
+      if (!membership) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User is not a member of this workspace",
+        });
       }
 
       return prisma.user.update({
         where: { id: input.userId },
         data: { mainWorkspaceId: input.workspaceId },
       });
+    }),
+  getMemberWorkspaces: protectedProcedure
+    .input(z.object({ userId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: ctx.auth.user.id },
+      });
+
+      if (!currentUser) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "User not found",
+        });
+      }
+
+      // Users can only get their own workspaces, managers/owners can get anyone's
+      const isSelf = ctx.auth.user.id === input.userId;
+      if (currentUser.accountRole === AccountRole.USER && !isSelf) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only view your own workspaces",
+        });
+      }
+
+      const memberships = await prisma.member.findMany({
+        where: { userId: input.userId },
+        include: {
+          workspace: {
+            select: { id: true, name: true },
+          },
+        },
+      });
+
+      return memberships.map((m) => m.workspace);
     }),
 });

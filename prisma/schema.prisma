@@ -14,30 +14,35 @@ enum AccountRole {
 }
 
 model User {
-  id               String    @id
+  id               String       @id
   name             String
   email            String
-  emailVerified    Boolean   @default(false)
+  emailVerified    Boolean      @default(false)
   image            String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
   
-  // Account-level role
-  accountRole      AccountRole @default(USER)
-  mainWorkspaceId  String?     // Default/primary workspace
+  // Account-level
+  accountRole      AccountRole  @default(USER)
+  mainWorkspaceId  String?
   
-  // Relations
+  // Account ownership - who owns this user's account
+  // null means user is their own account owner
+  accountOwnerId   String?
+  accountOwner     User?        @relation("AccountMembers", fields: [accountOwnerId], references: [id], onDelete: SetNull)
+  accountMembers   User[]       @relation("AccountMembers")
+  
+  // ... existing relations
   sessions         Session[]
   accounts         Account[]
-  workspaces       Workspace[] @relation("CreatedWorkspaces")
+  workspaces       Workspace[]  @relation("CreatedWorkspaces")
   createdWorkflows Workflow[]
   members          Member[]
   sentInvitations  Invitation[] @relation("SentInvitations")
-  
-  // Reference to main workspace (optional, can be null)
-  mainWorkspace    Workspace? @relation("MainWorkspace", fields: [mainWorkspaceId], references: [id], onDelete: SetNull)
+  mainWorkspace    Workspace?   @relation("MainWorkspace", fields: [mainWorkspaceId], references: [id], onDelete: SetNull)
 
   @@unique([email])
+  @@index([accountOwnerId])
   @@map("user")
 }
 
@@ -103,7 +108,7 @@ model Workspace {
   invitations Invitation[]
   usersWithMain    User[] @relation("MainWorkspace")
 
-  user       User  @relation("CreatedWorkspaces", fields: [userId], references: [id], onDelete: Cascade)
+  user       User @relation("CreatedWorkspaces", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("workspace")

@@ -1,8 +1,10 @@
 import { prefetchWorkflow } from "@/features/workflows/server/prefetch";
 import { requireAuth } from "@/lib/auth-utils";
+import { prisma } from "@/lib/prisma";
 import { HydrateClient } from "@/trpc/server";
 import { ErrorBoundary } from "react-error-boundary";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import {
   Editor,
   EditorError,
@@ -18,8 +20,21 @@ type PageProps = {
 };
 
 const WorkflowId = async ({ params }: PageProps) => {
-  await requireAuth();
+  const session = await requireAuth();
   const { workflowId, workspaceId } = await params;
+
+  const membership = await prisma.member.findUnique({
+    where: {
+      userId_workspaceId: {
+        userId: session.user.id,
+        workspaceId,
+      },
+    },
+  });
+
+  if (!membership) {
+    redirect("/index/locations");
+  }
 
   prefetchWorkflow(workflowId, workspaceId);
   return (

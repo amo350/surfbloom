@@ -7,25 +7,17 @@ export const useAccountMembers = (search: string = "") => {
   return useQuery(trpc.accountMembers.getAll.queryOptions({ search }));
 };
 
-export const useMemberWorkspaces = (userId: string | null) => {
-  const trpc = useTRPC();
-  return useQuery({
-    ...trpc.accountMembers.getMemberWorkspaces.queryOptions({
-      userId: userId ?? "",
-    }),
-    enabled: !!userId,
-  });
-};
-
 export const useUpdateAccountRole = () => {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
 
   return useMutation(
     trpc.accountMembers.updateRole.mutationOptions({
-      onSuccess: () => {
+      onSuccess: async () => {
         toast.success("Role updated");
-        queryClient.invalidateQueries(trpc.accountMembers.getAll.queryFilter());
+        await queryClient.refetchQueries(
+          trpc.accountMembers.getAll.queryFilter(),
+        );
       },
       onError: (error) => {
         toast.error(error.message);
@@ -100,4 +92,14 @@ export const useSetMainWorkspace = () => {
       },
     }),
   );
+};
+
+export const useMemberWorkspaces = (userId: string | null) => {
+  const trpc = useTRPC();
+  return useQuery({
+    ...trpc.accountMembers.getMemberWorkspaces.queryOptions({
+      userId: userId!,
+    }),
+    enabled: !!userId,
+  });
 };

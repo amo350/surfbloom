@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { MemberRole, InvitationStatus } from "@/generated/prisma/enums";
 import { TRPCError } from "@trpc/server";
+import { AccountRole } from "@/generated/prisma/enums";
 
 export const invitationsRouter = createTRPCRouter({
   // Create invitation (admin only)
@@ -74,6 +75,8 @@ export const invitationsRouter = createTRPCRouter({
           message: "Invitation already sent to this email",
         });
       }
+
+      // TODO: Future - add payment increment for non-enterprise accounts when adding users
 
       // Create or update invitation
       const invitation = await prisma.invitation.upsert({
@@ -164,14 +167,24 @@ export const invitationsRouter = createTRPCRouter({
     }),
 
   // Accept pending invitations for current user (called after login)
+  // TODO: Future - add notification system for invitation accept/decline
   acceptPending: protectedProcedure.mutation(async ({ ctx }) => {
-    const userEmail = ctx.auth.user.email;
+    const userEmail = ctx.auth.user.email.toLowerCase();
 
     // Find all pending invitations for this email
     const pendingInvitations = await prisma.invitation.findMany({
       where: {
-        email: userEmail.toLowerCase(),
+        email: userEmail,
         status: InvitationStatus.PENDING,
+      },
+      include: {
+        invitedBy: {
+          select: {
+            id: true,
+            accountOwnerId: true,
+            accountRole: true,
+          },
+        },
       },
     });
 
@@ -208,6 +221,34 @@ export const invitationsRouter = createTRPCRouter({
           where: { id: invitation.id },
           data: { status: InvitationStatus.ACCEPTED },
         });
+
+        // Set account ownership if user doesn't have one yet
+        // The account owner is whoever invited them (or their account owner if they're not an owner)
+        const currentUser = await tx.user.findUnique({
+          where: { id: ctx.auth.user.id },
+          select: { accountOwnerId: true, accountRole: true },
+        });
+
+        if (
+          currentUser &&
+          !currentUser.accountOwnerId &&
+          currentUser.accountRole !== AccountRole.OWNER
+        ) {
+          // Determine the account owner from the inviter
+          // If inviter is OWNER, they are the account owner
+          // If inviter has an accountOwnerId, use that
+          const accountOwnerId =
+            invitation.invitedBy.accountRole === AccountRole.OWNER
+              ? invitation.invitedBy.id
+              : invitation.invitedBy.accountOwnerId;
+
+          if (accountOwnerId) {
+            await tx.user.update({
+              where: { id: ctx.auth.user.id },
+              data: { accountOwnerId },
+            });
+          }
+        }
       }
     });
 
