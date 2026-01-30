@@ -1,4 +1,6 @@
 import { requireAuth } from "@/lib/auth-utils";
+import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 import { SettingsContent } from "./settings-context";
 
 type Props = {
@@ -6,8 +8,21 @@ type Props = {
 };
 
 const SettingsPage = async ({ params }: Props) => {
-  await requireAuth();
+  const session = await requireAuth();
   const { workspaceId } = await params;
+
+  const membership = await prisma.member.findUnique({
+    where: {
+      userId_workspaceId: {
+        userId: session.user.id,
+        workspaceId,
+      },
+    },
+  });
+
+  if (!membership) {
+    redirect("/index/locations");
+  }
 
   return (
     <div className="p-6">

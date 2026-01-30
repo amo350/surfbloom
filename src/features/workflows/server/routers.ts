@@ -1,8 +1,10 @@
 import type { Edge, Node } from "@xyflow/react";
+import { TRPCError } from "@trpc/server";
 import { generateSlug } from "random-word-slugs";
 import z from "zod";
 import { PAGINATION } from "@/config/constants";
 import { NodeType } from "@/generated/prisma/client";
+import { MemberRole } from "@/generated/prisma/enums";
 import { sendWorkflowExecution } from "@/inngest/utils";
 import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
@@ -11,11 +13,27 @@ export const workflowsRouter = createTRPCRouter({
   execute: protectedProcedure
     .input(z.object({ id: z.string(), workspaceId: z.string() }))
     .mutation(async ({ input, ctx }) => {
+      // Verify user is a member of this workspace
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
       const workflow = await prisma.workflow.findUniqueOrThrow({
         where: {
           id: input.id,
           workspaceId: input.workspaceId,
-          workspace: { userId: ctx.auth.user.id },
         },
       });
 
@@ -29,16 +47,21 @@ export const workflowsRouter = createTRPCRouter({
   create: protectedProcedure
     .input(z.object({ workspaceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Verify the user owns or has access to the workspace
-      const workspace = await prisma.workspace.findUnique({
+      // Verify user is a member of this workspace
+      const membership = await prisma.member.findUnique({
         where: {
-          id: input.workspaceId,
-          userId: ctx.auth.user.id,
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
         },
       });
 
-      if (!workspace) {
-        throw new Error("Unauthorized: You do not have access to this workspace");
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
       }
 
       return prisma.workflow.create({
@@ -59,12 +82,28 @@ export const workflowsRouter = createTRPCRouter({
 
   remove: protectedProcedure
     .input(z.object({ id: z.string(), workspaceId: z.string() }))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Verify user is a member of this workspace
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership || membership.role !== MemberRole.ADMIN) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can delete this",
+        });
+      }
+
       return prisma.workflow.delete({
         where: {
           id: input.id,
           workspaceId: input.workspaceId,
-          workspace: { userId: ctx.auth.user.id },
         },
       });
     }),
@@ -92,12 +131,28 @@ export const workflowsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Verify user is a member of this workspace
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
       const { id, nodes, edges } = input;
       const workflow = await prisma.workflow.findFirstOrThrow({
         where: {
           id: input.id,
           workspaceId: input.workspaceId,
-          workspace: { userId: ctx.auth.user.id },
         },
       });
       // Transaction to ensure consistency
@@ -143,12 +198,28 @@ export const workflowsRouter = createTRPCRouter({
         name: z.string().min(2),
       }),
     )
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Verify user is a member of this workspace
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
       return prisma.workflow.update({
         where: {
           id: input.id,
           workspaceId: input.workspaceId,
-          workspace: { userId: ctx.auth.user.id },
         },
         data: { name: input.name },
       });
@@ -156,11 +227,27 @@ export const workflowsRouter = createTRPCRouter({
   getOne: protectedProcedure
     .input(z.object({ id: z.string(), workspaceId: z.string() }))
     .query(async ({ ctx, input }) => {
+      // Verify user is a member of this workspace
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
       const workflow = await prisma.workflow.findUniqueOrThrow({
         where: {
           id: input.id,
           workspaceId: input.workspaceId,
-          workspace: { userId: ctx.auth.user.id },
         },
         include: { nodes: true, connections: true },
       });
@@ -202,6 +289,23 @@ export const workflowsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      // Verify user is a member of this workspace
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
       const { workspaceId, page, pageSize, search } = input;
       const [items, totalCount] = await Promise.all([
         prisma.workflow.findMany({
@@ -209,7 +313,6 @@ export const workflowsRouter = createTRPCRouter({
           take: pageSize,
           where: {
             workspaceId,
-            workspace: { userId: ctx.auth.user.id },
             name: {
               contains: search,
               mode: "insensitive",
@@ -220,7 +323,6 @@ export const workflowsRouter = createTRPCRouter({
         prisma.workflow.count({
           where: {
             workspaceId,
-            workspace: { userId: ctx.auth.user.id },
             name: {
               contains: search,
               mode: "insensitive",

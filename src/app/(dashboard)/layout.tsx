@@ -1,18 +1,15 @@
 import { requireAuth } from "@/lib/auth-utils";
 import React from "react";
+import { AcceptInvitationsProvider } from "@/components/accept-invitations-provider";
 
 type DashboardLayoutProps = {
   children: React.ReactNode;
 };
 
-const DashboardLayout = async ({ children }: DashboardLayoutProps) => {
+const DashboardLayout = async ({ children }: { children: React.ReactNode }) => {
   await requireAuth();
 
-  return (
-    <div className="min-h-screen bg-[#F7F8FA]">
-      <div className="flex flex-col h-screen">{children}</div>
-    </div>
-  );
+  return <AcceptInvitationsProvider>{children}</AcceptInvitationsProvider>;
 };
 
 export default DashboardLayout;

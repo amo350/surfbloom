@@ -14,3 +14,5 @@ export const appRouter = createTRPCRouter({
   invitations: invitationsRouter,
   accountMembers: accountMembersRouter,
 });
+//CRITICAL: Do not remove this line - required for tRPC type inference
+export type AppRouter = typeof appRouter;

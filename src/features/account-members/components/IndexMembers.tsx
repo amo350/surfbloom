@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronDownIcon,
@@ -53,6 +53,7 @@ import {
   useBulkDeleteUsers,
 } from "../hooks/use-account-members";
 import { AccountRole } from "@/generated/prisma/enums";
+import { authClient } from "@/lib/auth-client";
 
 // TODO: Define role capabilities
 // OWNER: Full control - can assign owners, delete users, manage all settings
@@ -67,11 +68,29 @@ export const IndexMembers = () => {
   const [bulkRoleDialogOpen, setBulkRoleDialogOpen] = useState(false);
   const [bulkInviteDialogOpen, setBulkInviteDialogOpen] = useState(false);
 
+  const { data: session } = authClient.useSession();
+  const currentUserId = session?.user?.id ?? null;
+
   const { data: members, isLoading } = useAccountMembers(search);
   const updateRole = useUpdateAccountRole();
   const bulkUpdateRole = useBulkUpdateAccountRole();
   const bulkInvite = useBulkInviteToWorkspace();
   const bulkDelete = useBulkDeleteUsers();
+
+  const [currentUserRole, setCurrentUserRole] = useState<AccountRole | null>(
+    null,
+  );
+  useEffect(() => {
+    if (members && currentUserId) {
+      const currentUser = members.find((m) => m.id === currentUserId);
+      if (currentUser) {
+        setCurrentUserRole(currentUser.accountRole);
+      }
+    }
+  }, [members, currentUserId]);
+
+  const isOwner = currentUserRole === AccountRole.OWNER;
+  console.log("currentUserRole:", currentUserRole, "isOwner:", isOwner);
 
   const [DeleteDialog, confirmDelete] = useConfirm(
     "Delete Users",
@@ -258,7 +277,7 @@ export const IndexMembers = () => {
                   <Badge variant="outline">{member.locationCount}</Badge>
                 </TableCell>
                 <TableCell>
-                  {member.accountRole === AccountRole.OWNER ? (
+                  {member.accountRole === AccountRole.OWNER && !isOwner ? (
                     <Badge variant={getRoleBadgeVariant(member.accountRole)}>
                       {member.accountRole}
                     </Badge>
@@ -274,13 +293,18 @@ export const IndexMembers = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        {isOwner && (
+                          <SelectItem value={AccountRole.OWNER}>
+                            Owner
+                          </SelectItem>
+                        )}
                         <SelectItem value={AccountRole.MANAGER}>
                           Manager
                         </SelectItem>
-                        <SelectItem value={AccountRole.USER}>User</SelectItem>
-                        {/* // Only OWNER can see/select OWNER option */}
-                        {/* // TODO: Check if current user is OWNER to show this */}
-                        {/* <SelectItem value={AccountRole.OWNER}>Owner</SelectItem> */}
+                        {/* Owners giving up ownership are demoted to Manager; don't show User for own row */}
+                        {!(isOwner && member.id === currentUserId) && (
+                          <SelectItem value={AccountRole.USER}>User</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   )}
