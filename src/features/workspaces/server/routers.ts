@@ -18,7 +18,6 @@ export const workspacesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Create workspace and member in a transaction
       const workspace = await prisma.$transaction(async (tx) => {
         const workspace = await tx.workspace.create({
           data: {
@@ -36,6 +35,21 @@ export const workspacesRouter = createTRPCRouter({
             workspaceId: workspace.id,
             role: MemberRole.ADMIN,
           },
+        });
+
+        // Create default task columns
+        const defaultColumns = [
+          { name: "Overdue", color: "#6B7280", position: 1 },
+          { name: "To Do", color: "#3B82F6", position: 2 },
+          { name: "In Progress", color: "#F59E0B", position: 3 },
+          { name: "Done", color: "#10B981", position: 4 },
+        ];
+
+        await tx.taskColumn.createMany({
+          data: defaultColumns.map((col) => ({
+            ...col,
+            workspaceId: workspace.id,
+          })),
         });
 
         return workspace;

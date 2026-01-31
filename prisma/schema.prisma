@@ -40,6 +40,7 @@ model User {
   members          Member[]
   sentInvitations  Invitation[] @relation("SentInvitations")
   mainWorkspace    Workspace?   @relation("MainWorkspace", fields: [mainWorkspaceId], references: [id], onDelete: SetNull)
+  assignedTasks Task[]
 
   @@unique([email])
   @@index([accountOwnerId])
@@ -107,6 +108,8 @@ model Workspace {
   workflows  Workflow[]
   invitations Invitation[]
   usersWithMain    User[] @relation("MainWorkspace")
+  taskColumns  TaskColumn[]
+  tasks        Task[]
 
   user       User @relation("CreatedWorkspaces", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -260,4 +263,45 @@ model Invitation {
   @@index([email])
   @@index([workspaceId])
   @@map("invitation")
+}
+
+model TaskColumn {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String    // e.g., "To Do", "In Progress", "Done"
+  color       String    @default("#6B7280") // hex color
+  position    Int       // for ordering columns (1, 2, 3, etc.)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@unique([workspaceId, position])
+  @@index([workspaceId])
+  @@map("task_column")
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  workspaceId String
+  columnId    String    // references TaskColumn
+  assigneeId  String?   // references User (optional)
+  name        String
+  description String?   @db.Text
+  position    Int       @default(1000) // for ordering within column
+  dueDate     DateTime?
+  startDate   DateTime?
+  category    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  column      TaskColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  assignee    User?      @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([columnId])
+  @@index([assigneeId])
+  @@map("task")
 }

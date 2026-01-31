@@ -51,6 +51,8 @@ import {
   useBulkUpdateAccountRole,
   useBulkInviteToWorkspace,
   useBulkDeleteUsers,
+  useMemberWorkspaces,
+  useSetMainWorkspace,
 } from "../hooks/use-account-members";
 import { AccountRole } from "@/generated/prisma/enums";
 import { authClient } from "@/lib/auth-client";
@@ -67,6 +69,12 @@ export const IndexMembers = () => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [bulkRoleDialogOpen, setBulkRoleDialogOpen] = useState(false);
   const [bulkInviteDialogOpen, setBulkInviteDialogOpen] = useState(false);
+  const [editMainLocationDialogOpen, setEditMainLocationDialogOpen] =
+    useState(false);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
+    null,
+  );
 
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? null;
@@ -76,6 +84,9 @@ export const IndexMembers = () => {
   const bulkUpdateRole = useBulkUpdateAccountRole();
   const bulkInvite = useBulkInviteToWorkspace();
   const bulkDelete = useBulkDeleteUsers();
+  const setMainWorkspace = useSetMainWorkspace();
+  const { data: memberWorkspaces = [], isLoading: workspacesLoading } =
+    useMemberWorkspaces(editingMemberId);
 
   const [currentUserRole, setCurrentUserRole] = useState<AccountRole | null>(
     null,
@@ -146,6 +157,26 @@ export const IndexMembers = () => {
         onSuccess: () => {
           setSelectedIds(new Set());
           setBulkRoleDialogOpen(false);
+        },
+      },
+    );
+  };
+
+  const handleOpenMainLocationDialog = (memberId: string, mainWorkspaceId: string | null) => {
+    setEditingMemberId(memberId);
+    setSelectedWorkspaceId(mainWorkspaceId);
+    setEditMainLocationDialogOpen(true);
+  };
+
+  const handleSaveMainLocation = () => {
+    if (!editingMemberId || selectedWorkspaceId === null) return;
+    setMainWorkspace.mutate(
+      { userId: editingMemberId, workspaceId: selectedWorkspaceId },
+      {
+        onSuccess: () => {
+          setEditMainLocationDialogOpen(false);
+          setEditingMemberId(null);
+          setSelectedWorkspaceId(null);
         },
       },
     );
@@ -319,7 +350,16 @@ export const IndexMembers = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Set Main Location</DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            handleOpenMainLocationDialog(
+                              member.id,
+                              member.mainWorkspace?.id ?? null,
+                            )
+                          }
+                        >
+                          Set Main Location
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive">
                           Remove User
@@ -369,6 +409,62 @@ export const IndexMembers = () => {
                 disabled={bulkUpdateRole.isPending}
               >
                 Set as User
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Set Main Location dialog */}
+      <Dialog
+        open={editMainLocationDialogOpen}
+        onOpenChange={setEditMainLocationDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Main Location</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {workspacesLoading ? (
+              <p>Loading workspaces...</p>
+            ) : memberWorkspaces.length === 0 ? (
+              <p className="text-muted-foreground">No workspaces found</p>
+            ) : (
+              <Select
+                value={selectedWorkspaceId ?? "none"}
+                onValueChange={(value) =>
+                  setSelectedWorkspaceId(value === "none" ? null : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not set</SelectItem>
+                  {memberWorkspaces.map((workspace) => (
+                    <SelectItem key={workspace.id} value={workspace.id}>
+                      {workspace.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setEditMainLocationDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveMainLocation}
+                disabled={
+                  workspacesLoading ||
+                  setMainWorkspace.isPending ||
+                  selectedWorkspaceId === null
+                }
+              >
+                Save
               </Button>
             </div>
           </div>
