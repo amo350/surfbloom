@@ -46,8 +46,14 @@ const menuItems = [
         title: "My Tasks",
         icon: GoCheckCircle,
         activeIcon: GoCheckCircleFill,
-        getUrl: () => "/tasks",
-        getActivePattern: () => /^\/tasks/,
+        getUrl: (workspaceId?: string) =>
+          workspaceId
+            ? `/workspaces/${workspaceId}/tasks`
+            : "/index/locations",
+        getActivePattern: (workspaceId?: string) =>
+          workspaceId
+            ? new RegExp(`^/workspaces/${workspaceId}/tasks`)
+            : /^\/tasks/,
       },
     ],
   },
