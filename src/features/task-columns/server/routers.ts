@@ -67,7 +67,7 @@ export const taskColumnsRouter = createTRPCRouter({
       const { id, workspaceId, ...updateData } = input;
 
       return prisma.taskColumn.update({
-        where: { id },
+        where: { id, workspaceId },
         data: updateData,
       });
     }),
@@ -176,7 +176,7 @@ export const taskColumnsRouter = createTRPCRouter({
       }
 
       return prisma.taskColumn.delete({
-        where: { id: input.id },
+        where: { id: input.id, workspaceId: input.workspaceId },
       });
     }),
 });

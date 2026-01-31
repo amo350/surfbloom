@@ -83,7 +83,7 @@ export const tasksRouter = createTRPCRouter({
       }
 
       return prisma.task.findUniqueOrThrow({
-        where: { id: input.id },
+        where: { id: input.id, workspaceId: input.workspaceId },
         include: {
           column: true,
           assignee: {
@@ -121,6 +121,17 @@ export const tasksRouter = createTRPCRouter({
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You do not have access to this workspace",
+        });
+      }
+
+      // Verify column belongs to workspace
+      const column = await prisma.taskColumn.findFirst({
+        where: { id: input.columnId, workspaceId: input.workspaceId },
+      });
+      if (!column) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Column not found in this workspace",
         });
       }
 
@@ -193,7 +204,7 @@ export const tasksRouter = createTRPCRouter({
       const { id, workspaceId, ...updateData } = input;
 
       return prisma.task.update({
-        where: { id },
+        where: { id, workspaceId },
         data: updateData,
         include: {
           column: true,
@@ -225,7 +236,7 @@ export const tasksRouter = createTRPCRouter({
       }
 
       return prisma.task.delete({
-        where: { id: input.id },
+        where: { id: input.id, workspaceId: input.workspaceId },
       });
     }),
 
@@ -263,7 +274,7 @@ export const tasksRouter = createTRPCRouter({
       await prisma.$transaction(
         input.updates.map((update) =>
           prisma.task.update({
-            where: { id: update.id },
+            where: { id: update.id, workspaceId: input.workspaceId },
             data: {
               columnId: update.columnId,
               position: update.position,

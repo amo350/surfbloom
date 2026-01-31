@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PencilIcon, SquareIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,10 @@ export const TaskModalHeader = ({
 }: TaskModalHeaderProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
+
+  useEffect(() => {
+    setEditedTitle(title);
+  }, [title]);
 
   const creatorTag = creatorEmail.split("@")[0].slice(0, 3).toUpperCase();
 
