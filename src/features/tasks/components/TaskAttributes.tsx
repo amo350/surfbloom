@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -9,14 +9,7 @@ import {
   CalendarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -24,40 +17,75 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { DatePicker } from "@/components/DatePicker";
+import { useGetTask, useUpdateTask } from "../hooks/use-tasks";
+import { useGetTaskColumns } from "../hooks/use-task-columns";
 
 type TaskAttributesProps = {
-  task: {
-    id: string;
-  };
+  taskId: string;
   workspaceId: string;
 };
 
 type AttributeRowProps = {
-  icon?: React.ReactNode;
+  icon: React.ReactNode;
   label: string;
   children: React.ReactNode;
-  className?: string;
 };
 
-const AttributeRow = ({ icon, label, children, className }: AttributeRowProps) => (
-  <div className={cn("flex items-center justify-between gap-6 py-4", className)}>
-    <div className="flex items-center min-w-0 flex-1">
-      <div className="w-[1.25ch] min-w-[1.25ch] shrink-0 flex items-center justify-center text-foreground/80 [&_svg]:size-3 [&_svg]:shrink-0 [&_svg]:inline-block" aria-hidden>
-        {icon}
-      </div>
-      <span className="text-sm text-muted-foreground whitespace-nowrap ml-2">{label}</span>
+const AttributeRow = ({ icon, label, children }: AttributeRowProps) => (
+  <div className="flex items-center justify-between py-4 px-5">
+    <div className="flex items-center gap-3 text-muted-foreground">
+      {icon}
+      <span className="text-sm">{label}</span>
     </div>
-    <div className="shrink-0 w-36 flex justify-end">{children}</div>
+    <div>{children}</div>
   </div>
 );
 
+type SearchSelectOption = { value: string; label: string };
+
 /**
  * When closed: "—" + down arrow in the attribute row.
- * When open: that same space becomes the search field inline; the list dropdown appears below (in line with the separator).
+ * When open: that same space becomes the search field inline; the list dropdown appears below.
  */
-function AttributeSearchDropdown({ placeholder = "—" }: { placeholder?: string }) {
+function AttributeSearchSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "—",
+}: {
+  value: string | null;
+  onChange: (value: string | null) => void;
+  options: SearchSelectOption[];
+  placeholder?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const selectedLabel = value
+    ? options.find((o) => o.value === value)?.label ?? placeholder
+    : placeholder;
+  const filtered = useMemo(
+    () =>
+      search.trim()
+        ? options.filter((o) =>
+            o.label.toLowerCase().includes(search.toLowerCase()),
+          )
+        : options,
+    [options, search],
+  );
+
+  const handleSelect = (optionValue: string) => {
+    onChange(optionValue);
+    setSearch("");
+    setOpen(false);
+  };
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
@@ -80,9 +108,12 @@ function AttributeSearchDropdown({ placeholder = "—" }: { placeholder?: string
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-full justify-end gap-1 text-sm text-muted-foreground font-normal"
+              className={cn(
+                "h-8 w-full justify-end gap-1 text-sm font-normal",
+                !value && "text-muted-foreground",
+              )}
             >
-              <span>{placeholder}</span>
+              <span>{selectedLabel}</span>
               <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
             </Button>
           )}
@@ -96,53 +127,160 @@ function AttributeSearchDropdown({ placeholder = "—" }: { placeholder?: string
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="max-h-48 overflow-y-auto p-1 min-h-[80px] border rounded-b-md">
-          {/* List area — options or "No results" render here, below the row/separator */}
-          <p className="text-xs text-muted-foreground p-2">No results</p>
+          {filtered.length === 0 ? (
+            <p className="text-xs text-muted-foreground p-2">No results</p>
+          ) : (
+            filtered.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={cn(
+                  "w-full text-left text-sm px-2 py-1.5 rounded hover:bg-accent",
+                  value === opt.value && "bg-accent",
+                )}
+                onClick={() => handleSelect(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))
+          )}
         </div>
       </PopoverContent>
     </Popover>
   );
 }
 
-export const TaskAttributes = ({ task, workspaceId }: TaskAttributesProps) => {
+export const TaskAttributes = ({
+  taskId,
+  workspaceId,
+}: TaskAttributesProps) => {
+  const { data: task } = useGetTask(taskId, workspaceId);
+  const { data: columns } = useGetTaskColumns(workspaceId);
+  const updateTask = useUpdateTask();
+
+  const handleStatusChange = (columnId: string) => {
+    updateTask.mutate({ id: taskId, workspaceId, columnId });
+  };
+
+  const handleStartDateChange = (date: Date | undefined) => {
+    updateTask.mutate({
+      id: taskId,
+      workspaceId,
+      startDate: date ?? null,
+    });
+  };
+
+  const handleDueDateChange = (date: Date | undefined) => {
+    updateTask.mutate({
+      id: taskId,
+      workspaceId,
+      dueDate: date ?? null,
+    });
+  };
+
+  const handleCategoryChange = (value: string | null) => {
+    updateTask.mutate({
+      id: taskId,
+      workspaceId,
+      category: value ?? null,
+    });
+  };
+
+  const handleAssigneeChange = (value: string | null) => {
+    updateTask.mutate({
+      id: taskId,
+      workspaceId,
+      assigneeId: value === "unassigned" || !value ? null : value,
+    });
+  };
+
+  // TODO: Fetch workspace members and populate assignee options
+  // const { data: members } = useGetWorkspaceMembers(workspaceId);
+  const assigneeOptions = [
+    { value: "unassigned", label: "Unassigned" },
+    // ...members
+  ];
+
+  const categoryOptions = [
+    { value: "bug", label: "Bug" },
+    { value: "feature", label: "Feature" },
+    { value: "improvement", label: "Improvement" },
+  ];
+
   return (
-    <div className="pl-4 pr-6 pt-0 pb-6">
-      <AttributeRow icon={<CheckCircleIcon />} label="Status">
-        <Select>
-          <SelectTrigger className="w-full max-w-28 h-7 text-xs">
+    <div className="py-2">
+      {/* Status */}
+      <AttributeRow
+        icon={<CheckCircleIcon className="size-4" />}
+        label="Status"
+      >
+        <Select value={task?.columnId ?? ""} onValueChange={handleStatusChange}>
+          <SelectTrigger className="w-32 h-8 text-sm">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="backlog">Backlog</SelectItem>
-            <SelectItem value="todo">To Do</SelectItem>
-            <SelectItem value="in-progress">In Progress</SelectItem>
-            <SelectItem value="done">Done</SelectItem>
+            {columns?.map((column) => (
+              <SelectItem key={column.id} value={column.id}>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="size-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: column.color }}
+                  />
+                  {column.name}
+                </div>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </AttributeRow>
 
       <Separator />
 
+      {/* Category */}
       <AttributeRow icon={<GridIcon className="size-4" />} label="Category">
-        <AttributeSearchDropdown placeholder="—" />
+        <AttributeSearchSelect
+          value={task?.category ?? null}
+          onChange={handleCategoryChange}
+          options={categoryOptions}
+          placeholder="—"
+        />
       </AttributeRow>
 
       <Separator />
 
+      {/* Assignee */}
       <AttributeRow icon={<UserIcon className="size-4" />} label="Assignee">
-        <AttributeSearchDropdown placeholder="—" />
+        <AttributeSearchSelect
+          value={task?.assigneeId ?? null}
+          onChange={handleAssigneeChange}
+          options={assigneeOptions}
+          placeholder="—"
+        />
       </AttributeRow>
 
       <Separator />
 
-      <AttributeRow icon={<CalendarIcon className="size-4" />} label="Start date">
-        <AttributeSearchDropdown placeholder="—" />
+      {/* Start date */}
+      <AttributeRow
+        icon={<CalendarIcon className="size-4" />}
+        label="Start date"
+      >
+        <DatePicker
+          value={task?.startDate ? new Date(task.startDate) : undefined}
+          onChange={handleStartDateChange}
+          placeholder="—"
+        />
       </AttributeRow>
 
       <Separator />
 
+      {/* Due date */}
       <AttributeRow icon={<CalendarIcon className="size-4" />} label="Due date">
-        <AttributeSearchDropdown placeholder="—" />
+        <DatePicker
+          value={task?.dueDate ? new Date(task.dueDate) : undefined}
+          onChange={handleDueDateChange}
+          placeholder="—"
+        />
       </AttributeRow>
     </div>
   );

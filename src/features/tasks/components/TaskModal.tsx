@@ -7,32 +7,41 @@ import { Separator } from "@/components/ui/separator";
 import { TaskModalHeader } from "./TaskModalHeader";
 import { TaskMessaging } from "./TaskMessenger";
 import { TaskAttributes } from "./TaskAttributes";
+import { useTaskModal } from "../hooks/use-task-modal";
+import { useGetTask, useUpdateTask } from "../hooks/use-tasks";
+
+// TODO: Future — sync taskId to URL as query param (e.g., /tasks?task=abc123) for shareable links
 
 type TaskModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task?: {
-    id: string;
-    taskNumber: number;
-    title: string;
-    statusColor: string;
-    creatorEmail: string;
-  };
   workspaceId: string;
 };
 
 export const TaskModal = ({
   open,
   onOpenChange,
-  task,
   workspaceId,
 }: TaskModalProps) => {
-  const displayTask = task ?? {
-    id: "",
-    taskNumber: 0,
-    title: "New Task",
-    statusColor: "#6B7280",
-    creatorEmail: "user@example.com",
+  const taskModal = useTaskModal();
+  const { data: task, isLoading } = useGetTask(
+    taskModal.taskId ?? "",
+    workspaceId,
+  );
+  const updateTask = useUpdateTask();
+
+  // TODO: Add sequential task numbering (e.g., #1, #2, #3) stored on the Task model
+  const taskNumber = 0;
+  const statusColor = task?.column?.color ?? "#6B7280";
+  const creatorEmail = task?.assignee?.name ?? "user";
+
+  const handleTitleChange = (newTitle: string) => {
+    if (!task) return;
+    updateTask.mutate({
+      id: task.id,
+      workspaceId,
+      name: newTitle,
+    });
   };
 
   return (
@@ -48,17 +57,15 @@ export const TaskModal = ({
           <div className="w-2/3 flex flex-col overflow-hidden min-w-0">
             <div className="flex items-center gap-5 min-w-0 px-8 py-5 border-b bg-background shrink-0 min-h-[72px]">
               <TaskModalHeader
-                taskNumber={displayTask.taskNumber}
-                title={displayTask.title}
-                statusColor={displayTask.statusColor}
-                creatorEmail={displayTask.creatorEmail}
-                onTitleChange={(newTitle) => {
-                  console.log("Title changed to:", newTitle);
-                }}
+                taskNumber={taskNumber}
+                title={task?.name ?? "Untitled task"}
+                statusColor={statusColor}
+                creatorEmail={creatorEmail}
+                onTitleChange={handleTitleChange}
               />
             </div>
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <TaskMessaging taskId={displayTask.id} />
+              <TaskMessaging taskId={task?.id ?? ""} />
             </div>
           </div>
 
@@ -80,7 +87,13 @@ export const TaskModal = ({
               </Button>
             </div>
             <div className="flex-1 overflow-y-auto min-h-0">
-              <TaskAttributes task={displayTask} workspaceId={workspaceId} />
+              {task ? (
+                <TaskAttributes taskId={task.id} workspaceId={workspaceId} />
+              ) : isLoading ? (
+                <div className="p-6 text-sm text-muted-foreground">
+                  Loading...
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
