@@ -24,6 +24,7 @@ export const TaskModalHeader = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
 
+  // Keep editedTitle in sync when title prop changes
   useEffect(() => {
     setEditedTitle(title);
   }, [title]);
@@ -31,7 +32,9 @@ export const TaskModalHeader = ({
   const creatorTag = creatorEmail.split("@")[0].slice(0, 3).toUpperCase();
 
   const handleSaveTitle = () => {
-    onTitleChange(editedTitle);
+    if (editedTitle.trim() && editedTitle !== title) {
+      onTitleChange(editedTitle.trim());
+    }
     setIsEditing(false);
   };
 
@@ -44,8 +47,7 @@ export const TaskModalHeader = ({
   };
 
   return (
-    <>
-      {/* Status symbol with color */}
+    <div className="flex items-center gap-3">
       {/* // TODO: Make symbol dynamic based on related items (reviews, workflows, etc.) */}
       <div
         className="size-8 rounded flex items-center justify-center"
@@ -54,14 +56,12 @@ export const TaskModalHeader = ({
         <SquareIcon className="size-4 text-white" />
       </div>
 
-      {/* Task number and creator */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <span className="font-mono">#{taskNumber}</span>
         <Separator orientation="vertical" className="h-4" />
         <span>@{creatorTag}</span>
       </div>
 
-      {/* Title with edit */}
       <div className="flex items-center gap-2">
         {isEditing ? (
           <Input
@@ -86,6 +86,6 @@ export const TaskModalHeader = ({
           </>
         )}
       </div>
-    </>
+    </div>
   );
 };

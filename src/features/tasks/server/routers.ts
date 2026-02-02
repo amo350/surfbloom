@@ -97,6 +97,7 @@ export const tasksRouter = createTRPCRouter({
   create: protectedProcedure
     .input(
       z.object({
+        id: z.string().optional(), // Allow client to provide ID for instant URL
         workspaceId: z.string(),
         columnId: z.string(),
         name: z.string().trim().min(1, "Required"),
@@ -149,6 +150,7 @@ export const tasksRouter = createTRPCRouter({
 
       return prisma.task.create({
         data: {
+          ...(input.id && { id: input.id }), // Use client-provided ID if given
           workspaceId: input.workspaceId,
           columnId: input.columnId,
           name: input.name,

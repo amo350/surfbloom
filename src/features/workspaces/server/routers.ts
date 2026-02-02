@@ -39,10 +39,11 @@ export const workspacesRouter = createTRPCRouter({
 
         // Create default task columns
         const defaultColumns = [
-          { name: "Overdue", color: "#6B7280", position: 1 },
-          { name: "To Do", color: "#3B82F6", position: 2 },
-          { name: "In Progress", color: "#F59E0B", position: 3 },
-          { name: "Done", color: "#10B981", position: 4 },
+          { name: "Overdue", color: "#EF4444", position: 1 },
+          { name: "Priority 1", color: "#F97316", position: 2 },
+          { name: "Priority 2", color: "#3B82F6", position: 3 },
+          { name: "Completed", color: "#10B981", position: 4 },
+          { name: "Verified", color: "#8B5CF6", position: 5 },
         ];
 
         await tx.taskColumn.createMany({
