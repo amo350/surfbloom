@@ -1,8 +1,8 @@
 export const KanbanSkeleton = () => {
   // 4 columns to match default column count
-  const columns = [1, 2, 3, 4];
+  const columns = [1, 2, 3, 4, 5];
   // Random card counts per column for visual variety
-  const cardCounts = [5, 6, 4, 5];
+  const cardCounts = [5, 6, 4, 5, 3];
 
   return (
     <div className="flex gap-4 h-full">

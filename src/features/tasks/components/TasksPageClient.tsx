@@ -70,6 +70,24 @@ export const TasksPageClient = ({
     }
   }, [initialTaskId, taskModal, basePath]);
 
+  // Sync modal with browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const pathParts = window.location.pathname.split("/");
+      const tasksIndex = pathParts.indexOf("tasks");
+      const taskIdFromUrl = pathParts[tasksIndex + 1];
+
+      if (taskIdFromUrl && taskIdFromUrl !== "tasks") {
+        taskModal.open(taskIdFromUrl);
+      } else {
+        taskModal.close();
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [taskModal]);
+
   // Update filters in URL
   const updateFilters = (newFilters: Partial<typeof filters>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -128,7 +146,7 @@ export const TasksPageClient = ({
 
       // Restore previous URL (with filters)
       const restoreUrl = previousUrlRef.current || basePath;
-      window.history.pushState(null, "", restoreUrl);
+      window.history.replaceState(null, "", restoreUrl);
       previousUrlRef.current = "";
     }
   };
