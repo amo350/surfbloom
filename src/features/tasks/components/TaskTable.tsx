@@ -9,6 +9,7 @@ type TaskTableProps = {
   workspaceId: string;
   onTaskClick: (taskId: string) => void;
   onSelectionChange: (selectedTasks: TaskRow[]) => void;
+  returnUrl?: string;
 };
 
 export const TaskTable = ({
@@ -16,14 +17,16 @@ export const TaskTable = ({
   workspaceId,
   onTaskClick,
   onSelectionChange,
+  returnUrl,
 }: TaskTableProps) => {
   const columns = useMemo(
     () =>
       getTaskTableColumns({
         workspaceId,
         onOpenTask: onTaskClick,
+        returnUrl,
       }),
-    [workspaceId, onTaskClick],
+    [workspaceId, onTaskClick, returnUrl],
   );
 
   return (

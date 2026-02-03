@@ -30,11 +30,13 @@ export type TaskRow = {
 type ColumnOptions = {
   workspaceId: string;
   onOpenTask: (taskId: string) => void;
+  returnUrl?: string;
 };
 
 export const getTaskTableColumns = ({
   workspaceId,
   onOpenTask,
+  returnUrl,
 }: ColumnOptions): ColumnDef<TaskRow>[] => [
   {
     id: "select",
@@ -198,6 +200,7 @@ export const getTaskTableColumns = ({
         taskId={row.original.id}
         workspaceId={workspaceId}
         onOpenTask={onOpenTask}
+        returnUrl={returnUrl}
       />
     ),
   },
