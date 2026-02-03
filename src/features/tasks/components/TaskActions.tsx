@@ -16,12 +16,16 @@ type TaskActionsProps = {
   taskId: string;
   workspaceId: string;
   onOpenTask: (taskId: string) => void;
+  returnUrl?: string;
+  children?: React.ReactNode;
 };
 
 export const TaskActions = ({
   taskId,
   workspaceId,
   onOpenTask,
+  returnUrl,
+  children,
 }: TaskActionsProps) => {
   const deleteTask = useDeleteTask();
   const taskModal = useTaskModal();
@@ -34,12 +38,11 @@ export const TaskActions = ({
     e.stopPropagation();
     const confirmed = await confirm();
     if (confirmed) {
-      // Close modal if this task is currently open
       if (taskModal.taskId === taskId) {
         taskModal.close();
-        // Clear URL
-        const basePath = window.location.pathname.replace(/\/[^/]+$/, "");
-        window.history.replaceState(null, "", basePath);
+        if (returnUrl) {
+          window.history.replaceState(null, "", returnUrl);
+        }
       }
       deleteTask.mutate({ id: taskId, workspaceId });
     }
@@ -55,9 +58,11 @@ export const TaskActions = ({
       <ConfirmDialog />
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-          <Button variant="ghost" size="icon" className="size-8">
-            <MoreVerticalIcon className="size-4" />
-          </Button>
+          {children ?? (
+            <Button variant="ghost" size="icon" className="size-8">
+              <MoreVerticalIcon className="size-4" />
+            </Button>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onClick={handleOpenTask}>

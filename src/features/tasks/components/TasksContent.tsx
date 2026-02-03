@@ -8,6 +8,7 @@ import {
 } from "../hooks/use-task-columns";
 import { KanbanSkeleton } from "./KanbanSkeleton";
 import { TaskTable } from "./TaskTable";
+import { KanbanBoard } from "./KanbanBoard";
 import { TaskRow } from "./TaskTableColumns";
 
 type TaskView = "table" | "kanban" | "calendar";
@@ -19,6 +20,9 @@ type TasksContentProps = {
   view: TaskView;
   onTaskClick?: (taskId: string) => void;
   onSelectionChange?: (selectedTasks: TaskRow[]) => void;
+  selectedTaskIds?: string[];
+  onTaskSelect?: (taskId: string, selected: boolean) => void;
+  returnUrl?: string;
 };
 
 const DEFAULT_COLUMNS = [
@@ -36,6 +40,9 @@ export const TasksContent = ({
   view,
   onTaskClick,
   onSelectionChange,
+  selectedTaskIds = [],
+  onTaskSelect,
+  returnUrl,
 }: TasksContentProps) => {
   const { data: tasks, isLoading: tasksLoading } = useGetTasks({
     workspaceId,
@@ -78,6 +85,10 @@ export const TasksContent = ({
     onSelectionChange?.(selectedTasks);
   };
 
+  const handleTaskSelect = (taskId: string, selected: boolean) => {
+    onTaskSelect?.(taskId, selected);
+  };
+
   // TABLE VIEW
   if (view === "table") {
     return (
@@ -86,21 +97,23 @@ export const TasksContent = ({
         workspaceId={workspaceId}
         onTaskClick={handleTaskClick}
         onSelectionChange={handleSelectionChange}
+        returnUrl={returnUrl}
       />
     );
   }
 
   // KANBAN VIEW
   if (view === "kanban") {
-    const taskCount = tasks?.length ?? 0;
-    const columnCount = columns?.length ?? 0;
     return (
-      <div className="h-full">
-        <div className="border rounded-lg p-8 text-center text-muted-foreground">
-          Kanban: {taskCount} task{taskCount !== 1 ? "s" : ""} across{" "}
-          {columnCount} column{columnCount !== 1 ? "s" : ""}
-        </div>
-      </div>
+      <KanbanBoard
+        tasks={tasks ?? []}
+        columns={columns ?? []}
+        workspaceId={workspaceId}
+        selectedTaskIds={selectedTaskIds}
+        onTaskSelect={handleTaskSelect}
+        onOpenTask={handleTaskClick}
+        returnUrl={returnUrl}
+      />
     );
   }
 

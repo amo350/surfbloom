@@ -36,6 +36,7 @@ export const TasksPageClient = ({
   const [view, setView] = useState<TaskView>("kanban");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<TaskRow[]>([]);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const taskModal = useTaskModal();
 
   const hasOpenedInitialRef = useRef(false);
@@ -70,6 +71,18 @@ export const TasksPageClient = ({
     filters.overdue ||
     filters.watching
   );
+
+  const currentParams = new URLSearchParams();
+  if (filters.columnId) currentParams.set("s", filters.columnId);
+  if (filters.categoryId) currentParams.set("c", filters.categoryId);
+  if (filters.assigneeId) currentParams.set("a", filters.assigneeId);
+  if (filters.creatorId) currentParams.set("cr", filters.creatorId);
+  if (filters.overdue) currentParams.set("to", "true");
+  if (filters.watching) currentParams.set("w", "true");
+
+  const returnUrl = currentParams.toString()
+    ? `${basePath}?${currentParams.toString()}`
+    : basePath;
 
   // Get tasks using optimistic filters (refetches immediately on filter change)
   const { data: tasks } = useGetTasks({
@@ -181,19 +194,34 @@ export const TasksPageClient = ({
     }
   };
 
+  const handleTaskSelect = useCallback((taskId: string, selected: boolean) => {
+    setSelectedTaskIds((prev) =>
+      selected ? [...prev, taskId] : prev.filter((id) => id !== taskId),
+    );
+  }, []);
+
   const handleSelectionChange = useCallback((selected: TaskRow[]) => {
     setSelectedTasks(selected);
+    setSelectedTaskIds(selected.map((t) => t.id));
   }, []);
 
   const handleSelectAll = () => {
     if (tasks) {
       setSelectedTasks(tasks as TaskRow[]);
+      setSelectedTaskIds(tasks.map((t) => t.id));
     }
   };
 
   const handleDeselectAll = () => {
     setSelectedTasks([]);
+    setSelectedTaskIds([]);
   };
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clear selection when filters or view change
+  useEffect(() => {
+    setSelectedTasks([]);
+    setSelectedTaskIds([]);
+  }, [filters.columnId, filters.assigneeId, filters.categoryId, view]);
 
   return (
     <>
@@ -219,7 +247,7 @@ export const TasksPageClient = ({
         />
       )}
 
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-hidden">
         <TasksContent
           workspaceId={workspaceId}
           columnId={filters.columnId}
@@ -227,6 +255,9 @@ export const TasksPageClient = ({
           view={view}
           onTaskClick={handleOpenTask}
           onSelectionChange={handleSelectionChange}
+          selectedTaskIds={selectedTaskIds}
+          onTaskSelect={handleTaskSelect}
+          returnUrl={returnUrl}
         />
       </div>
 
