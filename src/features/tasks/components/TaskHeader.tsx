@@ -134,11 +134,17 @@ export const TaskHeader = ({
 
     const confirmed = await confirm();
     if (confirmed) {
-      bulkDeleteTasks.mutate({
-        workspaceId,
-        ids: selectedTasks.map((t) => t.id),
-      });
-      onDeselectAll?.();
+      bulkDeleteTasks.mutate(
+        {
+          workspaceId,
+          ids: selectedTasks.map((t) => t.id),
+        },
+        {
+          onSuccess: () => {
+            onDeselectAll?.();
+          },
+        },
+      );
     }
   };
 

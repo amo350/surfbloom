@@ -71,6 +71,18 @@ export const TasksPageClient = ({
     filters.watching
   );
 
+  const currentParams = new URLSearchParams();
+  if (filters.columnId) currentParams.set("s", filters.columnId);
+  if (filters.categoryId) currentParams.set("c", filters.categoryId);
+  if (filters.assigneeId) currentParams.set("a", filters.assigneeId);
+  if (filters.creatorId) currentParams.set("cr", filters.creatorId);
+  if (filters.overdue) currentParams.set("to", "true");
+  if (filters.watching) currentParams.set("w", "true");
+
+  const returnUrl = currentParams.toString()
+    ? `${basePath}?${currentParams.toString()}`
+    : basePath;
+
   // Get tasks using optimistic filters (refetches immediately on filter change)
   const { data: tasks } = useGetTasks({
     workspaceId,
@@ -94,6 +106,12 @@ export const TasksPageClient = ({
     }
   }, [initialTaskId, taskModal, basePath]);
 
+  // Clear selection when filters or view change (so selected tasks match visible list)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clear selection when filters or view change; effect doesn't read them
+  useEffect(() => {
+    setSelectedTasks([]);
+  }, [filters, view]);
+
   // Handle browser back/forward
   useEffect(() => {
     const handlePopState = () => {
@@ -107,7 +125,6 @@ export const TasksPageClient = ({
         taskModal.close();
       }
     };
-
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [taskModal]);
@@ -227,6 +244,7 @@ export const TasksPageClient = ({
           view={view}
           onTaskClick={handleOpenTask}
           onSelectionChange={handleSelectionChange}
+          returnUrl={returnUrl}
         />
       </div>
 

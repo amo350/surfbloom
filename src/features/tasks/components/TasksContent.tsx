@@ -19,6 +19,7 @@ type TasksContentProps = {
   view: TaskView;
   onTaskClick?: (taskId: string) => void;
   onSelectionChange?: (selectedTasks: TaskRow[]) => void;
+  returnUrl?: string;
 };
 
 const DEFAULT_COLUMNS = [
@@ -36,6 +37,7 @@ export const TasksContent = ({
   view,
   onTaskClick,
   onSelectionChange,
+  returnUrl,
 }: TasksContentProps) => {
   const { data: tasks, isLoading: tasksLoading } = useGetTasks({
     workspaceId,
@@ -86,6 +88,7 @@ export const TasksContent = ({
         workspaceId={workspaceId}
         onTaskClick={handleTaskClick}
         onSelectionChange={handleSelectionChange}
+        returnUrl={returnUrl}
       />
     );
   }

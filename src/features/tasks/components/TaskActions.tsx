@@ -16,12 +16,14 @@ type TaskActionsProps = {
   taskId: string;
   workspaceId: string;
   onOpenTask: (taskId: string) => void;
+  returnUrl?: string; // URL to restore after closing modal
 };
 
 export const TaskActions = ({
   taskId,
   workspaceId,
   onOpenTask,
+  returnUrl,
 }: TaskActionsProps) => {
   const deleteTask = useDeleteTask();
   const taskModal = useTaskModal();
@@ -37,9 +39,10 @@ export const TaskActions = ({
       // Close modal if this task is currently open
       if (taskModal.taskId === taskId) {
         taskModal.close();
-        // Clear URL
-        const basePath = window.location.pathname.replace(/\/[^/]+$/, "");
-        window.history.replaceState(null, "", basePath);
+        // Restore previous URL with filters preserved
+        if (returnUrl) {
+          window.history.replaceState(null, "", returnUrl);
+        }
       }
       deleteTask.mutate({ id: taskId, workspaceId });
     }
