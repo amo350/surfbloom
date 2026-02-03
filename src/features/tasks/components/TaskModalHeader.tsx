@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { PencilIcon, SquareIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
@@ -24,15 +23,17 @@ export const TaskModalHeader = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
 
-  // Keep editedTitle in sync when title prop changes
+  // Keep editedTitle in sync when title prop changes (treat "Untitled task" as empty)
+  const normalizedTitle =
+    title?.trim() === "Untitled task" || !title?.trim() ? "" : title;
   useEffect(() => {
-    setEditedTitle(title);
-  }, [title]);
+    setEditedTitle(normalizedTitle);
+  }, [normalizedTitle]);
 
   const creatorTag = creatorEmail.split("@")[0].slice(0, 3).toUpperCase();
 
   const handleSaveTitle = () => {
-    if (editedTitle.trim() && editedTitle !== title) {
+    if (editedTitle.trim() !== normalizedTitle.trim()) {
       onTitleChange(editedTitle.trim());
     }
     setIsEditing(false);
@@ -41,10 +42,14 @@ export const TaskModalHeader = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSaveTitle();
     if (e.key === "Escape") {
-      setEditedTitle(title);
+      setEditedTitle(normalizedTitle);
       setIsEditing(false);
     }
   };
+
+  const startEditing = () => setIsEditing(true);
+
+  const displayTitle = editedTitle.trim() || null;
 
   return (
     <div className="flex items-center gap-3">
@@ -69,21 +74,25 @@ export const TaskModalHeader = ({
             onChange={(e) => setEditedTitle(e.target.value)}
             onBlur={handleSaveTitle}
             onKeyDown={handleKeyDown}
+            placeholder=""
             className="h-8 text-lg font-semibold w-64"
             autoFocus
           />
         ) : (
-          <>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-6"
-              onClick={() => setIsEditing(true)}
-            >
-              <PencilIcon className="size-3" />
-            </Button>
-          </>
+          <button
+            type="button"
+            onClick={startEditing}
+            className="flex items-center gap-2 text-left rounded-sm hover:bg-muted/50 -m-1 p-1 min-w-0"
+          >
+            <h2 className="text-lg font-semibold truncate min-w-0">
+              {displayTitle ?? (
+                <span className="italic text-muted-foreground">
+                  Enter title
+                </span>
+              )}
+            </h2>
+            <PencilIcon className="size-3 shrink-0 text-muted-foreground" />
+          </button>
         )}
       </div>
     </div>

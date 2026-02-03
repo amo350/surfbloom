@@ -1,14 +1,34 @@
 "use client";
 
-import { PlusIcon, FilterIcon } from "lucide-react";
+import {
+  PlusIcon,
+  FilterIcon,
+  ChevronDownIcon,
+  Trash2Icon,
+  CheckSquareIcon,
+  SquareIcon,
+} from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppHeader } from "@/components/AppHeader";
 import { TaskViewSwitcher } from "@/features/tasks/components/TaskViewSwitcher";
-import { useCreateTask } from "@/features/tasks/hooks/use-tasks";
+import {
+  useCreateTask,
+  useBulkDeleteTasks,
+} from "@/features/tasks/hooks/use-tasks";
 import { useGetTaskColumns } from "@/features/tasks/hooks/use-task-columns";
 import { useTRPC } from "@/trpc/client";
 import { authClient } from "@/lib/auth-client";
+import { useConfirm } from "@/hooks/use-confirm";
+import { TaskRow } from "./TaskTableColumns";
 
 const generateId = () => {
   const timestamp = Date.now().toString(36);
@@ -25,6 +45,9 @@ type TaskHeaderProps = {
   showFilters: boolean;
   onToggleFilters: () => void;
   onOpenTask: (taskId: string) => void;
+  selectedTasks: TaskRow[];
+  onSelectAll?: () => void;
+  onDeselectAll?: () => void;
 };
 
 export const TaskHeader = ({
@@ -34,12 +57,22 @@ export const TaskHeader = ({
   showFilters,
   onToggleFilters,
   onOpenTask,
+  selectedTasks,
+  onSelectAll,
+  onDeselectAll,
 }: TaskHeaderProps) => {
+  const searchParams = useSearchParams();
   const createTask = useCreateTask();
+  const bulkDeleteTasks = useBulkDeleteTasks();
   const { data: columns } = useGetTaskColumns(workspaceId);
   const queryClient = useQueryClient();
   const trpc = useTRPC();
   const { data: session } = authClient.useSession();
+
+  const [ConfirmDialog, confirm] = useConfirm(
+    "Delete Tasks",
+    `Are you sure you want to delete ${selectedTasks.length} task${selectedTasks.length !== 1 ? "s" : ""}? This action cannot be undone.`,
+  );
 
   const defaultColumn =
     columns?.find((col) => col.position === 3) ?? columns?.[0];
@@ -49,7 +82,13 @@ export const TaskHeader = ({
 
     const newTaskId = generateId();
 
-    // Seed cache with optimistic data
+    const basePath = `/workspaces/${workspaceId}/tasks`;
+    const params = searchParams.toString();
+    const newUrl = params
+      ? `${basePath}/${newTaskId}?${params}`
+      : `${basePath}/${newTaskId}`;
+    window.history.pushState(null, "", newUrl);
+
     const optimisticTask = {
       id: newTaskId,
       workspaceId,
@@ -79,10 +118,8 @@ export const TaskHeader = ({
       optimisticTask,
     );
 
-    // Open modal via parent (handles URL and stores previous URL)
     onOpenTask(newTaskId);
 
-    // Create task in background
     createTask.mutate({
       id: newTaskId,
       workspaceId,
@@ -92,23 +129,84 @@ export const TaskHeader = ({
     });
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedTasks.length === 0) return;
+
+    const confirmed = await confirm();
+    if (confirmed) {
+      bulkDeleteTasks.mutate({
+        workspaceId,
+        ids: selectedTasks.map((t) => t.id),
+      });
+      onDeselectAll?.();
+    }
+  };
+
+  const selectedCount = selectedTasks.length;
+
   return (
-    <AppHeader>
-      <Button size="sm" onClick={handleCreateTask} disabled={!defaultColumn}>
-        <PlusIcon className="size-4" />
-        New Task
-      </Button>
-      <div className="ml-auto flex items-center gap-2">
-        <Button
-          variant={showFilters ? "secondary" : "outline"}
-          size="sm"
-          onClick={onToggleFilters}
-        >
-          <FilterIcon className="size-4" />
-          Filters
-        </Button>
-        <TaskViewSwitcher value={view} onChange={onViewChange} />
-      </div>
-    </AppHeader>
+    <>
+      <ConfirmDialog />
+      <AppHeader>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={handleCreateTask}
+            disabled={!defaultColumn}
+          >
+            <PlusIcon className="size-4" />
+            New Task
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                Actions
+                {selectedCount > 0 && (
+                  <span className="ml-1.5 rounded-full bg-primary text-primary-foreground px-1.5 py-0.5 text-xs">
+                    {selectedCount}
+                  </span>
+                )}
+                <ChevronDownIcon className="ml-1 size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem onClick={onSelectAll}>
+                <CheckSquareIcon className="size-4 mr-2" />
+                Select All
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onDeselectAll}
+                disabled={selectedCount === 0}
+              >
+                <SquareIcon className="size-4 mr-2" />
+                Deselect All
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleBulkDelete}
+                disabled={selectedCount === 0 || bulkDeleteTasks.isPending}
+                className="text-red-600 focus:text-red-600"
+              >
+                <Trash2Icon className="size-4 mr-2" />
+                Delete ({selectedCount})
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant={showFilters ? "secondary" : "outline"}
+            size="sm"
+            onClick={onToggleFilters}
+          >
+            <FilterIcon className="size-4" />
+            Filters
+          </Button>
+          <TaskViewSwitcher value={view} onChange={onViewChange} />
+        </div>
+      </AppHeader>
+    </>
   );
 };

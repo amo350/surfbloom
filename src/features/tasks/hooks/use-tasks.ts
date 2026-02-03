@@ -9,7 +9,10 @@ export const useGetTasks = (input: {
   search?: string;
 }) => {
   const trpc = useTRPC();
-  return useQuery(trpc.tasks.getMany.queryOptions(input));
+  return useQuery({
+    ...trpc.tasks.getMany.queryOptions(input),
+    placeholderData: (previousData) => previousData,
+  });
 };
 
 export const useGetTask = (id: string, workspaceId: string) => {
@@ -27,7 +30,6 @@ export const useCreateTask = () => {
   return useMutation(
     trpc.tasks.create.mutationOptions({
       onSuccess: () => {
-        // Silent — no toast, task already visible via optimistic update
         queryClient.invalidateQueries(trpc.tasks.getMany.queryFilter());
       },
       onError: (error) => {
@@ -44,7 +46,6 @@ export const useUpdateTask = () => {
   return useMutation(
     trpc.tasks.update.mutationOptions({
       onSuccess: () => {
-        // Silent updates
         queryClient.invalidateQueries(trpc.tasks.getMany.queryFilter());
         queryClient.invalidateQueries(trpc.tasks.getOne.queryFilter());
       },
@@ -64,6 +65,26 @@ export const useDeleteTask = () => {
       onSuccess: () => {
         toast.success("Task deleted");
         queryClient.invalidateQueries(trpc.tasks.getMany.queryFilter());
+        queryClient.invalidateQueries(trpc.tasks.getOne.queryFilter());
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    }),
+  );
+};
+
+export const useBulkDeleteTasks = () => {
+  const queryClient = useQueryClient();
+  const trpc = useTRPC();
+
+  return useMutation(
+    trpc.tasks.bulkRemove.mutationOptions({
+      onSuccess: (_, variables) => {
+        const count = variables.ids.length;
+        toast.success(`${count} task${count !== 1 ? "s" : ""} deleted`);
+        queryClient.invalidateQueries(trpc.tasks.getMany.queryFilter());
+        queryClient.invalidateQueries(trpc.tasks.getOne.queryFilter());
       },
       onError: (error) => {
         toast.error(error.message);
