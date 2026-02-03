@@ -7,12 +7,18 @@ import {
   useCreateTaskColumn,
 } from "../hooks/use-task-columns";
 import { KanbanSkeleton } from "./KanbanSkeleton";
+import { TaskTable } from "./TaskTable";
+import { TaskRow } from "./TaskTableColumns";
+
+type TaskView = "table" | "kanban" | "calendar";
 
 type TasksContentProps = {
   workspaceId: string;
   columnId?: string | null;
   assigneeId?: string | null;
+  view: TaskView;
   onTaskClick?: (taskId: string) => void;
+  onSelectionChange?: (selectedTasks: TaskRow[]) => void;
 };
 
 const DEFAULT_COLUMNS = [
@@ -27,7 +33,9 @@ export const TasksContent = ({
   workspaceId,
   columnId,
   assigneeId,
+  view,
   onTaskClick,
+  onSelectionChange,
 }: TasksContentProps) => {
   const { data: tasks, isLoading: tasksLoading } = useGetTasks({
     workspaceId,
@@ -38,10 +46,8 @@ export const TasksContent = ({
     useGetTaskColumns(workspaceId);
   const createColumn = useCreateTaskColumn();
 
-  // Track if we've already attempted to seed columns
   const hasSeededRef = useRef(false);
 
-  // Auto-create default columns for workspaces that don't have any
   useEffect(() => {
     if (
       !columnsLoading &&
@@ -64,15 +70,50 @@ export const TasksContent = ({
     return <KanbanSkeleton />;
   }
 
-  const taskCount = tasks?.length ?? 0;
-  const columnCount = columns?.length ?? 0;
+  const handleTaskClick = (taskId: string) => {
+    onTaskClick?.(taskId);
+  };
 
-  return (
-    <div className="h-full">
-      <div className="border rounded-lg p-8 text-center text-muted-foreground">
-        Loaded {taskCount} task{taskCount !== 1 ? "s" : ""} across {columnCount}{" "}
-        column{columnCount !== 1 ? "s" : ""}
+  const handleSelectionChange = (selectedTasks: TaskRow[]) => {
+    onSelectionChange?.(selectedTasks);
+  };
+
+  // TABLE VIEW
+  if (view === "table") {
+    return (
+      <TaskTable
+        tasks={(tasks as TaskRow[]) ?? []}
+        workspaceId={workspaceId}
+        onTaskClick={handleTaskClick}
+        onSelectionChange={handleSelectionChange}
+      />
+    );
+  }
+
+  // KANBAN VIEW
+  if (view === "kanban") {
+    const taskCount = tasks?.length ?? 0;
+    const columnCount = columns?.length ?? 0;
+    return (
+      <div className="h-full">
+        <div className="border rounded-lg p-8 text-center text-muted-foreground">
+          Kanban: {taskCount} task{taskCount !== 1 ? "s" : ""} across{" "}
+          {columnCount} column{columnCount !== 1 ? "s" : ""}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // CALENDAR VIEW
+  if (view === "calendar") {
+    return (
+      <div className="h-full">
+        <div className="border rounded-lg p-8 text-center text-muted-foreground">
+          Calendar view coming soon...
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 };

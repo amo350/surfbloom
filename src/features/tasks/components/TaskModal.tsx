@@ -58,7 +58,11 @@ export const TaskModal = ({
             <div className="flex items-center gap-5 min-w-0 px-8 py-5 border-b bg-background shrink-0 min-h-[72px]">
               <TaskModalHeader
                 taskNumber={taskNumber}
-                title={task?.name ?? "Untitled task"}
+                title={
+                  task?.name && task.name !== "Untitled task"
+                    ? task.name
+                    : ""
+                }
                 statusColor={statusColor}
                 creatorEmail={creatorEmail}
                 onTitleChange={handleTitleChange}

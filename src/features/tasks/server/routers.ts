@@ -287,4 +287,47 @@ export const tasksRouter = createTRPCRouter({
 
       return { success: true };
     }),
+  bulkRemove: protectedProcedure
+    .input(
+      z.object({
+        workspaceId: z.string(),
+        ids: z.array(z.string()).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verify membership
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
+      // Only ADMIN or OWNER can delete
+      if (membership.role === "MEMBER") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have permission to delete tasks",
+        });
+      }
+
+      // Delete all tasks that belong to this workspace
+      await prisma.task.deleteMany({
+        where: {
+          id: { in: input.ids },
+          workspaceId: input.workspaceId,
+        },
+      });
+
+      return { success: true, count: input.ids.length };
+    }),
 });
