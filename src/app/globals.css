@@ -28,23 +28,21 @@
   --chart-3: oklch(0.55 0.22 263);
   --chart-4: oklch(0.49 0.22 264);
   --chart-5: oklch(0.42 0.18 266);
-  --sidebar: #FAF6F1;
+  --sidebar: #faf6f1;
   --sidebar-foreground: oklch(0.18 0.015 250);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.18 0.015 250);
-  --sidebar-accent: #F5F0E8;
+  --sidebar-accent: #f5f0e8;
   --sidebar-accent-foreground: oklch(0.18 0.015 250);
-  --sidebar-border: #F0EAE0;
+  --sidebar-border: #f0eae0;
   --sidebar-ring: oklch(0.708 0 0);
-  --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   --radius: 0.625rem;
   --shadow-x: 0;
   --shadow-y: 1px;
@@ -54,15 +52,15 @@
   --shadow-color: oklch(0 0 0);
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 1px 2px -1px hsl(0 0% 0% / 0.1);
   --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 2px 4px -1px hsl(0 0% 0% / 0.1);
+  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 4px 6px -1px hsl(0 0% 0% / 0.1);
+  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 8px 10px -1px hsl(0 0% 0% / 0.1);
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
@@ -101,15 +99,13 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.275 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-  --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   --radius: 0.625rem;
   --shadow-x: 0;
   --shadow-y: 1px;
@@ -119,15 +115,15 @@
   --shadow-color: oklch(0 0 0);
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 1px 2px -1px hsl(0 0% 0% / 0.1);
   --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 2px 4px -1px hsl(0 0% 0% / 0.1);
+  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 4px 6px -1px hsl(0 0% 0% / 0.1);
+  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 8px 10px -1px hsl(0 0% 0% / 0.1);
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
 }
 
@@ -190,9 +186,223 @@
   }
   html {
     @apply text-foreground;
-    background-color: #F7F8FA;
+    background-color: #f7f8fa;
   }
   body {
     @apply text-foreground;
   }
+}
+
+/* ========================================
+   TASK CALENDAR - ENCLOSED GRID STYLE
+   ======================================== */
+
+.task-calendar {
+  font-family: inherit;
+  height: 100%;
+  --calendar-header-height: 52px;
+}
+
+/* Weekday header row - sits above the grid */
+.task-calendar .rbc-header {
+  padding: 12px 8px;
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: hsl(var(--background));
+  border: none !important;
+}
+
+.task-calendar .rbc-row.rbc-month-header {
+  border: none !important;
+  margin-bottom: 0;
+  height: var(--calendar-header-height);
+  position: relative;
+  z-index: 2;
+  background: hsl(var(--background));
+  border-bottom: 1px solid #d1d5db;
+}
+
+/* ========================================
+   MONTH VIEW - ENCLOSED BOX + GRID LINES
+   (Hard fallback: explicit grid with strong specificity)
+   ======================================== */
+.task-calendar .rbc-month-view {
+  position: relative;
+  background: hsl(var(--background));
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+/* Draw the grid enclosure starting below the weekday header */
+.task-calendar .rbc-month-view::after {
+  content: "";
+  position: absolute;
+  top: var(--calendar-header-height);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 0 0 0.5rem 0.5rem;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Horizontal lines between rows (single) */
+.task-calendar .rbc-month-row + .rbc-month-row {
+  border-top: 1px solid #d1d5db !important;
+}
+
+
+
+/* Vertical lines: apply to actual row background children (wrapper-safe) */
+.task-calendar .rbc-row-bg {
+  display: flex;
+}
+
+.task-calendar .rbc-row-bg > * {
+  flex: 1 0 0%;
+  border-right: 1px solid #d1d5db !important;
+}
+
+.task-calendar .rbc-row-bg > *:last-child {
+  border-right: none !important;
+}
+
+/* Fallback if .rbc-day-bg are direct children */
+.task-calendar .rbc-row-bg .rbc-day-bg {
+  border-right: 1px solid #d1d5db !important;
+}
+
+.task-calendar .rbc-row-bg .rbc-day-bg:last-child {
+  border-right: none !important;
+}
+
+.task-calendar .rbc-day-bg {
+  background: hsl(var(--background));
+}
+
+/* Day cell backgrounds */
+.task-calendar .rbc-off-range-bg {
+  background: hsl(var(--muted) / 0.2) !important;
+}
+
+.task-calendar .rbc-today {
+  background: hsl(var(--primary) / 0.05) !important;
+}
+
+/* ========================================
+   DATE NUMBERS
+   ======================================== */
+.task-calendar .rbc-date-cell {
+  padding: 6px 8px;
+  text-align: right;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.task-calendar .rbc-date-cell.rbc-now {
+  font-weight: 600;
+  color: hsl(var(--primary));
+}
+
+.task-calendar .rbc-date-cell.rbc-off-range {
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ========================================
+   ROW CONTENT & EVENTS
+   ======================================== */
+.task-calendar .rbc-row-content {
+  z-index: 1;
+}
+
+.task-calendar .rbc-row-segment {
+  padding: 1px 2px;
+}
+
+.task-calendar .rbc-event {
+  background: transparent !important;
+  border: none !important;
+  padding: 0;
+  margin: 1px 0;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.task-calendar .rbc-event:focus {
+  outline: none !important;
+}
+
+.task-calendar .rbc-event-content {
+  overflow: visible;
+}
+
+.task-calendar .rbc-selected {
+  background: transparent !important;
+}
+
+.task-calendar .rbc-show-more {
+  font-size: 0.7rem;
+  color: hsl(var(--primary));
+  font-weight: 500;
+  padding: 2px 4px;
+  margin: 0 2px;
+}
+
+/* ========================================
+   DRAG AND DROP
+   ======================================== */
+.task-calendar .rbc-addons-dnd-over {
+  background: hsl(var(--primary) / 0.1) !important;
+}
+
+/* ========================================
+   WEEK/DAY VIEW
+   ======================================== */
+.task-calendar .rbc-time-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.task-calendar .rbc-time-header {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.task-calendar .rbc-time-header-content {
+  border-left: 1px solid hsl(var(--border));
+}
+
+.task-calendar .rbc-time-content {
+  border-top: none;
+}
+
+.task-calendar .rbc-time-content > * + * > * {
+  border-left: 1px solid hsl(var(--border));
+}
+
+.task-calendar .rbc-timeslot-group {
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  min-height: 60px;
+}
+
+.task-calendar .rbc-time-gutter {
+  font-size: 0.7rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.task-calendar .rbc-time-slot {
+  border-top: 1px solid hsl(var(--border) / 0.3);
+}
+
+.task-calendar .rbc-current-time-indicator {
+  background: hsl(var(--primary));
+  height: 2px;
+}
+
+.task-calendar .rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid hsl(var(--border) / 0.2);
 }

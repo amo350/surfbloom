@@ -179,7 +179,7 @@ export const KanbanBoard = ({
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       {/* Container that fills available space, no overflow on parent */}
-      <div className="flex gap-.5 h-full w-full">
+      <div className="flex gap-0.5 h-full w-full">
         {columns
           .sort((a, b) => a.position - b.position)
           .map((column) => {

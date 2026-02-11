@@ -33,8 +33,10 @@ export const KanbanCard = ({
 }: KanbanCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Get initials from creator name (first 3 letters of email prefix or name)
-  const creatorInitials = creatorName.split("@")[0].slice(0, 3).toUpperCase();
+  // Get initials from creator name (first 3 letters of email prefix or name); safe fallback when empty
+  const creatorInitials = creatorName?.trim()
+    ? creatorName.split("@")[0].slice(0, 3).toUpperCase()
+    : "???";
 
   return (
     <div
