@@ -193,13 +193,17 @@
   }
 }
 
-/* Task Calendar Styles - Modern clean appearance */
+/* ========================================
+   TASK CALENDAR - ENCLOSED GRID STYLE
+   ======================================== */
+
 .task-calendar {
   font-family: inherit;
   height: 100%;
+  --calendar-header-height: 52px;
 }
 
-/* Header row - vertical lines between day names */
+/* Weekday header row - sits above the grid */
 .task-calendar .rbc-header {
   padding: 12px 8px;
   font-weight: 500;
@@ -209,65 +213,94 @@
   letter-spacing: 0.05em;
   background: hsl(var(--background));
   border: none !important;
-  border-right: 1px solid hsl(var(--border)) !important;
-}
-
-.task-calendar .rbc-header:last-child {
-  border-right: none !important;
 }
 
 .task-calendar .rbc-row.rbc-month-header {
-  border-bottom: none;
-  margin-bottom: 8px;
+  border: none !important;
+  margin-bottom: 0;
+  height: var(--calendar-header-height);
+  position: relative;
+  z-index: 2;
+  background: hsl(var(--background));
+  border-bottom: 1px solid #d1d5db;
 }
 
-/* Month view container (grid enclosure below weekday header) */
+/* ========================================
+   MONTH VIEW - ENCLOSED BOX + GRID LINES
+   (Hard fallback: explicit grid with strong specificity)
+   ======================================== */
 .task-calendar .rbc-month-view {
-  border: 1px solid hsl(var(--border));
-  border-top: none;
+  position: relative;
+  background: hsl(var(--background));
   border-radius: 0.5rem;
   overflow: hidden;
-  background: hsl(var(--background));
 }
 
-/* Month row horizontal lines (single) */
+/* Draw the grid enclosure starting below the weekday header */
+.task-calendar .rbc-month-view::after {
+  content: "";
+  position: absolute;
+  top: var(--calendar-header-height);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 0 0 0.5rem 0.5rem;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Horizontal lines between rows (single) */
 .task-calendar .rbc-month-row + .rbc-month-row {
-  border-top: 1px solid hsl(var(--border));
+  border-top: 1px solid #d1d5db !important;
 }
 
-/* Day cells - background + full grid lines */
+
+
+/* Vertical lines: apply to actual row background children (wrapper-safe) */
+.task-calendar .rbc-row-bg {
+  display: flex;
+}
+
+.task-calendar .rbc-row-bg > * {
+  flex: 1 0 0%;
+  border-right: 1px solid #d1d5db !important;
+}
+
+.task-calendar .rbc-row-bg > *:last-child {
+  border-right: none !important;
+}
+
+/* Fallback if .rbc-day-bg are direct children */
+.task-calendar .rbc-row-bg .rbc-day-bg {
+  border-right: 1px solid #d1d5db !important;
+}
+
+.task-calendar .rbc-row-bg .rbc-day-bg:last-child {
+  border-right: none !important;
+}
+
 .task-calendar .rbc-day-bg {
   background: hsl(var(--background));
-  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.6);
 }
 
-.task-calendar .rbc-day-bg.rbc-off-range-bg {
-  background: hsl(var(--muted) / 0.2);
-}
-
-.task-calendar .rbc-day-bg.rbc-today {
-  background: hsl(var(--primary) / 0.05);
-}
-
+/* Day cell backgrounds */
 .task-calendar .rbc-off-range-bg {
-  background: hsl(var(--muted) / 0.2);
+  background: hsl(var(--muted) / 0.2) !important;
 }
 
 .task-calendar .rbc-today {
-  background: hsl(var(--primary) / 0.05);
+  background: hsl(var(--primary) / 0.05) !important;
 }
 
-/* Date numbers - vertical lines between day columns */
+/* ========================================
+   DATE NUMBERS
+   ======================================== */
 .task-calendar .rbc-date-cell {
   padding: 6px 8px;
   text-align: right;
   font-size: 0.875rem;
   font-weight: 400;
-  border-right: 1px solid hsl(var(--border)) !important;
-}
-
-.task-calendar .rbc-date-cell:last-child {
-  border-right: none !important;
 }
 
 .task-calendar .rbc-date-cell.rbc-now {
@@ -279,7 +312,9 @@
   color: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Row content */
+/* ========================================
+   ROW CONTENT & EVENTS
+   ======================================== */
 .task-calendar .rbc-row-content {
   z-index: 1;
 }
@@ -288,7 +323,6 @@
   padding: 1px 2px;
 }
 
-/* Events */
 .task-calendar .rbc-event {
   background: transparent !important;
   border: none !important;
@@ -318,29 +352,16 @@
   margin: 0 2px;
 }
 
-/* Drag and drop styles */
-.task-calendar .rbc-addons-dnd-row-body {
-  position: relative;
-}
-
-.task-calendar .rbc-addons-dnd-drag-row {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-}
-
+/* ========================================
+   DRAG AND DROP
+   ======================================== */
 .task-calendar .rbc-addons-dnd-over {
   background: hsl(var(--primary) / 0.1) !important;
 }
 
-.task-calendar .rbc-addons-dnd-drag-preview {
-  opacity: 0.8;
-  z-index: 100;
-}
-
-/* Week/Day view styles */
+/* ========================================
+   WEEK/DAY VIEW
+   ======================================== */
 .task-calendar .rbc-time-view {
   border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
@@ -384,13 +405,4 @@
 
 .task-calendar .rbc-day-slot .rbc-time-slot {
   border-top: 1px solid hsl(var(--border) / 0.2);
-}
-
-/* Ensure allDay events don't break layout */
-.task-calendar .rbc-allday-cell {
-  display: none;
-}
-
-.task-calendar .rbc-time-header-content .rbc-allday-cell {
-  display: none;
 }

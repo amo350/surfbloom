@@ -1,7 +1,6 @@
 "use client";
 
-import { Draggable, Droppable } from "@hello-pangea/dnd";
-import { SquareIcon, GripVerticalIcon } from "lucide-react";
+import { SquareIcon } from "lucide-react";
 
 type Task = {
   id: string;
@@ -22,11 +21,15 @@ type Task = {
 type CalendarTaskSidebarProps = {
   tasks: Task[];
   onTaskClick: (taskId: string) => void;
+  onDragStart: (task: Task) => void;
+  onDragEnd: () => void;
 };
 
 export const CalendarTaskSidebar = ({
   tasks,
   onTaskClick,
+  onDragStart,
+  onDragEnd,
 }: CalendarTaskSidebarProps) => {
   // Show all tasks, prioritize those without due dates
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -47,82 +50,59 @@ export const CalendarTaskSidebar = ({
         </p>
       </div>
 
-      <Droppable droppableId="task-sidebar" isDropDisabled>
-        {(provided) => (
+      <div className="flex-1 overflow-y-auto p-2">
+        {sortedTasks.map((task) => (
           <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            className="flex-1 overflow-y-auto p-2"
+            key={task.id}
+            draggable
+            onDragStart={() => onDragStart(task)}
+            onDragEnd={onDragEnd}
+            className="mb-1.5"
           >
-            {sortedTasks.map((task, index) => (
-              <Draggable key={task.id} draggableId={task.id} index={index}>
-                {(provided, snapshot) => (
+            <div
+              className="bg-card border rounded p-2 cursor-grab active:cursor-grabbing hover:bg-muted/50 flex items-start gap-2"
+              onClick={() => onTaskClick(task.id)}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
                   <div
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    className={`mb-1.5 ${snapshot.isDragging ? "opacity-50" : ""}`}
+                    className="size-3 rounded-sm flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: task.column.color }}
                   >
-                    <div
-                      className="bg-card border rounded p-2 cursor-pointer hover:bg-muted/50 flex items-start gap-2"
-                      onClick={() => onTaskClick(task.id)}
-                    >
-                      <div
-                        {...provided.dragHandleProps}
-                        className="mt-0.5 cursor-grab active:cursor-grabbing"
-                      >
-                        <GripVerticalIcon className="size-3 text-muted-foreground" />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <div
-                            className="size-3 rounded-sm flex items-center justify-center shrink-0"
-                            style={{ backgroundColor: task.column.color }}
-                          >
-                            <SquareIcon className="size-2 text-white" />
-                          </div>
-                          <span className="text-xs text-muted-foreground truncate">
-                            {task.column.name}
-                          </span>
-                        </div>
-
-                        <p className="text-sm font-medium line-clamp-2">
-                          {task.name || "Untitled"}
-                        </p>
-
-                        {task.dueDate && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(task.dueDate).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                              },
-                            )}
-                          </p>
-                        )}
-
-                        {!task.dueDate && (
-                          <p className="text-xs text-orange-500 mt-1">
-                            No due date
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                    <SquareIcon className="size-2 text-white" />
                   </div>
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
+                  <span className="text-xs text-muted-foreground truncate">
+                    {task.column.name}
+                  </span>
+                </div>
 
-            {tasks.length === 0 && (
-              <div className="text-center text-sm text-muted-foreground py-8">
-                No tasks yet
+                <p className="text-sm font-medium line-clamp-2">
+                  {task.name || "Untitled"}
+                </p>
+
+                {task.dueDate && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(task.dueDate).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
+                )}
+
+                {!task.dueDate && (
+                  <p className="text-xs text-orange-500 mt-1">No due date</p>
+                )}
               </div>
-            )}
+            </div>
+          </div>
+        ))}
+
+        {tasks.length === 0 && (
+          <div className="text-center text-sm text-muted-foreground py-8">
+            No tasks yet
           </div>
         )}
-      </Droppable>
+      </div>
     </div>
   );
 };

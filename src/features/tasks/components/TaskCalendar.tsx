@@ -87,19 +87,25 @@ export const TaskCalendar = ({
 }: TaskCalendarProps) => {
   const [date, setDate] = useState(() => new Date());
   const [view, setView] = useState<CalendarView>("month");
+  const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const updateTask = useUpdateTask();
 
   // Convert tasks with due dates to calendar events
   const events: CalendarEvent[] = tasks
     .filter((task) => task.dueDate)
-    .map((task) => ({
-      id: task.id,
-      title: task.name,
-      start: new Date(task.dueDate!),
-      end: new Date(task.dueDate!),
-      statusColor: task.column.color,
-      assigneeName: task.assignee?.name,
-    }));
+    .map((task) => {
+      const start = new Date(task.dueDate!);
+      const end = new Date(task.dueDate!);
+      end.setHours(end.getHours() + 1);
+      return {
+        id: task.id,
+        title: task.name,
+        start,
+        end,
+        statusColor: task.column.color,
+        assigneeName: task.assignee?.name,
+      };
+    });
 
   const handleNavigate = useCallback(
     (action: "PREV" | "NEXT" | "TODAY") => {
@@ -143,10 +149,25 @@ export const TaskCalendar = ({
     },
     [updateTask, workspaceId],
   );
+  const handleDropFromOutside = useCallback(
+    ({ start }: { start: Date | string }) => {
+      if (!draggedTask) return;
 
-  // Handle drag from sidebar (sidebar-to-calendar would need drop-coordinates → date mapping)
-  const handleDragEnd = useCallback((_result: DropResult) => {
-    // No calendar droppables without dateCellWrapper; implement coordinate-based drop if needed
+      const nextDate = start instanceof Date ? start : new Date(start);
+
+      updateTask.mutate({
+        id: draggedTask.id,
+        workspaceId,
+        dueDate: nextDate,
+      });
+
+      setDraggedTask(null);
+    },
+    [draggedTask, updateTask, workspaceId],
+  );
+
+  const handleDragOver = useCallback((dragEvent: React.DragEvent) => {
+    dragEvent.preventDefault();
   }, []);
 
   const components: Components<CalendarEvent> = {
@@ -161,43 +182,64 @@ export const TaskCalendar = ({
   };
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="h-full flex flex-col">
-        <CalendarToolbar
-          date={date}
-          view={view}
-          onNavigate={handleNavigate}
-          onViewChange={setView}
-        />
+    <div className="h-full flex flex-col">
+      <CalendarToolbar
+        date={date}
+        view={view}
+        onNavigate={handleNavigate}
+        onViewChange={setView}
+      />
 
-        <div className="flex-1 flex overflow-hidden">
-          {/* Calendar */}
-          <div className="flex-1 overflow-y-auto">
-            <DnDCalendar
-              localizer={localizer}
-              date={date}
-              onNavigate={setDate}
-              view={view as View}
-              onView={(v) => setView(v as CalendarView)}
-              events={events}
-              toolbar={false}
-              showAllEvents
-              className="task-calendar"
-              components={components}
-              onEventDrop={handleEventDrop}
-              resizable={false}
-              selectable
-              formats={{
-                weekdayFormat: (date, culture, localizer) =>
-                  localizer?.format(date, "EEE", culture) ?? "",
-              }}
-            />
-          </div>
-
-          {/* Task Sidebar */}
-          <CalendarTaskSidebar tasks={tasks} onTaskClick={onTaskClick} />
+      <div className="flex-1 flex overflow-hidden">
+        {/* Calendar */}
+        <div className="flex-1 overflow-y-auto">
+          <DnDCalendar
+            localizer={localizer}
+            date={date}
+            onNavigate={setDate}
+            view={view as View}
+            onView={(v) => setView(v as CalendarView)}
+            events={events}
+            toolbar={false}
+            showAllEvents
+            className="task-calendar"
+            components={components}
+            onEventDrop={handleEventDrop}
+            onDropFromOutside={handleDropFromOutside}
+            dragFromOutsideItem={() =>
+              draggedTask
+                ? {
+                    id: draggedTask.id,
+                    title: draggedTask.name,
+                    start: draggedTask.dueDate
+                      ? new Date(draggedTask.dueDate)
+                      : new Date(),
+                    end: draggedTask.dueDate
+                      ? new Date( draggedTask.dueDate)
+                      : new Date(),
+                    statusColor: draggedTask.column.color,
+                    assigneeName: draggedTask.assignee?.name,
+                  }
+                : ({} as CalendarEvent)
+            }
+            onDragOver={handleDragOver}
+            resizable={false}
+            selectable
+            formats={{
+              weekdayFormat: (date, culture, localizer) =>
+                localizer?.format(date, "EEE", culture) ?? "",
+            }}
+          />
         </div>
+
+        {/* Task Sidebar */}
+        <CalendarTaskSidebar
+          tasks={tasks}
+          onTaskClick={onTaskClick}
+          onDragStart={(task) => setDraggedTask(task)}
+          onDragEnd={() => setDraggedTask(null)}
+        />
       </div>
-    </DragDropContext>
+    </div>
   );
 };
