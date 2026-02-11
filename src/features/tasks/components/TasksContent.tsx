@@ -9,6 +9,7 @@ import {
 import { KanbanSkeleton } from "./KanbanSkeleton";
 import { TaskTable } from "./TaskTable";
 import { KanbanBoard } from "./KanbanBoard";
+import { TaskCalendar } from "./TaskCalendar";
 import { TaskRow } from "./TaskTableColumns";
 
 type TaskView = "table" | "kanban" | "calendar";
@@ -120,10 +121,12 @@ export const TasksContent = ({
   // CALENDAR VIEW
   if (view === "calendar") {
     return (
-      <div className="h-full">
-        <div className="border rounded-lg p-8 text-center text-muted-foreground">
-          Calendar view coming soon...
-        </div>
+      <div className="h-full overflow-hidden">
+      <TaskCalendar
+        tasks={tasks ?? []}
+        workspaceId={workspaceId}
+        onTaskClick={handleTaskClick}
+      />
       </div>
     );
   }

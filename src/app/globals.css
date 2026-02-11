@@ -28,23 +28,21 @@
   --chart-3: oklch(0.55 0.22 263);
   --chart-4: oklch(0.49 0.22 264);
   --chart-5: oklch(0.42 0.18 266);
-  --sidebar: #FAF6F1;
+  --sidebar: #faf6f1;
   --sidebar-foreground: oklch(0.18 0.015 250);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.18 0.015 250);
-  --sidebar-accent: #F5F0E8;
+  --sidebar-accent: #f5f0e8;
   --sidebar-accent-foreground: oklch(0.18 0.015 250);
-  --sidebar-border: #F0EAE0;
+  --sidebar-border: #f0eae0;
   --sidebar-ring: oklch(0.708 0 0);
-  --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   --radius: 0.625rem;
   --shadow-x: 0;
   --shadow-y: 1px;
@@ -54,15 +52,15 @@
   --shadow-color: oklch(0 0 0);
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 1px 2px -1px hsl(0 0% 0% / 0.1);
   --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 2px 4px -1px hsl(0 0% 0% / 0.1);
+  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 4px 6px -1px hsl(0 0% 0% / 0.1);
+  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 8px 10px -1px hsl(0 0% 0% / 0.1);
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
@@ -101,15 +99,13 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.275 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-  --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   --radius: 0.625rem;
   --shadow-x: 0;
   --shadow-y: 1px;
@@ -119,15 +115,15 @@
   --shadow-color: oklch(0 0 0);
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 1px 2px -1px hsl(0 0% 0% / 0.1);
   --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 2px 4px -1px hsl(0 0% 0% / 0.1);
+  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 4px 6px -1px hsl(0 0% 0% / 0.1);
+  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 8px 10px -1px hsl(0 0% 0% / 0.1);
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
 }
 
@@ -190,9 +186,211 @@
   }
   html {
     @apply text-foreground;
-    background-color: #F7F8FA;
+    background-color: #f7f8fa;
   }
   body {
     @apply text-foreground;
   }
+}
+
+/* Task Calendar Styles - Modern clean appearance */
+.task-calendar {
+  font-family: inherit;
+  height: 100%;
+}
+
+/* Header row - vertical lines between day names */
+.task-calendar .rbc-header {
+  padding: 12px 8px;
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: hsl(var(--background));
+  border: none !important;
+  border-right: 1px solid hsl(var(--border)) !important;
+}
+
+.task-calendar .rbc-header:last-child {
+  border-right: none !important;
+}
+
+.task-calendar .rbc-row.rbc-month-header {
+  border-bottom: none;
+  margin-bottom: 8px;
+}
+
+/* Month view container (grid enclosure below weekday header) */
+.task-calendar .rbc-month-view {
+  border: 1px solid hsl(var(--border));
+  border-top: none;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: hsl(var(--background));
+}
+
+/* Month row horizontal lines (single) */
+.task-calendar .rbc-month-row + .rbc-month-row {
+  border-top: 1px solid hsl(var(--border));
+}
+
+/* Day cells - background + full grid lines */
+.task-calendar .rbc-day-bg {
+  background: hsl(var(--background));
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.6);
+}
+
+.task-calendar .rbc-day-bg.rbc-off-range-bg {
+  background: hsl(var(--muted) / 0.2);
+}
+
+.task-calendar .rbc-day-bg.rbc-today {
+  background: hsl(var(--primary) / 0.05);
+}
+
+.task-calendar .rbc-off-range-bg {
+  background: hsl(var(--muted) / 0.2);
+}
+
+.task-calendar .rbc-today {
+  background: hsl(var(--primary) / 0.05);
+}
+
+/* Date numbers - vertical lines between day columns */
+.task-calendar .rbc-date-cell {
+  padding: 6px 8px;
+  text-align: right;
+  font-size: 0.875rem;
+  font-weight: 400;
+  border-right: 1px solid hsl(var(--border)) !important;
+}
+
+.task-calendar .rbc-date-cell:last-child {
+  border-right: none !important;
+}
+
+.task-calendar .rbc-date-cell.rbc-now {
+  font-weight: 600;
+  color: hsl(var(--primary));
+}
+
+.task-calendar .rbc-date-cell.rbc-off-range {
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Row content */
+.task-calendar .rbc-row-content {
+  z-index: 1;
+}
+
+.task-calendar .rbc-row-segment {
+  padding: 1px 2px;
+}
+
+/* Events */
+.task-calendar .rbc-event {
+  background: transparent !important;
+  border: none !important;
+  padding: 0;
+  margin: 1px 0;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.task-calendar .rbc-event:focus {
+  outline: none !important;
+}
+
+.task-calendar .rbc-event-content {
+  overflow: visible;
+}
+
+.task-calendar .rbc-selected {
+  background: transparent !important;
+}
+
+.task-calendar .rbc-show-more {
+  font-size: 0.7rem;
+  color: hsl(var(--primary));
+  font-weight: 500;
+  padding: 2px 4px;
+  margin: 0 2px;
+}
+
+/* Drag and drop styles */
+.task-calendar .rbc-addons-dnd-row-body {
+  position: relative;
+}
+
+.task-calendar .rbc-addons-dnd-drag-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+.task-calendar .rbc-addons-dnd-over {
+  background: hsl(var(--primary) / 0.1) !important;
+}
+
+.task-calendar .rbc-addons-dnd-drag-preview {
+  opacity: 0.8;
+  z-index: 100;
+}
+
+/* Week/Day view styles */
+.task-calendar .rbc-time-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.task-calendar .rbc-time-header {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.task-calendar .rbc-time-header-content {
+  border-left: 1px solid hsl(var(--border));
+}
+
+.task-calendar .rbc-time-content {
+  border-top: none;
+}
+
+.task-calendar .rbc-time-content > * + * > * {
+  border-left: 1px solid hsl(var(--border));
+}
+
+.task-calendar .rbc-timeslot-group {
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  min-height: 60px;
+}
+
+.task-calendar .rbc-time-gutter {
+  font-size: 0.7rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.task-calendar .rbc-time-slot {
+  border-top: 1px solid hsl(var(--border) / 0.3);
+}
+
+.task-calendar .rbc-current-time-indicator {
+  background: hsl(var(--primary));
+  height: 2px;
+}
+
+.task-calendar .rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid hsl(var(--border) / 0.2);
+}
+
+/* Ensure allDay events don't break layout */
+.task-calendar .rbc-allday-cell {
+  display: none;
+}
+
+.task-calendar .rbc-time-header-content .rbc-allday-cell {
+  display: none;
 }
