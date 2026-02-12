@@ -2,6 +2,7 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { ReportStatus } from "@/generated/prisma/enums";
 import { sendReportGeneration } from "@/inngest/utils";
 import {
@@ -260,14 +261,12 @@ export const seoReportsRouter = createTRPCRouter({
           // Only clear analysis fields, keep rawData for smart retry
           visibilityScore: null,
           reputationScore: null,
-          visibilityBreakdown: undefined, // Prisma: undefined = don't change
-          reputationBreakdown: undefined,
-          strengths: undefined,
-          weaknesses: undefined,
-          recommendations: undefined,
-          ...(hasRawData
-            ? {} // Smart retry: keep rawData
-            : { rawData: undefined }), // Full retry: clear everything
+          visibilityBreakdown: Prisma.JsonNull,
+          reputationBreakdown: Prisma.JsonNull,
+          strengths: Prisma.JsonNull,
+          weaknesses: Prisma.JsonNull,
+          recommendations: Prisma.JsonNull,
+          ...(hasRawData ? {} : { rawData: Prisma.JsonNull }),
         },
       });
 

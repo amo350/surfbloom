@@ -85,14 +85,17 @@ export default function SeoScorePage() {
   const handleGenerate = async () => {
     if (!query || !selectedWorkspaceId || createReport.isPending) return;
 
-    const result = await createReport.mutateAsync({
-      workspaceId: selectedWorkspaceId,
-      query,
-    });
-
-    router.push(
-      `/index/seo-score/${result.reportId}?ws=${selectedWorkspaceId}`,
-    );
+    try {
+      const result = await createReport.mutateAsync({
+        workspaceId: selectedWorkspaceId,
+        query,
+      });
+      router.push(
+        `/index/seo-score/${result.reportId}?ws=${selectedWorkspaceId}`,
+      );
+    } catch {
+      // Error handled by mutation onError / toast; avoid unhandled rejection
+    }
   };
 
   return (

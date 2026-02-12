@@ -97,21 +97,22 @@ function extractResults(raw: unknown): OutscraperPlace[] {
     } else if (Array.isArray(obj.results)) {
       data = obj.results;
     } else {
-      // Unknown object shape — log and bail
-      console.error(
-        "[outscraper] Unknown response shape:",
-        JSON.stringify(data).slice(0, 500),
-      );
+      // Unknown object shape — log metadata only (no raw payload/PII)
+      const meta =
+        typeof data === "object" && data !== null && !Array.isArray(data)
+          ? `object keys: ${Object.keys(data as object).join(", ") || "(none)"}`
+          : `typeof=${typeof data}, isArray=${Array.isArray(data)}`;
+      console.error("[outscraper] Unknown response shape:", meta);
       return [];
     }
   }
 
   if (!Array.isArray(data)) {
-    console.error(
-      "[outscraper] Expected array, got:",
-      typeof data,
-      JSON.stringify(data).slice(0, 300),
-    );
+    const meta =
+      typeof data === "object" && data !== null
+        ? `object keys: ${Object.keys(data as object).join(", ") || "(none)"}`
+        : `typeof=${typeof data}`;
+    console.error("[outscraper] Expected array, got:", meta);
     return [];
   }
 

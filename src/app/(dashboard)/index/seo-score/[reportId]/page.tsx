@@ -223,8 +223,11 @@ function VerificationBanner({ verification }: { verification: Verification }) {
             The business found may not match your location. Please verify:
           </p>
           <div className="space-y-1">
-            {verification.mismatches.map((m, i) => (
-              <div key={i} className="text-xs">
+            {verification.mismatches.map((m) => (
+              <div
+                key={`${m.field}-${m.outscraper ?? "n/a"}`}
+                className="text-xs"
+              >
                 <span className="font-medium capitalize text-red-700 dark:text-red-300">
                   {m.field}:
                 </span>{" "}
