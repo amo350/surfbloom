@@ -68,8 +68,13 @@ export async function getWorkspaceData(
   let competitorResults: OutscraperPlace[] = [];
 
   if (category && city) {
-    const searchQuery = `${category} ${city}${state ? ` ${state}` : ""}`;
-    competitorResults = await searchPlace(searchQuery, { limit: 10 });
+    try {
+      const searchQuery = `${category} ${city}${state ? ` ${state}` : ""}`;
+      competitorResults = await searchPlace(searchQuery, { limit: 10 });
+    } catch (err) {
+      console.error("[getWorkspaceData] Competitor search failed:", err);
+      competitorResults = [];
+    }
   }
 
   // ---- Upsert reviews into Review table ----

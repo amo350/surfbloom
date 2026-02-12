@@ -38,3 +38,13 @@ CREATE UNIQUE INDEX "review_workspaceId_googleReviewId_key" ON "review"("workspa
 
 -- AddForeignKey
 ALTER TABLE "review" ADD CONSTRAINT "review_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "workspace"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Enforce rating between 1 and 5
+ALTER TABLE "review"
+ADD CONSTRAINT review_rating_check
+CHECK ("rating" >= 1 AND "rating" <= 5);
+
+-- Ensure Google reviews always have a googleReviewId
+ALTER TABLE "review"
+ADD CONSTRAINT review_google_source_requires_id
+CHECK ("source" != 'google' OR "googleReviewId" IS NOT NULL);

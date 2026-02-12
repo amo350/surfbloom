@@ -40,9 +40,11 @@ export const fetchData: ReportStepFn = async (ctx, step) => {
       forceRefresh: ctx.forceRefresh,
     });
 
+    const strippedPlace = stripReviewsFromPlace(data.place);
+
     await prisma.report.update({
       where: { id: ctx.reportId },
-      data: { rawData: stripReviewsFromPlace(data.place) as any },
+      data: { rawData: strippedPlace as any },
     });
 
     console.log(
@@ -50,7 +52,7 @@ export const fetchData: ReportStepFn = async (ctx, step) => {
     );
 
     return {
-      place: stripReviewsFromPlace(data.place),
+      place: strippedPlace,
       competitors: data.competitors,
       fromCache: data.fromCache,
     };

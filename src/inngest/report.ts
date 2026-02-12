@@ -17,7 +17,7 @@ export const generateReport = inngest.createFunction(
     onFailure: async ({ event }: { event: any }) => {
       const reportId = event.data.event.data?.reportId;
       if (reportId) {
-        await prisma.report.update({
+        await prisma.report.updateMany({
           where: { id: reportId },
           data: {
             status: ReportStatus.FAILED,

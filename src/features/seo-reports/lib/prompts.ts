@@ -58,12 +58,16 @@ function normalizeReviews(
   }
 
   const rawReviews = (rawData?.reviews_data || []) as OutscraperReview[];
-  return rawReviews.map((r) => ({
-    rating: r.review_rating ?? 0,
-    text: r.review_text || null,
-    publishedAt: r.review_datetime_utc ? new Date(r.review_datetime_utc) : null,
-    ownerResponse: r.owner_answer || null,
-  }));
+  return rawReviews.map((r) => {
+    const date = r.review_datetime_utc ? new Date(r.review_datetime_utc) : null;
+    const publishedAt = date && !isNaN(date.getTime()) ? date : null;
+    return {
+      rating: r.review_rating ?? 0,
+      text: r.review_text || null,
+      publishedAt,
+      ownerResponse: r.owner_answer || null,
+    };
+  });
 }
 
 function normalizeCompetitors(competitors: any): any[] {
@@ -120,13 +124,17 @@ export function buildAnalysisPrompt(
     }
   });
 
-  const sampleReviews = normalizedReviews.slice(0, 30).map((r) => ({
-    rating: r.rating,
-    text: r.text?.slice(0, 300) || null,
-    date: r.publishedAt ? new Date(r.publishedAt).toISOString() : null,
-    hasOwnerResponse: !!r.ownerResponse,
-    ownerResponse: r.ownerResponse?.slice(0, 150) || null,
-  }));
+  const sampleReviews = normalizedReviews.slice(0, 30).map((r) => {
+    const date = r.publishedAt ? new Date(r.publishedAt) : null;
+    const isoDate = date && !isNaN(date.getTime()) ? date.toISOString() : null;
+    return {
+      rating: r.rating,
+      text: r.text?.slice(0, 300) || null,
+      date: isoDate,
+      hasOwnerResponse: !!r.ownerResponse,
+      ownerResponse: r.ownerResponse?.slice(0, 150) || null,
+    };
+  });
 
   const facts = deriveBusinessFacts(place);
   const hasDescription = !!(place.description && place.description.trim());
