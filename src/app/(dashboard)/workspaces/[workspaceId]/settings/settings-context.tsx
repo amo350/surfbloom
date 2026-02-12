@@ -38,6 +38,10 @@ export const SettingsContent = ({ workspaceId }: SettingsContentProps) => {
                 initialValues={{
                   name: workspace.name,
                   imageUrl: workspace.imageUrl ?? null,
+                  address: workspace.address ?? null,
+                  city: workspace.city ?? null,
+                  state: workspace.state ?? null,
+                  zipCode: workspace.zipCode ?? null,
                 }}
               />
             </CardContent>

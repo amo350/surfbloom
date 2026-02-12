@@ -89,6 +89,10 @@ export const workspacesRouter = createTRPCRouter({
         inviteCode: workspace.inviteCode,
         createdAt: workspace.createdAt,
         updatedAt: workspace.updatedAt,
+        address: workspace.address,
+        city: workspace.city,
+        state: workspace.state,
+        zipCode: workspace.zipCode,
       };
     }),
 
@@ -318,6 +322,10 @@ export const workspacesRouter = createTRPCRouter({
         id: z.string(),
         name: z.string().trim().min(1, "Required").optional(),
         imageUrl: z.string().optional().nullable(),
+        address: z.string().optional().nullable(),
+        city: z.string().optional().nullable(),
+        state: z.string().optional().nullable(),
+        zipCode: z.string().optional().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -338,10 +346,13 @@ export const workspacesRouter = createTRPCRouter({
         });
       }
 
-      // Build update data - only include fields that were provided
-      const updateData: { name?: string; imageUrl?: string | null } = {};
+      const updateData: Record<string, any> = {};
       if (input.name !== undefined) updateData.name = input.name;
       if (input.imageUrl !== undefined) updateData.imageUrl = input.imageUrl;
+      if (input.address !== undefined) updateData.address = input.address;
+      if (input.city !== undefined) updateData.city = input.city;
+      if (input.state !== undefined) updateData.state = input.state;
+      if (input.zipCode !== undefined) updateData.zipCode = input.zipCode;
 
       if (Object.keys(updateData).length === 0) {
         throw new TRPCError({
