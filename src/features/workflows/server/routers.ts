@@ -1,5 +1,5 @@
-import type { Edge, Node } from "@xyflow/react";
 import { TRPCError } from "@trpc/server";
+import type { Edge, Node } from "@xyflow/react";
 import { generateSlug } from "random-word-slugs";
 import z from "zod";
 import { PAGINATION } from "@/config/constants";

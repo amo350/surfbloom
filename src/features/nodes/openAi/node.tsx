@@ -2,8 +2,8 @@
 
 import { type Node, type NodeProps, useReactFlow } from "@xyflow/react";
 import { memo, useState } from "react";
-import { useNodeStatus } from "@/features/nodes/hooks/use-node-status";
 import { BaseExecutionNode } from "@/features/nodes/components/BaseExecutionNode";
+import { useNodeStatus } from "@/features/nodes/hooks/use-node-status";
 import { fetchOpenAiRealtimeToken } from "./actions";
 import { OpenAiDialog, OpenAiValues } from "./dialog";
 

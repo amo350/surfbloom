@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreVerticalIcon, ExternalLinkIcon, TrashIcon } from "lucide-react";
+import { ExternalLinkIcon, MoreVerticalIcon, TrashIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,9 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useDeleteTask } from "../hooks/use-tasks";
-import { useTaskModal } from "../hooks/use-task-modal";
 import { useConfirm } from "@/hooks/use-confirm";
+import { useTaskModal } from "../hooks/use-task-modal";
+import { useDeleteTask } from "../hooks/use-tasks";
 
 type TaskActionsProps = {
   taskId: string;

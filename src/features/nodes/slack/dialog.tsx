@@ -38,7 +38,7 @@ const formSchema = z.object({
     .string()
     .min(1, "Message content is required")
     .max(500, "Slack messages cannot exceed 500 characters"),
-  webhookUrl: z.string().min(1, "Webhook URL is required")
+  webhookUrl: z.string().min(1, "Webhook URL is required"),
 });
 
 export type SlackFormValues = z.infer<typeof formSchema>;
@@ -69,10 +69,10 @@ export const SlackDialog = ({
   useEffect(() => {
     if (open) {
       form.reset({
-      variableName: defaultValues.variableName || "",
-      username: defaultValues?.username || "",
-      content: defaultValues?.content || "",
-      webhookUrl: defaultValues?.webhookUrl || "",
+        variableName: defaultValues.variableName || "",
+        username: defaultValues?.username || "",
+        content: defaultValues?.content || "",
+        webhookUrl: defaultValues?.webhookUrl || "",
       });
     }
   }, [open, defaultValues, form]);
@@ -101,10 +101,10 @@ export const SlackDialog = ({
                 <FormItem>
                   <FormLabel>Variable Name</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="mySlack" 
+                    <Input
+                      placeholder="mySlack"
                       className="rounded-2xl"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -123,10 +123,10 @@ export const SlackDialog = ({
                 <FormItem>
                   <FormLabel>Webhook URL</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="https://hooks.slack.com/services/..." 
+                    <Input
+                      placeholder="https://hooks.slack.com/services/..."
                       className="rounded-2xl font-mono text-sm"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -151,13 +151,16 @@ export const SlackDialog = ({
                     />
                   </FormControl>
                   <FormDescription>
-                    Message to send to Slack. Use {"{{variables}}"} for simple values or {"{{json variable}}"} to stringify objects
+                    Message to send to Slack. Use {"{{variables}}"} for simple
+                    values or {"{{json variable}}"} to stringify objects
                   </FormDescription>
                 </FormItem>
               )}
             />
             <DialogFooter className="mt-6">
-              <Button type="submit" className="rounded-2xl">Save</Button>
+              <Button type="submit" className="rounded-2xl">
+                Save
+              </Button>
             </DialogFooter>
           </form>
         </Form>

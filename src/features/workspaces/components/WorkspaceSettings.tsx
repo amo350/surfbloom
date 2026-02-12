@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { CheckIcon, CopyIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { CopyIcon, CheckIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -18,7 +19,6 @@ import {
   useRemoveWorkspace,
   useResetInviteCode,
 } from "../hooks/use-workspaces";
-import { toast } from "sonner";
 
 interface WorkspaceSettingsProps {
   workspaceId: string;

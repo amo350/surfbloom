@@ -1,9 +1,9 @@
-import { decode } from "html-entities";
 import Handlebars from "handlebars";
+import { decode } from "html-entities";
 import { NonRetriableError } from "inngest";
 import ky from "ky";
-import type { NodeExecutor } from "@/features/nodes/types";
 import { slackChannel } from "@/features/nodes/channels/slack";
+import type { NodeExecutor } from "@/features/nodes/types";
 
 Handlebars.registerHelper("json", (context) => {
   const jsonString = JSON.stringify(context, null, 2);

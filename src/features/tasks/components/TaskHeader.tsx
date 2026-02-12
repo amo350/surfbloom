@@ -1,14 +1,16 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  PlusIcon,
-  FilterIcon,
-  ChevronDownIcon,
-  Trash2Icon,
   CheckSquareIcon,
+  ChevronDownIcon,
+  FilterIcon,
+  PlusIcon,
   SquareIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,17 +19,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useQueryClient } from "@tanstack/react-query";
-import { AppHeader } from "@/components/AppHeader";
 import { TaskViewSwitcher } from "@/features/tasks/components/TaskViewSwitcher";
-import {
-  useCreateTask,
-  useBulkDeleteTasks,
-} from "@/features/tasks/hooks/use-tasks";
 import { useGetTaskColumns } from "@/features/tasks/hooks/use-task-columns";
-import { useTRPC } from "@/trpc/client";
-import { authClient } from "@/lib/auth-client";
+import {
+  useBulkDeleteTasks,
+  useCreateTask,
+} from "@/features/tasks/hooks/use-tasks";
 import { useConfirm } from "@/hooks/use-confirm";
+import { authClient } from "@/lib/auth-client";
+import { useTRPC } from "@/trpc/client";
 import { TaskRow } from "./TaskTableColumns";
 
 const generateId = () => {

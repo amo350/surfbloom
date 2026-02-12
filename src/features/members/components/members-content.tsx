@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useTRPC } from "@/trpc/client";
-import { PlusIcon, TrashIcon, MailIcon } from "lucide-react";
+import { MailIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -12,18 +13,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { InviteMemberForm } from "@/features/invitations/components/InviteMemberForm";
 import {
   useInvitations,
   useRemoveInvitation,
 } from "@/features/invitations/hooks/use-invitations";
 import {
-  useSuspenseMembers,
   useRemoveMember,
+  useSuspenseMembers,
 } from "@/features/members/hooks/use-members";
 import { MemberRole } from "@/generated/prisma/enums";
+import { useTRPC } from "@/trpc/client";
 
 interface MembersContentProps {
   workspaceId: string;

@@ -1,6 +1,11 @@
 "use client";
 
-import { ChevronDownIcon, LogOutIcon, PencilIcon, UserIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  LogOutIcon,
+  PencilIcon,
+  UserIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,8 +17,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { authClient } from "@/lib/auth-client";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
+import { authClient } from "@/lib/auth-client";
 
 const UserDropdown = () => {
   const router = useRouter();

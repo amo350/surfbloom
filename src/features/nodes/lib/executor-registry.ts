@@ -1,13 +1,13 @@
-import { googleFormTriggerExecutor } from "@/features/nodes/google-form-trigger/executor";
-import { manualTriggerExecutor } from "@/features/nodes/manual-trigger/executor";
-import { stripeTriggerExecutor } from "@/features/nodes/stripe-trigger/executor";
-import { NodeType } from "@/generated/prisma/enums";
 import { geminiExecutor } from "@/features/nodes/gemini/executor";
+import { googleFormTriggerExecutor } from "@/features/nodes/google-form-trigger/executor";
 import { HttpRequestExecutor } from "@/features/nodes/http-requests/executor";
+import { manualTriggerExecutor } from "@/features/nodes/manual-trigger/executor";
 import { openAiExecutor } from "@/features/nodes/openAi/executor";
-import { xAiExecutor } from "@/features/nodes/xAi/executor";
-import { NodeExecutor } from "@/features/nodes/types";
 import { slackExecutor } from "@/features/nodes/slack/executor";
+import { stripeTriggerExecutor } from "@/features/nodes/stripe-trigger/executor";
+import { NodeExecutor } from "@/features/nodes/types";
+import { xAiExecutor } from "@/features/nodes/xAi/executor";
+import { NodeType } from "@/generated/prisma/enums";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
   [NodeType.INITIAL]: manualTriggerExecutor,

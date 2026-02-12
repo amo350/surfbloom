@@ -1,6 +1,6 @@
 "use client";
-import AuthLayout from "./AuthLayout";
 import { useAuthContext } from "./AuthContext";
+import AuthLayout from "./AuthLayout";
 
 export default function AuthLayoutWrapper({
   children,

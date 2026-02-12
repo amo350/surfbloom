@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGridIcon, TableIcon, CalendarIcon } from "lucide-react";
+import { CalendarIcon, LayoutGridIcon, TableIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type TaskView = "table" | "kanban" | "calendar";

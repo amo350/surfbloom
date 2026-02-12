@@ -1,7 +1,7 @@
+import { createId } from "@paralleldrive/cuid2";
 import toposort from "toposort";
 import type { Connection, Node } from "@/generated/prisma/client";
 import { inngest } from "./client";
-import { createId } from "@paralleldrive/cuid2";
 
 export const topologicalSort = (
   nodes: Node[],
@@ -61,6 +61,7 @@ export const sendReportGeneration = async (data: {
   workspaceId: string;
   query: string;
   smartRetry?: boolean;
+  forceRefresh?: boolean;
 }) => {
   return inngest.send({
     name: "reports/generate.report",

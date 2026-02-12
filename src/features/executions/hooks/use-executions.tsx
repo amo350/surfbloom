@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { ExecutionStatus } from "@/generated/prisma/enums";
 import { useTRPC } from "@/trpc/client";
 import { useExecutionsParams } from "./use-executions-params";
-import { ExecutionStatus } from "@/generated/prisma/enums";
 
 export const useSuspenseExecutions = (workspaceId: string) => {
   const trpc = useTRPC();

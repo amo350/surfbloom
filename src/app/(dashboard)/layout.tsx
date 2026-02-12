@@ -1,6 +1,6 @@
-import { requireAuth } from "@/lib/auth-utils";
 import React from "react";
 import { AcceptInvitationsProvider } from "@/components/accept-invitations-provider";
+import { requireAuth } from "@/lib/auth-utils";
 
 type DashboardLayoutProps = {
   children: React.ReactNode;

@@ -2,8 +2,8 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import Handlebars from "handlebars";
 import { NonRetriableError } from "inngest";
-import type { NodeExecutor } from "@/features/nodes/types";
 import { openAiChannel } from "@/features/nodes/channels/openAi";
+import type { NodeExecutor } from "@/features/nodes/types";
 
 Handlebars.registerHelper("json", (context) => {
   const jsonString = JSON.stringify(context, null, 2);

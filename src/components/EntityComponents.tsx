@@ -1,5 +1,3 @@
-import React from "react";
-import { Button } from "./ui/button";
 import {
   AlertTriangleIcon,
   Loader2Icon,
@@ -10,7 +8,16 @@ import {
   TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { Input } from "./ui/input";
+import React from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardDescription, CardTitle } from "./ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import {
   Empty,
   EmptyContent,
@@ -19,14 +26,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "./ui/empty";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardDescription, CardTitle } from "./ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+import { Input } from "./ui/input";
 
 type EntityHeaderProps = {
   title: string;
@@ -198,13 +198,22 @@ export const EmptyView = ({ message, onNew }: EmptyViewProps) => {
   return (
     <Empty className="bg-white rounded-3xl p-16 md:p-24 min-w-[500px] max-w-[600px] shadow-xl border border-border/20">
       <EmptyHeader>
-        <EmptyMedia variant="icon" className="size-24 mb-6 rounded-3xl [&_svg:not([class*='size-'])]:size-12">
+        <EmptyMedia
+          variant="icon"
+          className="size-24 mb-6 rounded-3xl [&_svg:not([class*='size-'])]:size-12"
+        >
           <PackageOpenIcon />
         </EmptyMedia>
       </EmptyHeader>
       <EmptyTitle className="text-2xl">No items</EmptyTitle>
-      {!!message && <EmptyDescription className="text-lg">{message}</EmptyDescription>}
-      {!!onNew && <Button onClick={onNew} className="mt-4" size="lg">Add item</Button>}
+      {!!message && (
+        <EmptyDescription className="text-lg">{message}</EmptyDescription>
+      )}
+      {!!onNew && (
+        <Button onClick={onNew} className="mt-4" size="lg">
+          Add item
+        </Button>
+      )}
     </Empty>
   );
 };

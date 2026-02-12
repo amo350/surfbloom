@@ -2,15 +2,15 @@
 
 import { type Node, type NodeProps, useReactFlow } from "@xyflow/react";
 import { memo, useState } from "react";
-import { useNodeStatus } from "@/features/nodes/hooks/use-node-status";
 import { BaseExecutionNode } from "@/features/nodes/components/BaseExecutionNode";
+import { useNodeStatus } from "@/features/nodes/hooks/use-node-status";
 import { fetchSlackRealtimeToken } from "./actions";
 import { SlackDialog, SlackFormValues } from "./dialog";
 
 type SlackNodeData = {
   variableName?: string;
-  webhookUrl?: string; 
-  content?: string; 
+  webhookUrl?: string;
+  content?: string;
 };
 
 type SlackNodeType = Node<SlackNodeData>;
@@ -47,7 +47,7 @@ export const SlackNode = memo((props: NodeProps<SlackNodeType>) => {
 
   const nodeData = props.data;
   const description = nodeData?.content
-    ? `Send: ${nodeData.content.slice(0,50)}...`
+    ? `Send: ${nodeData.content.slice(0, 50)}...`
     : "Not configured";
 
   return (

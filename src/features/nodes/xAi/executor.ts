@@ -2,8 +2,8 @@ import { createXai } from "@ai-sdk/xai";
 import { generateText } from "ai";
 import Handlebars from "handlebars";
 import { NonRetriableError } from "inngest";
-import type { NodeExecutor } from "@/features/nodes/types";
 import { xAiChannel } from "@/features/nodes/channels/xAi";
+import type { NodeExecutor } from "@/features/nodes/types";
 
 Handlebars.registerHelper("json", (context) => {
   const jsonString = JSON.stringify(context, null, 2);

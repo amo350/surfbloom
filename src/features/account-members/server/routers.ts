@@ -1,8 +1,8 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { AccountRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
-import { AccountRole } from "@/generated/prisma/enums";
-import { TRPCError } from "@trpc/server";
 
 export const accountMembersRouter = createTRPCRouter({
   // Get all members with their workspace counts
@@ -38,10 +38,7 @@ export const accountMembersRouter = createTRPCRouter({
         select: { userId: true },
       });
       const userIds = [
-        ...new Set([
-          currentUser.id,
-          ...workspaceMembers.map((m) => m.userId),
-        ]),
+        ...new Set([currentUser.id, ...workspaceMembers.map((m) => m.userId)]),
       ];
 
       // Fetch users

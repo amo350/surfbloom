@@ -20,7 +20,7 @@ export const useUpdateTaskColumn = () => {
       onError: (error) => {
         toast.error(error.message);
       },
-    })
+    }),
   );
 };
 
@@ -37,7 +37,7 @@ export const useCreateTaskColumn = () => {
       onError: (error) => {
         toast.error(error.message);
       },
-    })
+    }),
   );
 };
 
@@ -54,6 +54,6 @@ export const useDeleteTaskColumn = () => {
       onError: (error) => {
         toast.error(error.message);
       },
-    })
+    }),
   );
 };

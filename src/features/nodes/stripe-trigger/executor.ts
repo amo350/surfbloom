@@ -1,5 +1,5 @@
-import type { NodeExecutor } from "@/features/nodes/types";
 import { stripeTriggerChannel } from "@/features/nodes/channels/stripe-trigger";
+import type { NodeExecutor } from "@/features/nodes/types";
 
 type StripeFormTriggerData = Record<string, unknown>;
 

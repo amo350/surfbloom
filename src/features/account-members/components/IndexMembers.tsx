@@ -1,24 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
   ChevronDownIcon,
+  MapPinIcon,
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
   Trash2Icon,
-  MapPinIcon,
   UserCogIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -34,28 +37,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { AccountRole } from "@/generated/prisma/enums";
 import { useConfirm } from "@/hooks/use-confirm";
+import { authClient } from "@/lib/auth-client";
 import {
   useAccountMembers,
-  useUpdateAccountRole,
-  useBulkUpdateAccountRole,
-  useBulkInviteToWorkspace,
   useBulkDeleteUsers,
+  useBulkInviteToWorkspace,
+  useBulkUpdateAccountRole,
   useMemberWorkspaces,
   useSetMainWorkspace,
+  useUpdateAccountRole,
 } from "../hooks/use-account-members";
-import { AccountRole } from "@/generated/prisma/enums";
-import { authClient } from "@/lib/auth-client";
 
 // TODO: Define role capabilities
 // OWNER: Full control - can assign owners, delete users, manage all settings
@@ -162,7 +162,10 @@ export const IndexMembers = () => {
     );
   };
 
-  const handleOpenMainLocationDialog = (memberId: string, mainWorkspaceId: string | null) => {
+  const handleOpenMainLocationDialog = (
+    memberId: string,
+    mainWorkspaceId: string | null,
+  ) => {
     setEditingMemberId(memberId);
     setSelectedWorkspaceId(mainWorkspaceId);
     setEditMainLocationDialogOpen(true);

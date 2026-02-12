@@ -1,12 +1,12 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import { useSidebar } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import NotificationsBell from "./navbarComponents/NotificationsBell";
+import { Separator } from "@/components/ui/separator";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
 import { authClient } from "@/lib/auth-client";
+import NotificationsBell from "./navbarComponents/NotificationsBell";
 import UserDropdown from "./navbarComponents/UserDropdown";
 
 const Navbar = () => {

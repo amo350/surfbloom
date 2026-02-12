@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { ImageIcon, XIcon } from "lucide-react";
 import Image from "next/image";
+import { useRef } from "react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, XIcon } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing-client";
-import { toast } from "sonner";
 
 interface ImageUploadProps {
   value?: string;
@@ -15,9 +15,14 @@ interface ImageUploadProps {
   disabled?: boolean;
 }
 
-export const ImageUpload = ({ value, onChange, fallback = "?", disabled }: ImageUploadProps) => {
+export const ImageUpload = ({
+  value,
+  onChange,
+  fallback = "?",
+  disabled,
+}: ImageUploadProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   const { startUpload, isUploading } = useUploadThing("imageUploader", {
     onClientUploadComplete: (res) => {
       if (res?.[0]?.url) {
@@ -56,7 +61,7 @@ export const ImageUpload = ({ value, onChange, fallback = "?", disabled }: Image
         disabled={disabled || isUploading}
         className="hidden"
       />
-      
+
       {value ? (
         <div className="relative size-16 group">
           <Image
@@ -77,13 +82,14 @@ export const ImageUpload = ({ value, onChange, fallback = "?", disabled }: Image
           </Button>
         </div>
       ) : (
-        <Avatar className="size-16 cursor-pointer" onClick={() => inputRef.current?.click()}>
-          <AvatarFallback>
-            {isUploading ? "..." : fallback}
-          </AvatarFallback>
+        <Avatar
+          className="size-16 cursor-pointer"
+          onClick={() => inputRef.current?.click()}
+        >
+          <AvatarFallback>{isUploading ? "..." : fallback}</AvatarFallback>
         </Avatar>
       )}
-      
+
       {!value && (
         <Button
           type="button"

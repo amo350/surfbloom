@@ -1,18 +1,18 @@
-import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { ReportStatus } from "@/generated/prisma/enums";
 import { sendReportGeneration } from "@/inngest/utils";
+import { prisma } from "@/lib/prisma";
+import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import {
-  visibilityBreakdownSchema,
-  reputationBreakdownSchema,
-  strengthsSchema,
-  weaknessesSchema,
-  recommendationsSchema,
-  type Strength,
-  type Weakness,
   type Recommendation,
+  recommendationsSchema,
+  reputationBreakdownSchema,
+  type Strength,
+  strengthsSchema,
+  visibilityBreakdownSchema,
+  type Weakness,
+  weaknessesSchema,
 } from "../lib/report-schema";
 
 export const seoReportsRouter = createTRPCRouter({
@@ -22,6 +22,7 @@ export const seoReportsRouter = createTRPCRouter({
       z.object({
         workspaceId: z.string(),
         query: z.string().min(1, "Business name and location is required"),
+        forceRefresh: z.boolean().optional().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -55,6 +56,7 @@ export const seoReportsRouter = createTRPCRouter({
         reportId: report.id,
         workspaceId: input.workspaceId,
         query: input.query,
+        forceRefresh: input.forceRefresh,
       });
 
       return { reportId: report.id };
@@ -142,7 +144,8 @@ export const seoReportsRouter = createTRPCRouter({
         validatedReport.weaknesses = report.weaknesses as Weakness[];
       }
       if (report.recommendations) {
-        validatedReport.recommendations = report.recommendations as Recommendation[];
+        validatedReport.recommendations =
+          report.recommendations as Recommendation[];
       }
 
       return validatedReport;

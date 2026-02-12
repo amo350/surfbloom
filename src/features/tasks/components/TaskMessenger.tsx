@@ -1,15 +1,15 @@
 "use client";
 
+import { ChevronDownIcon, PaperclipIcon } from "lucide-react";
 import { useState } from "react";
-import { PaperclipIcon, ChevronDownIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 
 type TaskMessagingProps = {
   taskId: string;

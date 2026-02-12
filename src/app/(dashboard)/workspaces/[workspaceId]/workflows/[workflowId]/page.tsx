@@ -1,16 +1,16 @@
-import { prefetchWorkflow } from "@/features/workflows/server/prefetch";
-import { requireAuth } from "@/lib/auth-utils";
-import { prisma } from "@/lib/prisma";
-import { HydrateClient } from "@/trpc/server";
-import { ErrorBoundary } from "react-error-boundary";
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { ErrorBoundary } from "react-error-boundary";
+import EditorHeader from "@/features/editor/components/EditorHeader";
 import {
   Editor,
   EditorError,
   EditorLoading,
 } from "@/features/editor/components/editor";
-import EditorHeader from "@/features/editor/components/EditorHeader";
+import { prefetchWorkflow } from "@/features/workflows/server/prefetch";
+import { requireAuth } from "@/lib/auth-utils";
+import { prisma } from "@/lib/prisma";
+import { HydrateClient } from "@/trpc/server";
 
 type PageProps = {
   params: Promise<{

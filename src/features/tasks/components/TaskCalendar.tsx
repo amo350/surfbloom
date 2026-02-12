@@ -1,34 +1,33 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { DragDropContext, DropResult } from "@hello-pangea/dnd";
+import {
+  addDays,
+  addMonths,
+  addWeeks,
+  format,
+  getDay,
+  parse,
+  startOfWeek,
+  subDays,
+  subMonths,
+  subWeeks,
+} from "date-fns";
+import { enUS } from "date-fns/locale";
+import { useCallback, useState } from "react";
 import {
   Calendar,
+  Components,
   dateFnsLocalizer,
   View,
-  Components,
 } from "react-big-calendar";
 import withDragAndDrop, {
   EventInteractionArgs,
 } from "react-big-calendar/lib/addons/dragAndDrop";
-import { DragDropContext, DropResult } from "@hello-pangea/dnd";
-import {
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  addMonths,
-  subMonths,
-  addWeeks,
-  subWeeks,
-  addDays,
-  subDays,
-} from "date-fns";
-import { enUS } from "date-fns/locale";
-
-import { CalendarToolbar } from "./CalendarToolbar";
+import { useUpdateTask } from "../hooks/use-tasks";
 import { CalendarEventCard } from "./CalendarEventCard";
 import { CalendarTaskSidebar } from "./CalendarTaskSidebar";
-import { useUpdateTask } from "../hooks/use-tasks";
+import { CalendarToolbar } from "./CalendarToolbar";
 
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
@@ -215,7 +214,7 @@ export const TaskCalendar = ({
                       ? new Date(draggedTask.dueDate)
                       : new Date(),
                     end: draggedTask.dueDate
-                      ? new Date( draggedTask.dueDate)
+                      ? new Date(draggedTask.dueDate)
                       : new Date(),
                     statusColor: draggedTask.column.color,
                     assigneeName: draggedTask.assignee?.name,

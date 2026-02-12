@@ -1,14 +1,14 @@
 "use client";
 
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import UserDropdown from "./navbarComponents/UserDropdown";
-import NotificationsBell from "./navbarComponents/NotificationsBell";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
 import { authClient } from "@/lib/auth-client";
+import NotificationsBell from "./navbarComponents/NotificationsBell";
+import UserDropdown from "./navbarComponents/UserDropdown";
 
 const indexMenuItems = [
   {

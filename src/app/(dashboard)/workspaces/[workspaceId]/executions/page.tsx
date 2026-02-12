@@ -1,7 +1,7 @@
+import { redirect } from "next/navigation";
 import { SearchParams } from "nuqs";
 import React, { Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import { redirect } from "next/navigation";
 import {
   ExecutionsContainer,
   ExecutionsError,

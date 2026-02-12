@@ -1,14 +1,14 @@
 import { NodeTypes } from "@xyflow/react";
 import { InitialNode } from "@/components/InitialNode";
 import { GeminiNode } from "@/features/nodes/gemini/node";
-import { HttpRequestNode } from "@/features/nodes/http-requests/node";
-import { OpenAiNode } from "@/features/nodes/openAi/node";
-import { XAiNode } from "@/features/nodes/xAi/node";
 import { GoogleFormTrigger } from "@/features/nodes/google-form-trigger/node";
+import { HttpRequestNode } from "@/features/nodes/http-requests/node";
 import { ManualTriggerNode } from "@/features/nodes/manual-trigger/node";
-import { StripeTriggerNode } from "@/features/nodes/stripe-trigger/node";
-import { NodeType } from "@/generated/prisma/enums";
+import { OpenAiNode } from "@/features/nodes/openAi/node";
 import { SlackNode } from "@/features/nodes/slack/node";
+import { StripeTriggerNode } from "@/features/nodes/stripe-trigger/node";
+import { XAiNode } from "@/features/nodes/xAi/node";
+import { NodeType } from "@/generated/prisma/enums";
 
 export const nodeComponents = {
   [NodeType.INITIAL]: InitialNode,

@@ -74,11 +74,13 @@ const personalizationSchema = z.object({
 
 const socialSchema = z.object({
   score: z.number().min(0).max(4),
-  platforms: z.array(z.object({
-    name: z.string(),
-    url: z.string().nullable(),
-    found: z.boolean(),
-  })),
+  platforms: z.array(
+    z.object({
+      name: z.string(),
+      url: z.string().nullable(),
+      found: z.boolean(),
+    }),
+  ),
   notes: z.array(z.string()),
 });
 
@@ -110,11 +112,13 @@ const googleReviewsSchema = z.object({
 
 const otherReviewsSchema = z.object({
   score: z.number().min(0).max(10),
-  platforms: z.array(z.object({
-    name: z.string(),
-    rating: z.number().min(0).max(5).nullable(),
-    reviewCount: z.number().min(0).nullable(),
-  })),
+  platforms: z.array(
+    z.object({
+      name: z.string(),
+      rating: z.number().min(0).max(5).nullable(),
+      reviewCount: z.number().min(0).nullable(),
+    }),
+  ),
 });
 
 export const reputationBreakdownSchema = z.object({
@@ -127,40 +131,70 @@ export const reputationBreakdownSchema = z.object({
 // =============================================
 
 export const strengthsSchema = z.object({
-  items: z.array(z.object({
-    title: z.string(),
-    detail: z.string(),
-    category: z.enum([
-      "gbp", "reviews", "website", "links",
-      "citations", "social", "overall",
-    ]),
-  })).min(2).max(3),
+  items: z
+    .array(
+      z.object({
+        title: z.string(),
+        detail: z.string(),
+        category: z.enum([
+          "gbp",
+          "reviews",
+          "website",
+          "links",
+          "citations",
+          "social",
+          "overall",
+        ]),
+      }),
+    )
+    .min(2)
+    .max(3),
 });
 
 export const weaknessesSchema = z.object({
-  items: z.array(z.object({
-    title: z.string(),
-    detail: z.string(),
-    category: z.enum([
-      "gbp", "reviews", "website", "links",
-      "citations", "social", "overall",
-    ]),
-  })).min(2).max(3),
+  items: z
+    .array(
+      z.object({
+        title: z.string(),
+        detail: z.string(),
+        category: z.enum([
+          "gbp",
+          "reviews",
+          "website",
+          "links",
+          "citations",
+          "social",
+          "overall",
+        ]),
+      }),
+    )
+    .min(2)
+    .max(3),
 });
 
 export const recommendationsSchema = z.object({
-  items: z.array(z.object({
-    title: z.string(),
-    description: z.string(),
-    category: z.enum([
-      "gbp", "reviews", "website", "links",
-      "citations", "social", "overall",
-    ]),
-    priority: z.enum(["high", "medium", "low"]),
-    impact: z.enum(["high", "medium", "low"]),
-    effort: z.enum(["high", "medium", "low"]),
-    steps: z.array(z.string()).max(3),
-  })).min(2).max(2),
+  items: z
+    .array(
+      z.object({
+        title: z.string(),
+        description: z.string(),
+        category: z.enum([
+          "gbp",
+          "reviews",
+          "website",
+          "links",
+          "citations",
+          "social",
+          "overall",
+        ]),
+        priority: z.enum(["high", "medium", "low"]),
+        impact: z.enum(["high", "medium", "low"]),
+        effort: z.enum(["high", "medium", "low"]),
+        steps: z.array(z.string()).max(3),
+      }),
+    )
+    .min(2)
+    .max(2),
 });
 
 // =============================================
@@ -184,11 +218,13 @@ export const verificationSchema = z.object({
     latitude: z.number().nullable(),
     longitude: z.number().nullable(),
   }),
-  mismatches: z.array(z.object({
-    field: z.string(),
-    workspace: z.string().nullable(),
-    outscraper: z.string().nullable(),
-  })),
+  mismatches: z.array(
+    z.object({
+      field: z.string(),
+      workspace: z.string().nullable(),
+      outscraper: z.string().nullable(),
+    }),
+  ),
   needsReview: z.boolean(),
 });
 
@@ -208,13 +244,13 @@ export const competitorSchema = z.object({
 });
 
 export const competitorsSchema = z.object({
-  query: z.string(),                                 // Search query used (e.g. "pizza restaurant Brooklyn NY")
-  fetchedAt: z.string(),                             // ISO timestamp
+  query: z.string(), // Search query used (e.g. "pizza restaurant Brooklyn NY")
+  fetchedAt: z.string(), // ISO timestamp
   results: z.array(competitorSchema),
-  selfRank: z.number().nullable(),                   // Where the business appears (null if not found)
-  peerAverageRating: z.number().nullable(),          // Average rating of competitors
-  peerAverageReviewCount: z.number().nullable(),     // Average review count of competitors
-  peerMedianReviewCount: z.number().nullable(),      // Median review count (less skewed by outliers)
+  selfRank: z.number().nullable(), // Where the business appears (null if not found)
+  peerAverageRating: z.number().nullable(), // Average rating of competitors
+  peerAverageReviewCount: z.number().nullable(), // Average review count of competitors
+  peerMedianReviewCount: z.number().nullable(), // Median review count (less skewed by outliers)
 });
 
 // =============================================
@@ -241,7 +277,9 @@ export type VisibilityBreakdown = z.infer<typeof visibilityBreakdownSchema>;
 export type ReputationBreakdown = z.infer<typeof reputationBreakdownSchema>;
 export type Strength = z.infer<typeof strengthsSchema>["items"][number];
 export type Weakness = z.infer<typeof weaknessesSchema>["items"][number];
-export type Recommendation = z.infer<typeof recommendationsSchema>["items"][number];
+export type Recommendation = z.infer<
+  typeof recommendationsSchema
+>["items"][number];
 export type FullReport = z.infer<typeof fullReportSchema>;
 export type Verification = z.infer<typeof verificationSchema>;
 export type Competitor = z.infer<typeof competitorSchema>;
