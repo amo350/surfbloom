@@ -55,3 +55,16 @@ export const sendWorkflowExecution = async (data: {
     id: createId(),
   });
 };
+
+export const sendReportGeneration = async (data: {
+  reportId: string;
+  workspaceId: string;
+  query: string;
+  smartRetry?: boolean;
+}) => {
+  return inngest.send({
+    name: "reports/generate.report",
+    data,
+    id: createId(),
+  });
+};

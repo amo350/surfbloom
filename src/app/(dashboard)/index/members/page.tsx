@@ -9,7 +9,7 @@ const MembersPage = async () => {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Members</h1>
       <Suspense fallback={<div>Loading members...</div>}>
-        <IndexMembers currentUserId={session.user.id} />
+        <IndexMembers />
       </Suspense>
     </div>
   );

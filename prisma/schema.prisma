@@ -40,7 +40,7 @@ model User {
   members          Member[]
   sentInvitations  Invitation[] @relation("SentInvitations")
   mainWorkspace    Workspace?   @relation("MainWorkspace", fields: [mainWorkspaceId], references: [id], onDelete: SetNull)
-  assignedTasks Task[]
+  assignedTasks    Task[]
 
   @@unique([email])
   @@index([accountOwnerId])
@@ -104,12 +104,34 @@ model Workspace {
   updatedAt  DateTime @updatedAt
   userId     String   // original creator/owner
 
-  members    Member[]
-  workflows  Workflow[]
-  invitations Invitation[]
-  usersWithMain    User[] @relation("MainWorkspace")
+  // Google Business Profile data
+  googlePlaceId       String?
+  address             String?
+  city                String?
+  state               String?
+  zipCode             String?
+  country             String   @default("US")
+  phone               String?
+  website             String?
+  latitude            Float?
+  longitude           Float?
+  timezone            String?
+  primaryCategory     String?
+  secondaryCategories String[] @default([])
+  googleRating        Float?
+  googleReviewCount   Int?
+  scrapedPlaceData    Json?
+  scrapedCompetitors  Json?
+  lastScrapedAt       DateTime?
+
+  members      Member[]
+  workflows    Workflow[]
+  invitations  Invitation[]
+  usersWithMain User[] @relation("MainWorkspace")
   taskColumns  TaskColumn[]
   tasks        Task[]
+  reports      Report[]
+  reviews      Review[]
 
   user       User @relation("CreatedWorkspaces", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -172,40 +194,40 @@ enum NodeType {
 }
 
 model Node {
-  id        String   @id @default(cuid())
+  id         String   @id @default(cuid())
   workflowId String
-  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
-  name String
-  type NodeType
+  name     String
+  type     NodeType
   position Json
-  data Json @default("{}")
+  data     Json @default("{}")
 
   outputConnections Connection[] @relation("FromNode")
-  inputConnections Connection[] @relation("ToNode")
+  inputConnections  Connection[] @relation("ToNode")
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([workflowId])
   @@map("node")
 }
 
 model Connection {
-  id        String   @id @default(cuid())
+  id         String   @id @default(cuid())
   workflowId String
-  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   fromNodeId String
-  fromNode Node @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
-  toNodeId String
-  toNode Node @relation("ToNode", fields: [toNodeId], references: [id], onDelete: Cascade)
+  fromNode   Node @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNodeId   String
+  toNode     Node @relation("ToNode", fields: [toNodeId], references: [id], onDelete: Cascade)
 
   fromOutput String @default("main")
-  toInput String @default("main")
+  toInput    String @default("main")
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([fromNodeId, toNodeId, fromOutput, toInput])
   @@index([workflowId])
@@ -222,13 +244,13 @@ model Execution {
   id String @id @default(cuid())
 
   workflowId String
-  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
-  status ExecutionStatus @default(RUNNING)
-  error String? @db.Text
-  errorStack String? @db.Text
+  status     ExecutionStatus @default(RUNNING)
+  error      String?         @db.Text
+  errorStack String?         @db.Text
 
-  startedAt DateTime @default(now())
+  startedAt  DateTime @default(now())
   completeAt DateTime?
 
   inngestEventId String @unique
@@ -268,9 +290,9 @@ model Invitation {
 model TaskColumn {
   id          String    @id @default(cuid())
   workspaceId String
-  name        String    // e.g., "To Do", "In Progress", "Done"
-  color       String    @default("#6B7280") // hex color
-  position    Int       // for ordering columns (1, 2, 3, etc.)
+  name        String
+  color       String    @default("#6B7280")
+  position    Int
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -285,11 +307,11 @@ model TaskColumn {
 model Task {
   id          String    @id @default(cuid())
   workspaceId String
-  columnId    String    // references TaskColumn
-  assigneeId  String?   // references User (optional)
+  columnId    String
+  assigneeId  String?
   name        String
   description String?   @db.Text
-  position    Int       @default(1000) // for ordering within column
+  position    Int       @default(1000)
   dueDate     DateTime?
   startDate   DateTime?
   category    String?
@@ -304,4 +326,93 @@ model Task {
   @@index([columnId])
   @@index([assigneeId])
   @@map("task")
+}
+
+// =============================================
+// SEO/GEO Report Tool
+// =============================================
+
+enum ReportStatus {
+  PENDING
+  FETCHING
+  ANALYZING
+  COMPLETED
+  FAILED
+}
+
+model Report {
+  id                    String       @id @default(cuid())
+  workspaceId           String
+
+  status                ReportStatus @default(PENDING)
+
+  // Top-level scores (0-100)
+  visibilityScore       Float?
+  reputationScore       Float?
+
+  // Detailed breakdowns (Zod-validated JSON)
+  visibilityBreakdown   Json?
+  reputationBreakdown   Json?
+
+  // AI-generated insights (Zod-validated JSON)
+  strengths             Json?
+  weaknesses            Json?
+  recommendations       Json?
+
+  // Raw API response data (enables smart retry without re-fetching)
+  rawData               Json?
+
+  // Verification: did Outscraper match the workspace address?
+  verification          Json?
+
+  // Map pack competitors snapshot
+  competitors           Json?
+
+  error                 String?     @db.Text
+
+  createdAt             DateTime    @default(now())
+  completedAt           DateTime?
+
+  workspace             Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([workspaceId, createdAt])
+  @@map("report")
+}
+
+model Review {
+  id               String    @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // Google identity (for dedup on re-scrape)
+  googleReviewId   String?
+  authorName       String?
+  authorUrl        String?
+  authorImageUrl   String?
+
+  // Core review data
+  rating           Float
+  text             String?   @db.Text
+  publishedAt      DateTime?
+
+  // Owner response tracking
+  ownerResponse    String?   @db.Text
+  ownerRespondedAt DateTime?
+
+  // Metadata
+  source           String    @default("google") // google, yelp, facebook later
+  language         String?
+
+  // Sync tracking
+  firstSeenAt      DateTime  @default(now())
+  lastSyncedAt     DateTime  @default(now())
+
+  // Performance indexes
+  @@unique([workspaceId, googleReviewId]) // Prevents duplicate reviews
+  @@index([workspaceId, publishedAt]) // Sort by date (paginated list)
+  @@index([workspaceId, rating]) // Filter by star rating
+  @@index([workspaceId, source]) // Filter by platform
+
+  @@map("review")
 }

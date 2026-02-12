@@ -16,6 +16,10 @@ const indexMenuItems = [
     href: "/index/locations",
   },
   {
+    title: "SEO Score",
+    href: "/index/seo-score",
+  },
+  {
     title: "Members",
     href: "/index/members",
   },
@@ -29,11 +33,8 @@ const IndexNavbar = () => {
   const pathname = usePathname();
   const { hasActiveSubscription, isLoading } = useHasActiveSubscription();
 
-  // Get current plan name dynamically
-  // TODO: Update this to fetch actual plan name from subscription data when available
   const getCurrentPlanName = () => {
     if (hasActiveSubscription) {
-      // TODO: Return actual plan name from subscription data
       return "Pro Plan";
     }
     return "Free Plan";
@@ -62,7 +63,6 @@ const IndexNavbar = () => {
                   {item.title}
                 </Link>
               </Button>
-              {/* Orange indicator bar on the navbar border */}
               {isActive && (
                 <div className="absolute -bottom-2.5 left-0 right-0 h-0.5 bg-secondary" />
               )}
@@ -71,7 +71,6 @@ const IndexNavbar = () => {
         })}
       </div>
 
-      {/* Push to far right */}
       <div className="ml-auto pr-2 flex items-center gap-1">
         <NotificationsBell />
         {!hasActiveSubscription && !isLoading && (
