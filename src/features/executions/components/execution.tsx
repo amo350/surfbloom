@@ -1,5 +1,16 @@
 "use client";
 
+import { CollapsibleTrigger } from "@radix-ui/react-collapsible";
+import { formatDistanceToNow } from "date-fns";
+import {
+  CheckCircle2Icon,
+  ClockIcon,
+  Loader2Icon,
+  XCircleIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,18 +21,7 @@ import {
 } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { ExecutionStatus } from "@/generated/prisma/enums";
-import {
-  CheckCircle2Icon,
-  ClockIcon,
-  Loader2Icon,
-  XCircleIcon,
-} from "lucide-react";
-import Link from "next/link";
-import { useState } from "react";
 import { useSuspenseExecution } from "../hooks/use-executions";
-import { useParams } from "next/navigation";
-import { formatDistanceToNow } from "date-fns";
-import { CollapsibleTrigger } from "@radix-ui/react-collapsible";
 
 const getStatusIcon = (status: ExecutionStatus) => {
   switch (status) {

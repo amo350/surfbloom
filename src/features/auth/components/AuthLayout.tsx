@@ -1,6 +1,6 @@
 import Image from "next/image";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ReactNode } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 interface AuthLayoutProps {
   children: ReactNode;

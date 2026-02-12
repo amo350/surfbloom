@@ -1,22 +1,23 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { MemberRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
-import { MemberRole } from "@/generated/prisma/enums";
-import { TRPCError } from "@trpc/server";
 
 const TX_CONFLICT_CODES = ["P2034", "P2036", "P2037"];
 const MAX_TX_RETRIES = 3;
 
-async function withTxRetry<T>(
-  fn: () => Promise<T>,
-): Promise<T> {
+async function withTxRetry<T>(fn: () => Promise<T>): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt < MAX_TX_RETRIES; attempt++) {
     try {
       return await fn();
     } catch (e) {
       lastError = e;
-      const code = e && typeof e === "object" && "code" in e ? (e as { code: string }).code : "";
+      const code =
+        e && typeof e === "object" && "code" in e
+          ? (e as { code: string }).code
+          : "";
       if (e instanceof TRPCError || !TX_CONFLICT_CODES.includes(code)) {
         throw e;
       }
@@ -99,10 +100,7 @@ export const membersRouter = createTRPCRouter({
       }
 
       // Prevent demoting the last admin: count + update atomically
-      if (
-        input.role !== MemberRole.ADMIN &&
-        member.role === MemberRole.ADMIN
-      ) {
+      if (input.role !== MemberRole.ADMIN && member.role === MemberRole.ADMIN) {
         return withTxRetry(() =>
           prisma.$transaction(
             async (tx) => {

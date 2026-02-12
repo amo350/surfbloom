@@ -1,13 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useTRPC } from "@/trpc/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EditWorkspaceForm } from "@/features/workspaces/components/EditWorkspaceForm";
 import {
-  InviteMembersCard,
   DangerZoneCard,
+  InviteMembersCard,
 } from "@/features/workspaces/components/WorkspaceSettings";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTRPC } from "@/trpc/client";
 
 interface SettingsContentProps {
   workspaceId: string;

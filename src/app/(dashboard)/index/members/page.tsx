@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { requireAuth } from "@/lib/auth-utils";
 import { IndexMembers } from "@/features/account-members/components/IndexMembers";
+import { requireAuth } from "@/lib/auth-utils";
 
 const MembersPage = async () => {
   const session = await requireAuth();

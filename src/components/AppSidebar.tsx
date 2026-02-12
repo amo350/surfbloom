@@ -27,8 +27,8 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { authClient } from "@/lib/auth-client";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
+import { authClient } from "@/lib/auth-client";
 import { WorkspaceSwitcher } from "./WorkplaceSwitcher";
 
 const menuItems = [
@@ -47,9 +47,7 @@ const menuItems = [
         icon: GoCheckCircle,
         activeIcon: GoCheckCircleFill,
         getUrl: (workspaceId?: string) =>
-          workspaceId
-            ? `/workspaces/${workspaceId}/tasks`
-            : "/index/locations",
+          workspaceId ? `/workspaces/${workspaceId}/tasks` : "/index/locations",
         getActivePattern: (workspaceId?: string) =>
           workspaceId
             ? new RegExp(`^/workspaces/${workspaceId}/tasks`)

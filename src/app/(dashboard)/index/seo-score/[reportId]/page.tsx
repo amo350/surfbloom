@@ -1,11 +1,28 @@
 "use client";
 
-import { use } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
 import {
-  useReport,
-  useRetryReport,
-} from "@/features/seo-reports/hooks/use-reports";
+  AlertTriangle,
+  ArrowLeft,
+  BarChart3,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Lightbulb,
+  Loader2,
+  RefreshCw,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldQuestion,
+  Star,
+  Target,
+  TrendingUp,
+  Trophy,
+  Users,
+  Waves,
+  XCircle,
+} from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { use, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,36 +32,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Waves,
-  TrendingUp,
-  Star,
-  ArrowLeft,
-  Loader2,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  Trophy,
-  Target,
-  Lightbulb,
-  ShieldCheck,
-  ShieldAlert,
-  ShieldQuestion,
-  Users,
-  BarChart3,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
-import { useState } from "react";
+  useReport,
+  useRetryReport,
+} from "@/features/seo-reports/hooks/use-reports";
 import type {
-  VisibilityBreakdown,
+  Competitor,
+  Competitors,
+  Recommendation,
   ReputationBreakdown,
   Strength,
-  Weakness,
-  Recommendation,
   Verification,
-  Competitors,
-  Competitor,
+  VisibilityBreakdown,
+  Weakness,
 } from "@/features/seo-reports/lib/report-schema";
 
 // =============================================
@@ -854,13 +853,17 @@ export default function ReportDetailPage({
               )}
 
               {/* Insights */}
-              {report.strengths && report.weaknesses && report.recommendations && (
-                <InsightsSection
-                  strengths={report.strengths as unknown as Strength[]}
-                  weaknesses={report.weaknesses as unknown as Weakness[]}
-                  recommendations={report.recommendations as unknown as Recommendation[]}
-                />
-              )}
+              {report.strengths &&
+                report.weaknesses &&
+                report.recommendations && (
+                  <InsightsSection
+                    strengths={report.strengths as unknown as Strength[]}
+                    weaknesses={report.weaknesses as unknown as Weakness[]}
+                    recommendations={
+                      report.recommendations as unknown as Recommendation[]
+                    }
+                  />
+                )}
             </div>
           )}
         </div>

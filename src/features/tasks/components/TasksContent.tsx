@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useGetTasks } from "../hooks/use-tasks";
 import {
-  useGetTaskColumns,
   useCreateTaskColumn,
+  useGetTaskColumns,
 } from "../hooks/use-task-columns";
-import { KanbanSkeleton } from "./KanbanSkeleton";
-import { TaskTable } from "./TaskTable";
+import { useGetTasks } from "../hooks/use-tasks";
 import { KanbanBoard } from "./KanbanBoard";
+import { KanbanSkeleton } from "./KanbanSkeleton";
 import { TaskCalendar } from "./TaskCalendar";
+import { TaskTable } from "./TaskTable";
 import { TaskRow } from "./TaskTableColumns";
 
 type TaskView = "table" | "kanban" | "calendar";
@@ -122,11 +122,11 @@ export const TasksContent = ({
   if (view === "calendar") {
     return (
       <div className="h-full overflow-hidden">
-      <TaskCalendar
-        tasks={tasks ?? []}
-        workspaceId={workspaceId}
-        onTaskClick={handleTaskClick}
-      />
+        <TaskCalendar
+          tasks={tasks ?? []}
+          workspaceId={workspaceId}
+          onTaskClick={handleTaskClick}
+        />
       </div>
     );
   }

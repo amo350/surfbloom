@@ -2,8 +2,8 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
 import Handlebars from "handlebars";
 import { NonRetriableError } from "inngest";
-import type { NodeExecutor } from "@/features/nodes/types";
 import { geminiChannel } from "@/features/nodes/channels/gemini";
+import type { NodeExecutor } from "@/features/nodes/types";
 
 Handlebars.registerHelper("json", (context) => {
   const jsonString = JSON.stringify(context, null, 2);

@@ -1,7 +1,7 @@
-import { requireAuth } from "@/lib/auth-utils";
-import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { MembersContent } from "@/features/members/components/members-content";
+import { requireAuth } from "@/lib/auth-utils";
+import { prisma } from "@/lib/prisma";
 
 type Props = {
   params: Promise<{ workspaceId: string }>;

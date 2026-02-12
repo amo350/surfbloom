@@ -1,10 +1,10 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import PAGINATION from "@/config/constants";
-import { prisma } from "@/lib/prisma";
-import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
-import { generateInviteCode } from "@/lib/utils";
 import { AccountRole, MemberRole } from "@/generated/prisma/enums";
-import { TRPCError } from "@trpc/server";
+import { prisma } from "@/lib/prisma";
+import { generateInviteCode } from "@/lib/utils";
+import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 
 // TODO: Premium/billing is per-workspace, not per-account
 // When checking premium features, check workspace.isPremium, not user subscription
@@ -93,6 +93,7 @@ export const workspacesRouter = createTRPCRouter({
         city: workspace.city,
         state: workspace.state,
         zipCode: workspace.zipCode,
+        lastScrapedAt: workspace.lastScrapedAt,
       };
     }),
 
@@ -143,6 +144,33 @@ export const workspacesRouter = createTRPCRouter({
               contains: search,
               mode: "insensitive",
             },
+          },
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            inviteCode: true,
+            createdAt: true,
+            updatedAt: true,
+            address: true,
+            city: true,
+            state: true,
+            zipCode: true,
+            country: true,
+            phone: true,
+            website: true,
+            latitude: true,
+            longitude: true,
+            timezone: true,
+            primaryCategory: true,
+            secondaryCategories: true,
+            googleRating: true,
+            googleReviewCount: true,
+            userId: true,
+            googlePlaceId: true,
+            scrapedPlaceData: true,
+            scrapedCompetitors: true,
+            lastScrapedAt: true,
           },
           orderBy: { updatedAt: "desc" },
         }),

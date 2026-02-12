@@ -2,11 +2,11 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDownIcon } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { TaskDate } from "./TaskDate";
 import { TaskActions } from "./TaskActions";
+import { TaskDate } from "./TaskDate";
 
 export type TaskRow = {
   id: string;
@@ -184,9 +184,7 @@ export const getTaskTableColumns = ({
         <ArrowUpDownIcon className="ml-2 size-4" />
       </Button>
     ),
-    cell: ({ row }) => (
-      <TaskDate value={row.original.createdAt} neutral />
-    ),
+    cell: ({ row }) => <TaskDate value={row.original.createdAt} neutral />,
     sortingFn: (rowA, rowB) => {
       const a = new Date(rowA.original.createdAt).getTime();
       const b = new Date(rowB.original.createdAt).getTime();

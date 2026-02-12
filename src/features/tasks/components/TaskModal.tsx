@@ -1,14 +1,14 @@
 "use client";
 
 import { XIcon } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { TaskModalHeader } from "./TaskModalHeader";
-import { TaskMessaging } from "./TaskMessenger";
-import { TaskAttributes } from "./TaskAttributes";
 import { useTaskModal } from "../hooks/use-task-modal";
 import { useGetTask, useUpdateTask } from "../hooks/use-tasks";
+import { TaskAttributes } from "./TaskAttributes";
+import { TaskMessaging } from "./TaskMessenger";
+import { TaskModalHeader } from "./TaskModalHeader";
 
 // TODO: Future — sync taskId to URL as query param (e.g., /tasks?task=abc123) for shareable links
 
@@ -59,9 +59,7 @@ export const TaskModal = ({
               <TaskModalHeader
                 taskNumber={taskNumber}
                 title={
-                  task?.name && task.name !== "Untitled task"
-                    ? task.name
-                    : ""
+                  task?.name && task.name !== "Untitled task" ? task.name : ""
                 }
                 statusColor={statusColor}
                 creatorEmail={creatorEmail}

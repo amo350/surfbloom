@@ -1,14 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useTRPC } from "@/trpc/client";
+import { formatDistanceToNow } from "date-fns";
 import {
-  useCreateReport,
-  useAllReports,
-  useCancelReport,
-} from "@/features/seo-reports/hooks/use-reports";
+  AlertTriangle,
+  BarChart3,
+  CheckCircle,
+  Clock,
+  Info,
+  Loader2,
+  MapPin,
+  Search,
+  Settings,
+  Star,
+  StopCircle,
+  TrendingUp,
+  Waves,
+  XCircle,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,25 +42,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Search,
-  Waves,
-  TrendingUp,
-  Star,
-  MapPin,
-  BarChart3,
-  Loader2,
-  Info,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertTriangle,
-  Settings,
-  StopCircle,
-} from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+  useAllReports,
+  useCancelReport,
+  useCreateReport,
+} from "@/features/seo-reports/hooks/use-reports";
+import { useTRPC } from "@/trpc/client";
 
 export default function SeoScorePage() {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>("");
+  const [forceRefresh, setForceRefresh] = useState(false);
   const router = useRouter();
 
   const trpc = useTRPC();
@@ -88,6 +89,7 @@ export default function SeoScorePage() {
     const result = await createReport.mutateAsync({
       workspaceId: selectedWorkspaceId,
       query,
+      forceRefresh,
     });
 
     router.push(
@@ -175,9 +177,9 @@ export default function SeoScorePage() {
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     <p>
-                                      No address on file for this location.
-                                      Add one in Settings so we can auto-fill
-                                      the search and verify the right business.
+                                      No address on file for this location. Add
+                                      one in Settings so we can auto-fill the
+                                      search and verify the right business.
                                     </p>
                                   </TooltipContent>
                                 </Tooltip>
@@ -227,6 +229,29 @@ export default function SeoScorePage() {
                         </div>
                       </div>
                     )}
+
+                    {selectedWorkspace?.lastScrapedAt && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>
+                          Data from{" "}
+                          {formatDistanceToNow(
+                            new Date(selectedWorkspace.lastScrapedAt),
+                            { addSuffix: true },
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={forceRefresh}
+                        onChange={(e) => setForceRefresh(e.target.checked)}
+                        className="rounded"
+                      />
+                      Force refresh data
+                    </label>
 
                     <Button
                       size="lg"

@@ -3,8 +3,8 @@
 import { type Node, type NodeProps, useReactFlow } from "@xyflow/react";
 import { GlobeIcon } from "lucide-react";
 import { memo, useState } from "react";
-import { useNodeStatus } from "@/features/nodes/hooks/use-node-status";
 import { BaseExecutionNode } from "@/features/nodes/components/BaseExecutionNode";
+import { useNodeStatus } from "@/features/nodes/hooks/use-node-status";
 import { fetchHttpRequestRealtimeToken } from "./actions";
 import { HttpRequestDialog, HttpRequestFormValues } from "./dialog";
 

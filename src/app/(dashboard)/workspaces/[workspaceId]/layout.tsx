@@ -1,7 +1,7 @@
+import React from "react";
 import AppSidebar from "@/components/AppSidebar";
 import Navbar from "@/components/Navbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import React from "react";
 
 type WorkspaceLayoutProps = {
   children: React.ReactNode;

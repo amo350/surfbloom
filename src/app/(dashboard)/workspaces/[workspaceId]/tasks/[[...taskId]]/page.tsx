@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
+import { TasksPageClient } from "@/features/tasks/components/TasksPageClient";
 import { requireAuth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
-import { TasksPageClient } from "@/features/tasks/components/TasksPageClient";
 
 type Props = {
   params: Promise<{

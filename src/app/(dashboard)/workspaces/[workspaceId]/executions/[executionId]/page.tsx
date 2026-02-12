@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
 import { ExecutionView } from "@/features/executions/components/execution";
 import {
@@ -8,9 +11,6 @@ import { prefetchExecution } from "@/features/executions/server/prefetch";
 import { requireAuth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { HydrateClient } from "@/trpc/server";
-import { Suspense } from "react";
-import { ErrorBoundary } from "react-error-boundary";
-import { redirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{

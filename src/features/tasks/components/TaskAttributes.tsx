@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
+  CalendarIcon,
   CheckCircleIcon,
   GridIcon,
   UserIcon,
-  CalendarIcon,
 } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { useEffect, useState } from "react";
+import { DatePicker } from "@/components/DatePicker";
 import {
   Select,
   SelectContent,
@@ -15,9 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DatePicker } from "@/components/DatePicker";
-import { useGetTask, useUpdateTask } from "../hooks/use-tasks";
+import { Separator } from "@/components/ui/separator";
 import { useGetTaskColumns } from "../hooks/use-task-columns";
+import { useGetTask, useUpdateTask } from "../hooks/use-tasks";
 
 type TaskAttributesProps = {
   taskId: string;

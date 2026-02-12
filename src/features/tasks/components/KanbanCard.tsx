@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { MoreHorizontalIcon, SquareIcon } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TaskActions } from "./TaskActions";
 
 type KanbanCardProps = {

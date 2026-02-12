@@ -1,6 +1,6 @@
+import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import { SettingsContent } from "./settings-context";
 
 type Props = {

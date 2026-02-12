@@ -70,7 +70,10 @@ interface CreateWorkspaceFormProps {
   onSuccess?: (workspaceId: string) => void;
 }
 
-export const CreateWorkspaceForm = ({ onCancel, onSuccess }: CreateWorkspaceFormProps) => {
+export const CreateWorkspaceForm = ({
+  onCancel,
+  onSuccess,
+}: CreateWorkspaceFormProps) => {
   const router = useRouter();
   const createWorkspace = useCreateWorkspace();
 
@@ -299,61 +302,61 @@ export const WorkspaceCard = ({ data }: { data: Workspace }) => {
       />
       <Link href={`/workspaces/${data.id}/workflows`} prefetch>
         <Card className="hover:shadow-md transition-shadow cursor-pointer">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative flex size-10 items-center justify-center rounded-lg bg-muted overflow-hidden">
-                {data.imageUrl ? (
-                  <Image
-                    src={data.imageUrl}
-                    alt={data.name}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <BuildingIcon className="size-5 text-muted-foreground" />
-                )}
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative flex size-10 items-center justify-center rounded-lg bg-muted overflow-hidden">
+                  {data.imageUrl ? (
+                    <Image
+                      src={data.imageUrl}
+                      alt={data.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <BuildingIcon className="size-5 text-muted-foreground" />
+                  )}
+                </div>
+                <CardTitle className="text-base font-medium">
+                  {data.name}
+                </CardTitle>
               </div>
-              <CardTitle className="text-base font-medium">
-                {data.name}
-              </CardTitle>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-8"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <MoreVerticalIcon className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleEdit}>
+                    <Edit2Icon className="size-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleRemove}
+                    disabled={removeWorkspace.isPending}
+                  >
+                    <TrashIcon className="size-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="size-8"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  <MoreVerticalIcon className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleEdit}>
-                  <Edit2Icon className="size-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleRemove}
-                  disabled={removeWorkspace.isPending}
-                >
-                  <TrashIcon className="size-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <CardDescription className="text-xs">
-            Updated {formatDistanceToNow(data.updatedAt, { addSuffix: true })}{" "}
-            &bull; Created{" "}
-            {formatDistanceToNow(data.createdAt, { addSuffix: true })}
-          </CardDescription>
-        </CardContent>
-      </Card>
-    </Link>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <CardDescription className="text-xs">
+              Updated {formatDistanceToNow(data.updatedAt, { addSuffix: true })}{" "}
+              &bull; Created{" "}
+              {formatDistanceToNow(data.createdAt, { addSuffix: true })}
+            </CardDescription>
+          </CardContent>
+        </Card>
+      </Link>
     </>
   );
 };
@@ -448,9 +451,7 @@ export const EditWorkspaceDialog = ({
         <DialogTitle className="sr-only">Edit workspace</DialogTitle>
         <Card className="border-0 shadow-none">
           <CardHeader className="p-7 pb-0">
-            <CardTitle className="text-xl font-bold">
-              Edit workspace
-            </CardTitle>
+            <CardTitle className="text-xl font-bold">Edit workspace</CardTitle>
           </CardHeader>
           <div className="px-7 py-4">
             <Separator />
@@ -484,7 +485,9 @@ export const EditWorkspaceDialog = ({
                         <ImageUpload
                           value={field.value}
                           onChange={field.onChange}
-                          fallback={form.watch("name")?.[0]?.toUpperCase() || "W"}
+                          fallback={
+                            form.watch("name")?.[0]?.toUpperCase() || "W"
+                          }
                           disabled={updateWorkspace.isPending}
                         />
                       </FormControl>
@@ -508,9 +511,7 @@ export const EditWorkspaceDialog = ({
                     size="lg"
                     disabled={updateWorkspace.isPending}
                   >
-                    {updateWorkspace.isPending
-                      ? "Saving..."
-                      : "Save Changes"}
+                    {updateWorkspace.isPending ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               </form>

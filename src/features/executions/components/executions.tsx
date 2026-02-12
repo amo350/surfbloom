@@ -1,9 +1,13 @@
 "use client";
 
+import { formatDistanceToNow } from "date-fns";
 import {
-  AppHeader,
-  AppHeaderTitle,
-} from "@/components/AppHeader";
+  CheckCircle2Icon,
+  ClockIcon,
+  Loader2Icon,
+  XCircleIcon,
+} from "lucide-react";
+import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
 import {
   EmptyView,
   EntityContainer,
@@ -13,17 +17,10 @@ import {
   ErrorView,
   LoadingView,
 } from "@/components/EntityComponents";
-import { useSuspenseExecutions } from "../hooks/use-executions";
-import { useExecutionsParams } from "../hooks/use-executions-params";
 import type { Execution } from "@/generated/prisma/client";
 import { ExecutionStatus } from "@/generated/prisma/enums";
-import { formatDistanceToNow } from "date-fns";
-import {
-  CheckCircle2Icon,
-  ClockIcon,
-  Loader2Icon,
-  XCircleIcon,
-} from "lucide-react";
+import { useSuspenseExecutions } from "../hooks/use-executions";
+import { useExecutionsParams } from "../hooks/use-executions-params";
 
 type WorkspaceProps = {
   workspaceId: string;
@@ -36,9 +33,7 @@ export const ExecutionsList = ({ workspaceId }: WorkspaceProps) => {
     <EntityList
       items={executions.data.items}
       getKey={(execution) => execution.id}
-      renderItem={(execution) => (
-        <ExecutionItem data={execution} />
-      )}
+      renderItem={(execution) => <ExecutionItem data={execution} />}
       emptyView={<ExecutionsEmpty />}
     />
   );
@@ -77,7 +72,9 @@ export const ExecutionsContainer = ({
   workspaceId: string;
 }) => {
   return (
-    <EntityContainer pagination={<ExecutionsPagination workspaceId={workspaceId} />}>
+    <EntityContainer
+      pagination={<ExecutionsPagination workspaceId={workspaceId} />}
+    >
       {children}
     </EntityContainer>
   );

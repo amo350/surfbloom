@@ -1,8 +1,11 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MapPin } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { ImageUpload } from "@/components/ImageUpload";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -12,10 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ImageUpload } from "@/components/ImageUpload";
 import { useUpdateWorkspace } from "../hooks/use-workspaces";
-import { MapPin } from "lucide-react";
 
 const editWorkspaceSchema = z.object({
   name: z.string().trim().min(1, "Required"),
@@ -254,9 +254,7 @@ export const EditWorkspaceForm = ({
             <div className="rounded-lg border border-dashed flex items-center justify-center h-[200px] bg-muted/30">
               <div className="text-center text-muted-foreground">
                 <MapPin className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">
-                  Add an address to see the map preview
-                </p>
+                <p className="text-sm">Add an address to see the map preview</p>
               </div>
             </div>
           )}

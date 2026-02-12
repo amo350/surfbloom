@@ -4,12 +4,12 @@ import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
-  useReactTable,
-  SortingState,
   getSortedRowModel,
   RowSelectionState,
+  SortingState,
+  useReactTable,
 } from "@tanstack/react-table";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Table,
   TableBody,
