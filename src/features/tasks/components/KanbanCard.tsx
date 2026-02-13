@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontalIcon, SquareIcon } from "lucide-react";
+import { MoreHorizontalIcon, SquareIcon, StarIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,6 +17,7 @@ type KanbanCardProps = {
   onSelect: (id: string, selected: boolean) => void;
   onOpenTask: (id: string) => void;
   returnUrl?: string;
+  reviewId?: string | null;
 };
 
 export const KanbanCard = ({
@@ -30,6 +31,7 @@ export const KanbanCard = ({
   onSelect,
   onOpenTask,
   returnUrl,
+  reviewId,
 }: KanbanCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -54,7 +56,11 @@ export const KanbanCard = ({
               className="size-3 rounded-sm flex items-center justify-center shrink-0"
               style={{ backgroundColor: statusColor }}
             >
-              <SquareIcon className="size-2 text-white" />
+              {reviewId ? (
+                <StarIcon className="size-2 fill-white text-white" />
+              ) : (
+                <SquareIcon className="size-2 text-white" />
+              )}
             </div>
             <span className="font-mono">#{taskNumber}</span>
             <div className="w-px h-2.5 bg-border shrink-0" />

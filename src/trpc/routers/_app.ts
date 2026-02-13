@@ -8,6 +8,7 @@ import { tasksRouter } from "@/features/tasks/server/routers";
 import { workflowsRouter } from "@/features/workflows/server/routers";
 import { workspacesRouter } from "@/features/workspaces/server/routers";
 import { createTRPCRouter } from "../init";
+import { reviewsRouter } from "@/features/reviews/server/routers";
 
 export const appRouter = createTRPCRouter({
   executions: executionsRouter,
@@ -19,6 +20,7 @@ export const appRouter = createTRPCRouter({
   tasks: tasksRouter,
   taskColumns: taskColumnsRouter,
   seoReports: seoReportsRouter,
+  reviews: reviewsRouter,
 });
 //CRITICAL: Do not remove this line - required for tRPC type inference
 export type AppRouter = typeof appRouter;

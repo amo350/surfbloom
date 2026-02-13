@@ -5,6 +5,8 @@ import {
   CheckCircleIcon,
   GridIcon,
   UserIcon,
+  StarIcon,
+  XIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DatePicker } from "@/components/DatePicker";
@@ -39,6 +41,58 @@ const AttributeRow = ({ icon, label, children }: AttributeRowProps) => (
     <div>{children}</div>
   </div>
 );
+
+function LinkedReviewRow({
+  taskId,
+  workspaceId,
+}: {
+  taskId: string;
+  workspaceId: string;
+}) {
+  const { data: task } = useGetTask(taskId, workspaceId);
+  const updateTask = useUpdateTask();
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleRemove = () => {
+    updateTask.mutate({ id: taskId, workspaceId, reviewId: null });
+  };
+
+  return (
+    <div className="flex items-center justify-between py-4 px-5">
+      <div className="flex items-center gap-3 text-muted-foreground">
+        <StarIcon className="size-4" />
+        <span className="text-sm">Review</span>
+      </div>
+      <div>
+        {task?.reviewId ? (
+          <div
+            className="flex items-center gap-2"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
+            <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 ring-1 ring-amber-200/60 dark:ring-amber-800/30">
+              <StarIcon className="h-3 w-3 fill-amber-400 text-amber-400" />
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                Linked
+              </span>
+            </div>
+            {isHovered && (
+              <button
+                type="button"
+                onClick={handleRemove}
+                className="flex items-center justify-center size-5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <XIcon className="size-3" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground/50">—</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export const TaskAttributes = ({
   taskId,
@@ -173,6 +227,11 @@ export const TaskAttributes = ({
           placeholder="—"
         />
       </AttributeRow>
+
+      <Separator />
+
+      {/* Linked Review */}
+      <LinkedReviewRow taskId={taskId} workspaceId={workspaceId} />
     </div>
   );
 };

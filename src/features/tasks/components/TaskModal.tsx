@@ -30,8 +30,7 @@ export const TaskModal = ({
   );
   const updateTask = useUpdateTask();
 
-  // TODO: Add sequential task numbering (e.g., #1, #2, #3) stored on the Task model
-  const taskNumber = 0;
+  const taskNumber = task?.taskNumber ?? 0;
   const statusColor = task?.column?.color ?? "#6B7280";
   const creatorEmail = task?.assignee?.name ?? "user";
 
