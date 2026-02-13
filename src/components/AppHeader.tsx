@@ -8,7 +8,7 @@ type AppHeaderProps = {
 
 export const AppHeader = ({ children }: AppHeaderProps) => {
   return (
-    <header className="flex h-12 shrink-0 items-center gap-4 px-6 bg-background border-b shadow-sm">
+    <header className="flex h-12 shrink-0 items-center gap-4 px-6 border-b bg-background/80 backdrop-blur-sm shadow-sm">
       {children}
     </header>
   );

@@ -35,13 +35,19 @@ export const tasksRouter = createTRPCRouter({
         });
       }
 
+      // Returns full Task (all scalars including taskNumber) + column + assignee
       const tasks = await prisma.task.findMany({
         where: {
           workspaceId: input.workspaceId,
           ...(input.columnId && { columnId: input.columnId }),
           ...(input.assigneeId && { assigneeId: input.assigneeId }),
           ...(input.search && {
-            name: { contains: input.search, mode: "insensitive" },
+            OR: [
+              { name: { contains: input.search, mode: "insensitive" } },
+              ...(input.search.replace("#", "").match(/^\d+$/)
+                ? [{ taskNumber: parseInt(input.search.replace("#", ""), 10) }]
+                : []),
+            ],
           }),
           ...(input.dueDateFrom && {
             dueDate: { gte: input.dueDateFrom },
@@ -82,6 +88,7 @@ export const tasksRouter = createTRPCRouter({
         });
       }
 
+      // Returns full Task (all scalars including taskNumber) + column + assignee
       return prisma.task.findUniqueOrThrow({
         where: { id: input.id, workspaceId: input.workspaceId },
         include: {
@@ -97,7 +104,7 @@ export const tasksRouter = createTRPCRouter({
   create: protectedProcedure
     .input(
       z.object({
-        id: z.string().optional(), // Allow client to provide ID for instant URL
+        id: z.string().optional(),
         workspaceId: z.string(),
         columnId: z.string(),
         name: z.string().trim().min(1, "Required"),
@@ -106,6 +113,7 @@ export const tasksRouter = createTRPCRouter({
         dueDate: z.coerce.date().optional(),
         startDate: z.coerce.date().optional(),
         category: z.string().optional(),
+        reviewId: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -136,7 +144,15 @@ export const tasksRouter = createTRPCRouter({
         });
       }
 
-      // Get highest position in this column
+      // Get next task number for this workspace
+      const lastTask = await prisma.task.findFirst({
+        where: { workspaceId: input.workspaceId },
+        orderBy: { taskNumber: "desc" },
+        select: { taskNumber: true },
+      });
+      const nextNumber = (lastTask?.taskNumber ?? 0) + 1;
+
+      // Get highest position in this column (for Kanban ordering)
       const highestTask = await prisma.task.findFirst({
         where: {
           workspaceId: input.workspaceId,
@@ -145,20 +161,21 @@ export const tasksRouter = createTRPCRouter({
         orderBy: { position: "desc" },
         select: { position: true },
       });
-
       const newPosition = highestTask ? highestTask.position + 1000 : 1000;
 
       return prisma.task.create({
         data: {
-          ...(input.id && { id: input.id }), // Use client-provided ID if given
+          ...(input.id && { id: input.id }),
           workspaceId: input.workspaceId,
           columnId: input.columnId,
           name: input.name,
+          taskNumber: nextNumber,
           description: input.description,
           assigneeId: input.assigneeId,
           dueDate: input.dueDate,
           startDate: input.startDate,
           category: input.category,
+          ...(input.reviewId != null && { reviewId: input.reviewId }),
           position: newPosition,
         },
         include: {
@@ -184,6 +201,7 @@ export const tasksRouter = createTRPCRouter({
         startDate: z.coerce.date().optional().nullable(),
         category: z.string().optional().nullable(),
         position: z.number().optional(),
+        reviewId: z.string().optional().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

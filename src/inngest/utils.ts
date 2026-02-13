@@ -69,3 +69,14 @@ export const sendReportGeneration = async (data: {
     id: createId(),
   });
 };
+
+export const sendReviewSync = async (data: {
+  workspaceId: string;
+  forceRefresh?: boolean;
+}) => {
+  return inngest.send({
+    name: "workspace/sync.reviews",
+    data,
+    id: createId(),
+  });
+};

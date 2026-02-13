@@ -61,6 +61,7 @@ import { useWorkspacesParams } from "../hooks/use-workspaces-params";
 const createWorkspaceSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   imageUrl: z.string().optional(),
+  googleAddress: z.string().trim().optional(),
 });
 
 type CreateWorkspaceFormValues = z.infer<typeof createWorkspaceSchema>;
@@ -82,6 +83,7 @@ export const CreateWorkspaceForm = ({
     defaultValues: {
       name: "",
       imageUrl: "",
+      googleAddress: "",
     },
   });
 
@@ -110,6 +112,22 @@ export const CreateWorkspaceForm = ({
               <FormControl>
                 <Input placeholder="Enter workspace name" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="googleAddress"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Location Address</FormLabel>
+              <FormControl>
+                <Input placeholder="Paste from Google Maps" {...field} />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                Copy the full address from Google Maps and paste it here
+              </p>
               <FormMessage />
             </FormItem>
           )}

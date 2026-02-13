@@ -5,6 +5,7 @@ import { AccountRole, MemberRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { generateInviteCode } from "@/lib/utils";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
+import { parseAddress } from "@/lib/parse-address";
 
 // TODO: Premium/billing is per-workspace, not per-account
 // When checking premium features, check workspace.isPremium, not user subscription
@@ -15,9 +16,14 @@ export const workspacesRouter = createTRPCRouter({
       z.object({
         name: z.string().trim().min(1, "Required"),
         imageUrl: z.string().optional(),
+        googleAddress: z.string().trim().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const parsed = input.googleAddress
+        ? parseAddress(input.googleAddress)
+        : null;
+
       const workspace = await prisma.$transaction(async (tx) => {
         const workspace = await tx.workspace.create({
           data: {
@@ -25,10 +31,16 @@ export const workspacesRouter = createTRPCRouter({
             imageUrl: input.imageUrl,
             inviteCode: generateInviteCode(7),
             userId: ctx.auth.user.id,
+            ...(parsed && {
+              address: parsed.address,
+              city: parsed.city,
+              state: parsed.state,
+              zipCode: parsed.zipCode,
+              country: parsed.country,
+            }),
           },
         });
 
-        // Create membership for creator as ADMIN
         await tx.member.create({
           data: {
             userId: ctx.auth.user.id,
@@ -37,7 +49,6 @@ export const workspacesRouter = createTRPCRouter({
           },
         });
 
-        // Create default task columns
         const defaultColumns = [
           { name: "Overdue", color: "#EF4444", position: 1 },
           { name: "Priority 1", color: "#F97316", position: 2 },

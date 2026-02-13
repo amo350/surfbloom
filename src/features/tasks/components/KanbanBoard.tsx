@@ -16,6 +16,8 @@ type Task = {
   name: string;
   columnId: string;
   position: number;
+  taskNumber: number;
+  reviewId?: string | null;
   assignee: {
     id: string;
     name: string;
@@ -171,11 +173,6 @@ export const KanbanBoard = ({
     [workspaceId, bulkUpdatePositions],
   );
 
-  const getTaskNumber = (task: Task) => {
-    const allTasks = Object.values(tasksByColumn).flat();
-    return allTasks.findIndex((t) => t.id === task.id) + 1;
-  };
-
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       {/* Container that fills available space, no overflow on parent */}
@@ -231,7 +228,7 @@ export const KanbanBoard = ({
                               <KanbanCard
                                 id={task.id}
                                 name={task.name}
-                                taskNumber={getTaskNumber(task)}
+                                taskNumber={task.taskNumber}
                                 statusColor={column.color}
                                 creatorName={task.assignee?.name ?? "user"}
                                 workspaceId={workspaceId}
@@ -239,6 +236,7 @@ export const KanbanBoard = ({
                                 onSelect={onTaskSelect}
                                 onOpenTask={onOpenTask}
                                 returnUrl={returnUrl}
+                                reviewId={task.reviewId}
                               />
                             </div>
                           )}
