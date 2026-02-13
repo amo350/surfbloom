@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { prisma } from "@/lib/prisma";
 import { sendReviewSync } from "@/inngest/utils";
@@ -19,7 +20,23 @@ export const reviewsRouter = createTRPCRouter({
           .default("newest"),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
       const { workspaceId, page, pageSize, rating, hasResponse, sortBy } =
         input;
 
@@ -100,7 +117,23 @@ export const reviewsRouter = createTRPCRouter({
 
   getStats: protectedProcedure
     .input(z.object({ workspaceId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
       const { workspaceId } = input;
 
       const [workspace, dbTotal, avgRating, unresponded, byRating] =
@@ -150,7 +183,23 @@ export const reviewsRouter = createTRPCRouter({
         forceRefresh: z.boolean().optional().default(false),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
       await sendReviewSync({
         workspaceId: input.workspaceId,
         forceRefresh: input.forceRefresh,
@@ -164,7 +213,23 @@ export const reviewsRouter = createTRPCRouter({
         workspaceId: z.string(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const membership = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
       const [review, workspace] = await Promise.all([
         prisma.review.findUniqueOrThrow({
           where: { id: input.reviewId },
@@ -181,9 +246,15 @@ export const reviewsRouter = createTRPCRouter({
         }),
       ]);
 
-      const openai = createOpenAI({
-        apiKey: process.env.OPENAI_API_KEY!,
-      });
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey || typeof apiKey !== "string") {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "OPENAI_API_KEY is not configured",
+        });
+      }
+
+      const openai = createOpenAI({ apiKey });
 
       const { text } = await generateText({
         model: openai("gpt-4o-mini"),
