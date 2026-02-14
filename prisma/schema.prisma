@@ -21,17 +21,17 @@ model User {
   image            String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
-  
+
   // Account-level
   accountRole      AccountRole  @default(USER)
   mainWorkspaceId  String?
-  
+
   // Account ownership - who owns this user's account
   // null means user is their own account owner
   accountOwnerId   String?
   accountOwner     User?        @relation("AccountMembers", fields: [accountOwnerId], references: [id], onDelete: SetNull)
   accountMembers   User[]       @relation("AccountMembers")
-  
+
   // ... existing relations
   sessions         Session[]
   accounts         Account[]
@@ -41,6 +41,7 @@ model User {
   sentInvitations  Invitation[] @relation("SentInvitations")
   mainWorkspace    Workspace?   @relation("MainWorkspace", fields: [mainWorkspaceId], references: [id], onDelete: SetNull)
   assignedTasks    Task[]
+  domains          Domain[]
 
   @@unique([email])
   @@index([accountOwnerId])
@@ -124,19 +125,50 @@ model Workspace {
   scrapedCompetitors  Json?
   lastScrapedAt       DateTime?
 
-  members      Member[]
-  workflows    Workflow[]
-  invitations  Invitation[]
-  usersWithMain User[] @relation("MainWorkspace")
-  taskColumns  TaskColumn[]
-  tasks        Task[]
-  reports      Report[]
-  reviews      Review[]
+  members         Member[]
+  workflows       Workflow[]
+  invitations     Invitation[]
+  usersWithMain   User[]           @relation("MainWorkspace")
+  taskColumns     TaskColumn[]
+  tasks           Task[]
+  reports         Report[]
+  reviews         Review[]
+
+  // Chatbot relations (conversations routed to workspace)
+  chatContacts    ChatContact[]
+  chatRooms       ChatRoom[]
+  domains         Domain[]
 
   user       User @relation("CreatedWorkspaces", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("workspace")
+}
+
+model Domain {
+  id          String     @id @default(cuid())
+  userId      String
+  name        String
+  icon        String?
+  workspaceId String?
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  // Chatbot relations
+  chatBot         ChatBot?
+  helpDeskItems   HelpDeskItem[]
+  filterQuestions  FilterQuestion[]
+  chatContacts    ChatContact[]
+  chatRooms       ChatRoom[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([workspaceId])
+  @@map("domain")
 }
 
 enum MemberRole {
@@ -385,6 +417,10 @@ model Report {
   @@map("report")
 }
 
+// =============================================
+// Reviews
+// =============================================
+
 model Review {
   id               String    @id @default(cuid())
   workspaceId      String
@@ -416,9 +452,147 @@ model Review {
 
   // Performance indexes
   @@unique([workspaceId, googleReviewId]) // Prevents duplicate reviews
-  @@index([workspaceId, publishedAt]) // Sort by date (paginated list)
-  @@index([workspaceId, rating]) // Filter by star rating
-  @@index([workspaceId, source]) // Filter by platform
+  @@index([workspaceId, publishedAt])     // Sort by date (paginated list)
+  @@index([workspaceId, rating])          // Filter by star rating
+  @@index([workspaceId, source])          // Filter by platform
 
   @@map("review")
+}
+
+// =============================================
+// Chatbot System
+// =============================================
+
+model ChatBot {
+  id              String    @id @default(cuid())
+  domainId        String    @unique
+
+  // Widget appearance
+  welcomeMessage  String?   @default("Hey there, How can we assist?")
+  icon            String?
+  headerText      String?   @default("Sales Rep")
+  themeColor      String?   @default("#14b8a6")
+
+  // Behavior
+  helpdesk        Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  domain          Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([domainId])
+  @@map("chatbot")
+}
+
+model HelpDeskItem {
+  id              String    @id @default(cuid())
+  domainId        String
+  question        String
+  answer          String    @db.Text
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  domain          Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([domainId])
+  @@map("help_desk_item")
+}
+
+model FilterQuestion {
+  id              String    @id @default(cuid())
+  domainId        String
+  question        String
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  domain          Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  responses       ChatContactResponse[]
+
+  @@index([domainId])
+  @@map("filter_question")
+}
+
+model ChatContact {
+  id              String    @id @default(cuid())
+  domainId        String
+  workspaceId     String?
+  email           String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  domain          Domain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  responses       ChatContactResponse[]
+  chatRooms       ChatRoom[]
+
+  @@index([domainId])
+  @@index([workspaceId])
+  @@index([domainId, email])
+  @@map("chat_contact")
+}
+
+model ChatContactResponse {
+  id              String    @id @default(cuid())
+  contactId       String
+  questionId      String
+  answer          String?
+
+  createdAt       DateTime  @default(now())
+
+  contact         ChatContact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  question        FilterQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([questionId])
+  @@map("chat_contact_response")
+}
+
+enum ChatMessageRole {
+  USER
+  ASSISTANT
+}
+
+model ChatRoom {
+  id              String    @id @default(cuid())
+  domainId        String
+  workspaceId     String?
+  contactId       String?
+
+  live            Boolean   @default(false)
+  mailed          Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  domain          Domain       @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  workspace       Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  contact         ChatContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  messages        ChatMessage[]
+
+  @@index([domainId])
+  @@index([workspaceId])
+  @@index([contactId])
+  @@index([domainId, createdAt])
+  @@map("chat_room")
+}
+
+model ChatMessage {
+  id              String          @id @default(cuid())
+  chatRoomId      String
+  message         String          @db.Text
+  role            ChatMessageRole
+  seen            Boolean         @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  chatRoom        ChatRoom  @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+
+  @@index([chatRoomId])
+  @@index([chatRoomId, createdAt])
+  @@map("chat_message")
 }

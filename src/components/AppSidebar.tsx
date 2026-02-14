@@ -5,6 +5,7 @@ import {
   FolderOpenIcon,
   HistoryIcon,
   LogOutIcon,
+  MessageCircleIcon,
   StarIcon,
   Users2Icon,
 } from "lucide-react";
@@ -53,6 +54,18 @@ const menuItems = [
           workspaceId
             ? new RegExp(`^/workspaces/${workspaceId}/tasks`)
             : /^\/tasks/,
+      },
+      {
+        title: "Conversations",
+        icon: MessageCircleIcon,
+        getUrl: (workspaceId?: string) =>
+          workspaceId
+            ? `/workspaces/${workspaceId}/conversations`
+            : "/index/conversations",
+        getActivePattern: (workspaceId?: string) =>
+          workspaceId
+            ? new RegExp(`^/workspaces/${workspaceId}/conversations`)
+            : /^\/index\/conversations/,
       },
     ],
   },
