@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { ChatBotQuickAccess } from "@/features/chatbot/components/ChatBotConfigDialog";
+import { DomainSettingsButton } from "@/features/chatbot/components/DomainSettings";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
 import { authClient } from "@/lib/auth-client";
 import NotificationsBell from "./navbarComponents/NotificationsBell";
@@ -18,6 +20,10 @@ const indexMenuItems = [
   {
     title: "SEO Score",
     href: "/index/seo-score",
+  },
+  {
+    title: "Conversations",
+    href: "/index/conversations",
   },
   {
     title: "Members",
@@ -72,6 +78,8 @@ const IndexNavbar = () => {
       </div>
 
       <div className="ml-auto pr-2 flex items-center gap-1">
+        <ChatBotQuickAccess />
+        <DomainSettingsButton />
         <NotificationsBell />
         {!hasActiveSubscription && !isLoading && (
           <Button
