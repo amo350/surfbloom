@@ -41,7 +41,9 @@ type BotConfig = {
 // ─── Helpers ──────────────────────────────────────────────
 
 function postToParent(message: string) {
-  window.parent.postMessage(message, "*");
+  if (window.parent !== window) {
+    window.parent.postMessage(message, document.referrer || "*");
+  }
 }
 
 // ─── Hook ─────────────────────────────────────────────────

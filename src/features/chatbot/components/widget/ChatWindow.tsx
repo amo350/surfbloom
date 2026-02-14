@@ -193,9 +193,9 @@ export const ChatWindow = forwardRef<HTMLDivElement, ChatWindowProps>(
                 ref={ref}
                 className="flex flex-1 flex-col gap-2 overflow-y-auto bg-[#f7f9fb] px-3 py-3"
               >
-                {chats.map((chat, i) => (
-                  <MessageBubble
-                    key={i}
+{chats.map((chat, i) => (
+                <MessageBubble
+                  key={chat.createdAt ? `${chat.role}-${chat.createdAt}` : `msg-${i}`}
                     role={chat.role}
                     content={chat.content}
                     link={chat.link}

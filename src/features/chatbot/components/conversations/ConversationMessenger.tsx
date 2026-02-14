@@ -55,13 +55,16 @@ export function ConversationMessenger({ roomId }: Props) {
     });
   }, [messages]);
 
-  // Mark messages as seen when room loads
-  // biome-ignore lint/correctness/useExhaustiveDependencies: run when room or messages change; markSeen.mutate is stable
+  // Mark messages as seen when opening a conversation (roomId change only)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only run on roomId change to avoid duplicate markSeen on every message update
   useEffect(() => {
-    if (messages?.some((m) => !m.seen && m.role === "USER")) {
+    if (
+      messages?.some((m) => !m.seen && m.role === "USER") &&
+      !markSeen.isPending
+    ) {
       markSeen.mutate({ roomId });
     }
-  }, [roomId, messages]);
+  }, [roomId]);
 
   const onSubmit = handleSubmit((values) => {
     sendMessage.mutate(

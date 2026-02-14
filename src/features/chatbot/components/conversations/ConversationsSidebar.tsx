@@ -227,7 +227,7 @@ export function ConversationsSidebar({
                     {/* Domain + workspace tags */}
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="text-[10px] text-muted-foreground/60 truncate">
-                        {room.domain.name}
+                        {room.domain?.name ?? "Unknown"}
                       </span>
                       {room.workspace && (
                         <>
@@ -235,7 +235,7 @@ export function ConversationsSidebar({
                             ·
                           </span>
                           <span className="text-[10px] text-muted-foreground/60 truncate">
-                            {room.workspace.name}
+                            {room.workspace?.name}
                           </span>
                         </>
                       )}

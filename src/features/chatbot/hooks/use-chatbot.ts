@@ -199,14 +199,18 @@ export const useConversations = (filters?: {
 
 export const useMessages = (roomId: string) => {
   const trpc = useTRPC();
-  return useQuery(
-    trpc.chatbot.getMessages.queryOptions({ roomId }),
-  );
+  return useQuery({
+    ...trpc.chatbot.getMessages.queryOptions({ roomId }),
+    enabled: !!roomId,
+  });
 };
 
 export const useRoom = (roomId: string) => {
   const trpc = useTRPC();
-  return useQuery(trpc.chatbot.getRoom.queryOptions({ roomId }));
+  return useQuery({
+    ...trpc.chatbot.getRoom.queryOptions({ roomId }),
+    enabled: !!roomId,
+  });
 };
 
 export const useSendMessage = (roomId: string) => {

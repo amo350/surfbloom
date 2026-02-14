@@ -42,16 +42,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check for email in message
+    // FIX 1: local variable instead of module-level (race condition)
     const extractedEmail = extractEmailsFromString(message);
+    const customerEmail = extractedEmail
+      ? extractedEmail[0].trim().toLowerCase()
+      : null;
 
-    if (extractedEmail) {
-      const customerEmail = extractedEmail[0];
-
+    if (customerEmail) {
+      // FIX 2: exact case-insensitive match instead of startsWith
       const existingContact = await prisma.chatContact.findFirst({
         where: {
           domainId: domain.id,
-          email: { startsWith: customerEmail },
+          email: { equals: customerEmail, mode: "insensitive" },
         },
         include: {
           chatRooms: {
@@ -63,7 +65,7 @@ export async function POST(req: NextRequest) {
 
       // New customer
       if (!existingContact) {
-        const contact = await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx) => {
           const c = await tx.chatContact.create({
             data: {
               domainId: domain.id,
@@ -94,43 +96,47 @@ export async function POST(req: NextRequest) {
       const room = existingContact.chatRooms[0];
       if (room?.live) {
         await prisma.chatMessage.create({
-          data: {
-            chatRoomId: room.id,
-            message,
-            role: "USER",
-          },
+          data: { chatRoomId: room.id, message, role: "USER" },
         });
-        // TODO: Phase 7 — Inngest Realtime trigger
         return NextResponse.json({ live: true, chatRoom: room.id });
       }
 
-      // Existing customer — room not live, store + respond
+      // FIX 3: return after storing message instead of falling through
       if (room) {
         await prisma.chatMessage.create({
-          data: {
-            chatRoomId: room.id,
-            message,
-            role: "USER",
+          data: { chatRoomId: room.id, message, role: "USER" },
+        });
+
+        // TODO: Phase 6 — AI response using chatHistory
+        return NextResponse.json({
+          response: {
+            role: "assistant",
+            content:
+              "Thanks for your message! Our team will get back to you shortly.",
           },
         });
       }
     }
 
-    // No email yet — check helpdesk match
-    const lowerMessage = message.toLowerCase();
-    const helpdeskMatch = domain.helpDeskItems.find(
-      (item) =>
-        lowerMessage.includes(item.question.toLowerCase()) ||
-        item.question.toLowerCase().includes(lowerMessage)
-    );
+    // No email — check helpdesk match (FIX 4: tighter matching)
+    const lowerMessage = message.toLowerCase().trim();
 
-    if (helpdeskMatch) {
-      return NextResponse.json({
-        response: {
-          role: "assistant",
-          content: helpdeskMatch.answer,
-        },
+    if (lowerMessage.length >= 3) {
+      const messageWords = lowerMessage.split(/\s+/);
+
+      const helpdeskMatch = domain.helpDeskItems.find((item) => {
+        const questionWords = item.question.toLowerCase().split(/\s+/);
+        // At least one full word must match
+        return messageWords.some(
+          (word: string) => word.length >= 3 && questionWords.includes(word)
+        );
       });
+
+      if (helpdeskMatch) {
+        return NextResponse.json({
+          response: { role: "assistant", content: helpdeskMatch.answer },
+        });
+      }
     }
 
     // TODO: Phase 6 — OpenAI integration

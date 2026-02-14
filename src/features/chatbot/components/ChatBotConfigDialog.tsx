@@ -1,7 +1,7 @@
 "use client";
 
 import { useUploadThing } from "@/lib/uploadthing-client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -195,13 +195,15 @@ function AppearanceSection({ domainId }: { domainId: string }) {
   const [icon, setIcon] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
-  if (config && !initialized) {
-    setWelcomeMessage(config.welcomeMessage ?? "");
-    setHeaderText(config.headerText ?? "Sales Rep");
-    setThemeColor(config.themeColor ?? "#14b8a6");
-    setIcon(config.icon ?? null);
-    setInitialized(true);
-  }
+  useEffect(() => {
+    if (config && !initialized) {
+      setWelcomeMessage(config.welcomeMessage ?? "");
+      setHeaderText(config.headerText ?? "Sales Rep");
+      setThemeColor(config.themeColor ?? "#14b8a6");
+      setIcon(config.icon ?? null);
+      setInitialized(true);
+    }
+  }, [config, initialized]);
 
   const { startUpload, isUploading } = useUploadThing("imageUploader", {
     onClientUploadComplete: (res) => {
