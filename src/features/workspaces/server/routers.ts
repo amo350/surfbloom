@@ -104,6 +104,9 @@ export const workspacesRouter = createTRPCRouter({
         city: workspace.city,
         state: workspace.state,
         zipCode: workspace.zipCode,
+        phone: workspace.phone,
+        description: workspace.description,
+        paymentLink: workspace.paymentLink,
         lastScrapedAt: workspace.lastScrapedAt,
       };
     }),
@@ -365,6 +368,9 @@ export const workspacesRouter = createTRPCRouter({
         city: z.string().optional().nullable(),
         state: z.string().optional().nullable(),
         zipCode: z.string().optional().nullable(),
+        phone: z.string().optional().nullable(),
+        description: z.string().optional().nullable(),
+        paymentLink: z.string().optional().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -392,6 +398,9 @@ export const workspacesRouter = createTRPCRouter({
       if (input.city !== undefined) updateData.city = input.city;
       if (input.state !== undefined) updateData.state = input.state;
       if (input.zipCode !== undefined) updateData.zipCode = input.zipCode;
+      if (input.phone !== undefined) updateData.phone = input.phone;
+      if (input.description !== undefined) updateData.description = input.description;
+      if (input.paymentLink !== undefined) updateData.paymentLink = input.paymentLink;
 
       if (Object.keys(updateData).length === 0) {
         throw new TRPCError({

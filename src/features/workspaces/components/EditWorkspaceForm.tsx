@@ -24,6 +24,14 @@ const editWorkspaceSchema = z.object({
   city: z.string().optional().nullable(),
   state: z.string().optional().nullable(),
   zipCode: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  paymentLink: z
+    .string()
+    .url("Must be a valid URL")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
 });
 
 type EditWorkspaceFormValues = z.infer<typeof editWorkspaceSchema>;
@@ -37,6 +45,9 @@ interface EditWorkspaceFormProps {
     city: string | null;
     state: string | null;
     zipCode: string | null;
+    phone: string | null;
+    description: string | null;
+    paymentLink: string | null;
   };
 }
 
@@ -73,6 +84,9 @@ export const EditWorkspaceForm = ({
       city: initialValues.city ?? "",
       state: initialValues.state ?? "",
       zipCode: initialValues.zipCode ?? "",
+      phone: initialValues.phone ?? "",
+      description: initialValues.description ?? "",
+      paymentLink: initialValues.paymentLink ?? "",
     },
   });
 
@@ -87,6 +101,9 @@ export const EditWorkspaceForm = ({
       city: values.city || null,
       state: values.state || null,
       zipCode: values.zipCode || null,
+      phone: values.phone || null,
+      description: values.description || null,
+      paymentLink: values.paymentLink || null,
     });
   };
 
@@ -235,6 +252,74 @@ export const EditWorkspaceForm = ({
             </div>
           </div>
         </div>
+
+        {/* Phone */}
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone Number</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="(555) 123-4567"
+                  disabled={updateWorkspace.isPending}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Description */}
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Location Description</FormLabel>
+              <p className="text-xs text-muted-foreground">
+                Tell the chatbot AI about this location — services, specialties, hours, policies, etc.
+              </p>
+              <FormControl>
+                <textarea
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="We specialize in cosmetic dentistry, open Mon-Fri 9am-5pm, walk-ins welcome..."
+                  rows={4}
+                  disabled={updateWorkspace.isPending}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none resize-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Payment Link */}
+        <FormField
+          control={form.control}
+          name="paymentLink"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Payment Portal Link</FormLabel>
+              <p className="text-xs text-muted-foreground">
+                If customers need to make payments, the chatbot can send this link.
+              </p>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="https://pay.stripe.com/your-business"
+                  disabled={updateWorkspace.isPending}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Map Preview */}
         <div className="space-y-2">

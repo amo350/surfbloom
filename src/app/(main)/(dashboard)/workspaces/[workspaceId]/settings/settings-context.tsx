@@ -42,6 +42,9 @@ export const SettingsContent = ({ workspaceId }: SettingsContentProps) => {
                   city: workspace.city ?? null,
                   state: workspace.state ?? null,
                   zipCode: workspace.zipCode ?? null,
+                  phone: workspace.phone ?? null,
+                  description: workspace.description ?? null,
+                  paymentLink: workspace.paymentLink ?? null,
                 }}
               />
             </CardContent>

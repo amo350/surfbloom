@@ -17,6 +17,10 @@ export function ChatWidget() {
     loading,
     errors,
     realTime,
+    selectedLocation,
+    locationPromptShown,
+    onSelectLocation,
+    showLocationPicker,
   } = useChatWidget();
 
   return (
@@ -38,6 +42,11 @@ export function ChatWidget() {
             onSendMessage={onSendMessage}
             errors={errors}
             realtimeMode={realTime}
+            locations={botConfig.locations}
+            selectedLocation={selectedLocation}
+            locationPromptShown={locationPromptShown}
+            showLocationPicker={showLocationPicker}
+            onSelectLocation={onSelectLocation}
           />
         </div>
       )}
@@ -46,17 +55,21 @@ export function ChatWidget() {
         onClick={onToggleBot}
         style={{
           position: "absolute",
-          bottom: 4,
-          right: 4,
+          bottom: 10,
+          right: 10,
           width: 60,
           height: 60,
           borderRadius: "50%",
-          backgroundColor: botConfig?.chatBot?.themeColor || "#14b8a6",
+          background: botConfig?.chatBot?.bubbleTransparent
+            ? "transparent"
+            : botConfig?.chatBot?.themeColor || "#14b8a6",
           display: loading ? "none" : "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          boxShadow: botConfig?.chatBot?.bubbleTransparent
+            ? "none"
+            : "0 4px 12px rgba(0,0,0,0.15)",
         }}
       >
         {botConfig?.chatBot?.icon ? (

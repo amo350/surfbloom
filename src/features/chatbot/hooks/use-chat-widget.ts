@@ -32,10 +32,12 @@ type BotConfig = {
     welcomeMessage: string | null;
     headerText: string | null;
     themeColor: string | null;
+    bubbleTransparent?: boolean;
     helpdesk: boolean;
   } | null;
   helpDeskItems: { id: string; question: string; answer: string }[];
   filterQuestions: { id: string; question: string }[];
+  locations?: { id: string; name: string; imageUrl: string | null }[];
 };
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -65,6 +67,11 @@ export const useChatWidget = () => {
   const [chats, setChats] = useState<ChatMessage[]>([]);
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [domainId, setDomainId] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [locationPromptShown, setLocationPromptShown] = useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [contactEmail, setContactEmail] = useState<string | null>(null);
+  const [emailAsks, setEmailAsks] = useState(0);
   const [realTime, setRealTime] = useState<
     { chatroom: string; mode: boolean } | undefined
   >(undefined);
@@ -128,7 +135,6 @@ export const useChatWidget = () => {
       const config: BotConfig = await res.json();
       setBotConfig(config);
 
-      // Add welcome message (same as Corinna)
       if (config.chatBot?.welcomeMessage) {
         setChats([
           {
@@ -136,6 +142,12 @@ export const useChatWidget = () => {
             content: config.chatBot.welcomeMessage,
           },
         ]);
+      }
+
+      // Auto-assign if only 1 location
+      if (config.locations?.length === 1) {
+        setSelectedLocation(config.locations[0].id);
+        setLocationPromptShown(true);
       }
 
       setLoading(false);
@@ -178,10 +190,10 @@ export const useChatWidget = () => {
         body: JSON.stringify({
           domainId,
           message: content,
-          chatHistory: chats.map((c) => ({
-            role: c.role,
-            content: c.content,
-          })),
+          chatHistory: chats.map((c) => ({ role: c.role, content: c.content })),
+          selectedLocation,
+          contactEmail,
+          emailAsks,
         }),
       });
 
@@ -190,8 +202,11 @@ export const useChatWidget = () => {
       const data = await res.json();
       setIsAiTyping(false);
 
+      if (data.contactEmail) {
+        setContactEmail(data.contactEmail);
+      }
+
       if (data.live) {
-        // Switch to real-time mode
         setRealTime({
           chatroom: data.chatRoom,
           mode: true,
@@ -206,6 +221,23 @@ export const useChatWidget = () => {
             createdAt: new Date(),
           },
         ]);
+
+        if (data.emailAsked) {
+          setEmailAsks((prev) => prev + 1);
+        }
+
+        // Show location selector after email capture
+        if (data.showLocationSelector && !locationPromptShown) {
+          const locations = botConfig?.locations || [];
+          if (locations.length === 1) {
+            setSelectedLocation(locations[0].id);
+            setLocationPromptShown(true);
+          } else if (locations.length > 1) {
+            setShowLocationPicker(true);
+          } else {
+            setLocationPromptShown(true);
+          }
+        }
       }
     } catch (err) {
       console.error("[SurfBloom] Failed to send message:", err);
@@ -221,6 +253,24 @@ export const useChatWidget = () => {
     }
   });
 
+  const onSelectLocation = (locationId: string) => {
+    setSelectedLocation(locationId);
+    setLocationPromptShown(true);
+    setShowLocationPicker(false);
+
+    const location = botConfig?.locations?.find((l) => l.id === locationId);
+    const locationName = location?.name || "that location";
+
+    setChats((prev) => [
+      ...prev,
+      { role: "user", content: locationName },
+      {
+        role: "assistant",
+        content: `Great, I'll be helping you with our ${locationName} location. What can I do for you?`,
+      },
+    ]);
+  };
+
   return {
     botOpened,
     onToggleBot,
@@ -234,5 +284,11 @@ export const useChatWidget = () => {
     loading,
     errors,
     realTime,
+    selectedLocation,
+    setSelectedLocation,
+    locationPromptShown,
+    setLocationPromptShown,
+    onSelectLocation,
+    showLocationPicker,
   };
 };

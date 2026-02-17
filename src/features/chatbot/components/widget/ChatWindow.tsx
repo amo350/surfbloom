@@ -4,6 +4,7 @@ import { forwardRef, useState } from "react";
 import { FieldErrors, UseFormRegister } from "react-hook-form";
 import type { ChatMessage } from "../../hooks/use-chat-widget";
 import { MessageBubble } from "../shared/MessageBubble";
+import { LocationSelector } from "./LocationSelector";
 import { TypingIndicator } from "./TypingIndicator";
 
 type HelpDeskItem = {
@@ -26,6 +27,11 @@ type ChatWindowProps = {
   errors: FieldErrors;
   realtimeMode?: { chatroom: string; mode: boolean };
   setChats: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  locations?: { id: string; name: string; imageUrl: string | null }[];
+  selectedLocation: string | null;
+  locationPromptShown: boolean;
+  showLocationPicker: boolean;
+  onSelectLocation: (id: string) => void;
 };
 
 function toRgba(color: string, alpha: number): string {
@@ -67,6 +73,11 @@ export const ChatWindow = forwardRef<HTMLDivElement, ChatWindowProps>(
       errors,
       realtimeMode,
       setChats,
+      locations,
+      selectedLocation,
+      locationPromptShown,
+      showLocationPicker,
+      onSelectLocation,
     },
     ref,
   ) => {
@@ -203,6 +214,13 @@ export const ChatWindow = forwardRef<HTMLDivElement, ChatWindowProps>(
                     botIcon={botIcon}
                   />
                 ))}
+                {/* Location selector — show after email capture when 2+ locations */}
+                {showLocationPicker && !locationPromptShown && (
+                  <LocationSelector
+                    locations={locations || []}
+                    onSelect={onSelectLocation}
+                  />
+                )}
                 {isAiTyping && <TypingIndicator />}
               </div>
 
