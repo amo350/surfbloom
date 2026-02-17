@@ -272,16 +272,19 @@ export async function POST(req: NextRequest) {
         // Email notification if not already sent
         if (!room.mailed) {
           if (domain.user?.email) {
-            await sendMail({
+            const result = await sendMail({
               to: domain.user.email,
               subject: "Live Chat — Customer Needs Assistance",
               text: `A customer (${customerEmail}) on ${domain.name} just switched to live mode and needs your help.`,
             });
+
+            if (result?.success) {
+              await prisma.chatRoom.update({
+                where: { id: room.id },
+                data: { mailed: true },
+              });
+            }
           }
-          await prisma.chatRoom.update({
-            where: { id: room.id },
-            data: { mailed: true },
-          });
         }
 
         // TODO: Phase 7 — Inngest Realtime trigger
@@ -339,7 +342,7 @@ export async function POST(req: NextRequest) {
             data: { live: true },
           });
 
-          const cleanContent = aiContent.replace("(realtime)", "").trim();
+          const cleanContent = aiContent.replaceAll("(realtime)", "").trim();
 
           await prisma.chatMessage.create({
             data: {
@@ -374,7 +377,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Check for URL in AI response
-        const cleanContent = aiContent.replace("(complete)", "").trim();
+        const cleanContent = aiContent.replaceAll("(complete)", "").trim();
         const extractedUrl = extractURLfromString(cleanContent);
 
         // Store AI response

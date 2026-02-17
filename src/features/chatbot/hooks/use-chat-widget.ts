@@ -263,10 +263,11 @@ export const useChatWidget = () => {
 
     setChats((prev) => [
       ...prev,
-      { role: "user", content: locationName },
+      { role: "user", content: locationName, createdAt: new Date() },
       {
         role: "assistant",
         content: `Great, I'll be helping you with our ${locationName} location. What can I do for you?`,
+        createdAt: new Date(),
       },
     ]);
   };

@@ -12,10 +12,8 @@ export async function getAIResponse(
   userMessage: string,
 ) {
   try {
-    console.log("[AI] Calling Grok with message:", userMessage);
-
     const { text } = await generateText({
-      model: xai("grok-3-mini-fast"),
+      model: xai("grok-3-mini"),
       system: systemPrompt,
       messages: [
         ...chatHistory.map((m) => ({
@@ -26,7 +24,10 @@ export async function getAIResponse(
       ],
     });
 
-    console.log("[AI] Grok response:", text);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AI] Calling Grok with message:", userMessage);
+      console.log("[AI] Grok response:", text);
+    }
     return text || null;
   } catch (error) {
     console.error("[AI] Grok error:", error);
