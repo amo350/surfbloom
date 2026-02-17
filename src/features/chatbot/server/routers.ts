@@ -23,6 +23,8 @@ export const chatbotRouter = createTRPCRouter({
             icon: true,
             themeColor: true,
             headerText: true,
+            businessContext: true,
+            bubbleTransparent: true,
           },
         },
       },
@@ -61,7 +63,6 @@ export const chatbotRouter = createTRPCRouter({
         });
       }
 
-      // Create domain + auto-create chatbot config
       return prisma.domain.create({
         data: {
           userId: ctx.auth.user.id,
@@ -69,7 +70,15 @@ export const chatbotRouter = createTRPCRouter({
           workspaceId: input.workspaceId,
           chatBot: {
             create: {
-              welcomeMessage: "Hey there, How can we assist?",
+              welcomeMessage: "Hey there, how can we help you today?",
+            },
+          },
+          filterQuestions: {
+            createMany: {
+              data: [
+                { question: "Provide Email" },
+                { question: "Location Selector" },
+              ],
             },
           },
         },
@@ -135,6 +144,8 @@ export const chatbotRouter = createTRPCRouter({
         icon: z.string().optional().nullable(),
         headerText: z.string().optional(),
         themeColor: z.string().optional(),
+        businessContext: z.string().optional(),
+        bubbleTransparent: z.boolean().optional(),
         helpdesk: z.boolean().optional(),
       }),
     )

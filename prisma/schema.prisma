@@ -125,6 +125,10 @@ model Workspace {
   scrapedCompetitors  Json?
   lastScrapedAt       DateTime?
 
+  // Location context for chatbot AI
+  description         String?   @db.Text
+  paymentLink         String?
+
   members         Member[]
   workflows       Workflow[]
   invitations     Invitation[]
@@ -468,10 +472,12 @@ model ChatBot {
   domainId        String    @unique
 
   // Widget appearance
-  welcomeMessage  String?   @default("Hey there, How can we assist?")
+  welcomeMessage  String?   @default("Hi, how can we assist you today?")
   icon            String?
   headerText      String?   @default("Sales Rep")
   themeColor      String?   @default("#14b8a6")
+  businessContext String?
+  bubbleTransparent Boolean @default(false)
 
   // Behavior
   helpdesk        Boolean   @default(false)

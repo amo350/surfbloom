@@ -30,11 +30,11 @@
       }
     `);
 
-    iframe.src = "http://localhost:3000/chatbot";
-    iframe.classList.add("chat-frame");
-    iframe.style.background = "transparent";
-    iframe.setAttribute("allowTransparency", "true");
-    document.body.appendChild(iframe);
+      iframe.src = "http://localhost:3000/chatbot";
+      iframe.classList.add("chat-frame");
+      iframe.style.background = "transparent";
+      iframe.setAttribute("allowTransparency", "true");
+      document.body.appendChild(iframe);
 
       window.addEventListener("message", (e) => {
         if (e.origin !== "http://localhost:3000") return null;
@@ -42,7 +42,7 @@
         iframe.width = dimensions.width;
         iframe.height = dimensions.height;
         iframe.contentWindow.postMessage(
-          "cmllc6lfe00001goja23wpfct",
+          "cmlpg5uvz000dhqojxrn009cj",
           "http://localhost:3000/"
         );
       });

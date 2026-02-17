@@ -27,11 +27,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Domain not found" }, { status: 404 });
   }
 
+  // Get workspaces through user's memberships for all locations they have access to
+  const workspaces = await prisma.workspace.findMany({
+    where: {
+      members: {
+        some: { userId: domain.userId },
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      imageUrl: true,
+      description: true,
+      paymentLink: true,
+      phone: true,
+    },
+  });
+
   return NextResponse.json({
     domainId: domain.id,
     domainName: domain.name,
     chatBot: domain.chatBot,
     helpDeskItems: domain.helpDeskItems,
     filterQuestions: domain.filterQuestions,
+    locations: workspaces,
   });
 }

@@ -29,11 +29,21 @@
 
   // Listen for messages from iframe (matches Corinna's window.addEventListener pattern)
   window.addEventListener("message", function (e) {
-    if (e.origin !== origin) return null;
-    var dimensions = JSON.parse(e.data);
-    iframe.width = dimensions.width;
-    iframe.height = dimensions.height;
-    // Send domain ID as plain string (Corinna pattern)
+    if (e.origin !== origin) return;
+    try {
+      var dimensions = JSON.parse(e.data);
+      if (
+        typeof dimensions.width === "number" &&
+        dimensions.width > 0 &&
+        typeof dimensions.height === "number" &&
+        dimensions.height > 0
+      ) {
+        iframe.width = dimensions.width;
+        iframe.height = dimensions.height;
+      }
+    } catch (err) {
+      return;
+    }
     iframe.contentWindow.postMessage(domainId, origin + "/");
   });
 })();

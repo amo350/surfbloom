@@ -1,7 +1,7 @@
 "use client";
 
 import { useUploadThing } from "@/lib/uploadthing-client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -192,16 +192,22 @@ function AppearanceSection({ domainId }: { domainId: string }) {
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [headerText, setHeaderText] = useState("Sales Rep");
   const [themeColor, setThemeColor] = useState("#14b8a6");
+  const [businessContext, setBusinessContext] = useState("");
+  const [bubbleTransparent, setBubbleTransparent] = useState(false);
   const [icon, setIcon] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
-  if (config && !initialized) {
-    setWelcomeMessage(config.welcomeMessage ?? "");
-    setHeaderText(config.headerText ?? "Sales Rep");
-    setThemeColor(config.themeColor ?? "#14b8a6");
-    setIcon(config.icon ?? null);
-    setInitialized(true);
-  }
+  useEffect(() => {
+    if (config && !initialized) {
+      setWelcomeMessage(config.welcomeMessage ?? "");
+      setHeaderText(config.headerText ?? "Sales Rep");
+      setThemeColor(config.themeColor ?? "#14b8a6");
+      setBusinessContext(config.businessContext ?? "");
+      setBubbleTransparent(config.bubbleTransparent ?? false);
+      setIcon(config.icon ?? null);
+      setInitialized(true);
+    }
+  }, [config, initialized]);
 
   const { startUpload, isUploading } = useUploadThing("imageUploader", {
     onClientUploadComplete: (res) => {
@@ -228,6 +234,8 @@ function AppearanceSection({ domainId }: { domainId: string }) {
       welcomeMessage: welcomeMessage || undefined,
       headerText: headerText || undefined,
       themeColor,
+      businessContext: businessContext || undefined,
+      bubbleTransparent,
       icon,
     });
   };
@@ -314,7 +322,7 @@ function AppearanceSection({ domainId }: { domainId: string }) {
         <Textarea
           value={welcomeMessage}
           onChange={(e) => setWelcomeMessage(e.target.value)}
-          placeholder="Hey there, How can we assist?"
+          placeholder="Hi, how can we assist you today?"
           className="min-h-[72px] rounded-xl border-border/60 text-sm resize-none focus-visible:ring-teal-500/30"
           rows={2}
         />
@@ -359,6 +367,30 @@ function AppearanceSection({ domainId }: { domainId: string }) {
           value={themeColor || "#14b8a6"}
           onChange={(e) => setThemeColor(e.target.value)}
           className="h-10 w-full cursor-pointer rounded-lg border border-border/40"
+        />
+      </div>
+
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={bubbleTransparent}
+          onChange={(e) => setBubbleTransparent(e.target.checked)}
+          className="h-4 w-4 rounded border-border/40 accent-teal-500"
+        />
+        <span className="text-sm font-medium">Transparent bubble</span>
+      </label>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Business Context</label>
+        <p className="text-xs text-muted-foreground">
+          Tell the AI about your business — services, hours, location, policies, etc.
+        </p>
+        <textarea
+          value={businessContext}
+          onChange={(e) => setBusinessContext(e.target.value)}
+          placeholder="We're a dental practice in Denver specializing in cosmetic dentistry. Our hours are 9-5 M-F. We accept most major insurances..."
+          rows={5}
+          className="w-full rounded-lg border border-border/40 bg-background px-3 py-2 text-sm outline-none resize-none"
         />
       </div>
 
