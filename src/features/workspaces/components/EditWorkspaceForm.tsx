@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MapPin, MessageSquareHeart, Phone } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { ImageUpload } from "@/components/ImageUpload";
@@ -89,6 +90,8 @@ export const EditWorkspaceForm = ({
   initialValues,
   smsNumber,
 }: EditWorkspaceFormProps) => {
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(typeof window !== "undefined" ? window.location.origin : ""), []);
   const updateWorkspace = useUpdateWorkspace();
 
   const form = useForm<EditWorkspaceFormValues>({
@@ -394,7 +397,7 @@ export const EditWorkspaceForm = ({
                 <FormLabel>Feedback Link</FormLabel>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground shrink-0">
-                    {typeof window !== "undefined" ? window.location.origin : ""}/r/
+                    {origin}/r/
                   </span>
                   <FormControl>
                     <Input
@@ -484,7 +487,7 @@ export const EditWorkspaceForm = ({
             <div className="rounded-lg bg-muted/30 border px-3 py-2">
               <p className="text-xs text-muted-foreground">Preview link:</p>
               <p className="text-sm font-mono text-teal-600">
-                {typeof window !== "undefined" ? window.location.origin : ""}/r/{form.watch("feedbackSlug")}
+                {origin}/r/{form.watch("feedbackSlug")}
               </p>
             </div>
           )}

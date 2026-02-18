@@ -62,7 +62,8 @@ export function FeedbackPage({
         }),
       });
     } catch {
-      // Still show submitted
+      setSubmitting(false);
+      return;
     }
 
     setSubmitting(false);

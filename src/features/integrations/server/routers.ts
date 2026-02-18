@@ -3,6 +3,7 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { prisma } from "@/lib/prisma";
 import {
   createSubaccount,
+  getSubaccountClient,
   hasSubaccount,
   searchAvailableNumbers,
   provisionPhoneNumber,
@@ -82,6 +83,16 @@ export const integrationsRouter = createTRPCRouter({
   getWorkspaceSmsNumber: protectedProcedure
     .input(z.object({ workspaceId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const member = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+      if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
       const number = await prisma.twilioPhoneNumber.findUnique({
         where: { workspaceId: input.workspaceId },
         select: { phoneNumber: true },
@@ -195,6 +206,13 @@ export const integrationsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const record = await prisma.twilioPhoneNumber.findUnique({
         where: { id: input.phoneNumberId },
+        include: {
+          workspace: {
+            select: {
+              members: { where: { userId: ctx.auth.user.id } },
+            },
+          },
+        },
       });
 
       if (!record?.phoneSid) {
@@ -202,6 +220,9 @@ export const integrationsRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "No Twilio SID for this number.",
         });
+      }
+      if (!record.workspace.members.length) {
+        throw new TRPCError({ code: "FORBIDDEN" });
       }
 
       const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -234,6 +255,20 @@ export const integrationsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      if (number.phoneSid) {
+        const client = await getSubaccountClient(ctx.auth.user.id);
+        try {
+          await client.incomingPhoneNumbers(number.phoneSid).remove();
+        } catch (error: unknown) {
+          const err = error as { status?: number };
+          if (err.status !== 404) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to release number from Twilio.",
+            });
+          }
+        }
+      }
       return prisma.twilioPhoneNumber.delete({
         where: { id: input.id },
       });
@@ -249,7 +284,16 @@ export const integrationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Get the workspace's phone number
+      const member = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+      if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
       const phoneNumber = await prisma.twilioPhoneNumber.findUnique({
         where: { workspaceId: input.workspaceId },
       });
@@ -302,6 +346,16 @@ export const integrationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const member = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: input.workspaceId,
+          },
+        },
+      });
+      if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
       const phoneNumber = await prisma.twilioPhoneNumber.findUnique({
         where: { workspaceId: input.workspaceId },
       });

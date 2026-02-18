@@ -1,10 +1,27 @@
 // src/app/api/twilio/inbound/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import twilio from "twilio";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
+
+    const signature = req.headers.get("x-twilio-signature") || "";
+    const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/inbound`;
+    const params = Object.fromEntries(formData);
+    const isValid = twilio.validateRequest(
+      process.env.TWILIO_AUTH_TOKEN!,
+      signature,
+      url,
+      params,
+    );
+    if (!isValid) {
+      return new NextResponse("<Response></Response>", {
+        status: 403,
+        headers: { "Content-Type": "text/xml" },
+      });
+    }
 
     const from = formData.get("From") as string;
     const to = formData.get("To") as string;

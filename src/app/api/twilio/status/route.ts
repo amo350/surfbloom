@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import twilio from "twilio";
 import { prisma } from "@/lib/prisma";
 import type { SmsStatus } from "@/generated/prisma/enums";
 
@@ -13,6 +14,20 @@ const STATUS_MAP: Record<string, SmsStatus> = {
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
+
+    const signature = req.headers.get("x-twilio-signature") || "";
+    const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/status`;
+    const params = Object.fromEntries(formData);
+    const isValid = twilio.validateRequest(
+      process.env.TWILIO_AUTH_TOKEN!,
+      signature,
+      url,
+      params,
+    );
+    if (!isValid) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const messageSid = formData.get("MessageSid") as string;
     const status = formData.get("MessageStatus") as string;
 
