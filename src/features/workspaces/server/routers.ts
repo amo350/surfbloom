@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import PAGINATION from "@/config/constants";
@@ -24,6 +25,8 @@ export const workspacesRouter = createTRPCRouter({
         ? parseAddress(input.googleAddress)
         : null;
 
+      const feedbackSlug = createId().slice(0, 8);
+
       const workspace = await prisma.$transaction(async (tx) => {
         const workspace = await tx.workspace.create({
           data: {
@@ -31,6 +34,8 @@ export const workspacesRouter = createTRPCRouter({
             imageUrl: input.imageUrl,
             inviteCode: generateInviteCode(7),
             userId: ctx.auth.user.id,
+            feedbackSlug,
+            feedbackHeading: "How was your experience?",
             ...(parsed && {
               address: parsed.address,
               city: parsed.city,
@@ -107,6 +112,10 @@ export const workspacesRouter = createTRPCRouter({
         phone: workspace.phone,
         description: workspace.description,
         paymentLink: workspace.paymentLink,
+        feedbackSlug: workspace.feedbackSlug,
+        googleReviewUrl: workspace.googleReviewUrl,
+        feedbackHeading: workspace.feedbackHeading,
+        feedbackMessage: workspace.feedbackMessage,
         lastScrapedAt: workspace.lastScrapedAt,
       };
     }),
@@ -371,6 +380,15 @@ export const workspacesRouter = createTRPCRouter({
         phone: z.string().optional().nullable(),
         description: z.string().optional().nullable(),
         paymentLink: z.string().optional().nullable(),
+        feedbackSlug: z.string().optional().nullable(),
+        googleReviewUrl: z
+          .string()
+          .url()
+          .optional()
+          .nullable()
+          .or(z.literal("")),
+        feedbackHeading: z.string().optional().nullable(),
+        feedbackMessage: z.string().optional().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -401,6 +419,11 @@ export const workspacesRouter = createTRPCRouter({
       if (input.phone !== undefined) updateData.phone = input.phone;
       if (input.description !== undefined) updateData.description = input.description;
       if (input.paymentLink !== undefined) updateData.paymentLink = input.paymentLink;
+      if (input.feedbackSlug !== undefined) updateData.feedbackSlug = input.feedbackSlug;
+      if (input.googleReviewUrl !== undefined)
+        updateData.googleReviewUrl = input.googleReviewUrl || null;
+      if (input.feedbackHeading !== undefined) updateData.feedbackHeading = input.feedbackHeading;
+      if (input.feedbackMessage !== undefined) updateData.feedbackMessage = input.feedbackMessage;
 
       if (Object.keys(updateData).length === 0) {
         throw new TRPCError({

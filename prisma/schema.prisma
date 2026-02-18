@@ -14,34 +14,35 @@ enum AccountRole {
 }
 
 model User {
-  id               String       @id
-  name             String
-  email            String
-  emailVerified    Boolean      @default(false)
-  image            String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id            String   @id
+  name          String
+  email         String
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Account-level
-  accountRole      AccountRole  @default(USER)
-  mainWorkspaceId  String?
+  accountRole     AccountRole @default(USER)
+  mainWorkspaceId String?
 
   // Account ownership - who owns this user's account
   // null means user is their own account owner
-  accountOwnerId   String?
-  accountOwner     User?        @relation("AccountMembers", fields: [accountOwnerId], references: [id], onDelete: SetNull)
-  accountMembers   User[]       @relation("AccountMembers")
+  accountOwnerId String?
+  accountOwner   User?   @relation("AccountMembers", fields: [accountOwnerId], references: [id], onDelete: SetNull)
+  accountMembers User[]  @relation("AccountMembers")
 
   // ... existing relations
   sessions         Session[]
   accounts         Account[]
-  workspaces       Workspace[]  @relation("CreatedWorkspaces")
+  workspaces       Workspace[]   @relation("CreatedWorkspaces")
   createdWorkflows Workflow[]
   members          Member[]
-  sentInvitations  Invitation[] @relation("SentInvitations")
-  mainWorkspace    Workspace?   @relation("MainWorkspace", fields: [mainWorkspaceId], references: [id], onDelete: SetNull)
+  sentInvitations  Invitation[]  @relation("SentInvitations")
+  mainWorkspace    Workspace?    @relation("MainWorkspace", fields: [mainWorkspaceId], references: [id], onDelete: SetNull)
   assignedTasks    Task[]
   domains          Domain[]
+  twilioConfig     TwilioConfig?
 
   @@unique([email])
   @@index([accountOwnerId])
@@ -103,7 +104,7 @@ model Workspace {
   inviteCode String   @unique
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  userId     String   // original creator/owner
+  userId     String // original creator/owner
 
   // Google Business Profile data
   googlePlaceId       String?
@@ -111,14 +112,14 @@ model Workspace {
   city                String?
   state               String?
   zipCode             String?
-  country             String   @default("US")
+  country             String    @default("US")
   phone               String?
   website             String?
   latitude            Float?
   longitude           Float?
   timezone            String?
   primaryCategory     String?
-  secondaryCategories String[] @default([])
+  secondaryCategories String[]  @default([])
   googleRating        Float?
   googleReviewCount   Int?
   scrapedPlaceData    Json?
@@ -126,46 +127,68 @@ model Workspace {
   lastScrapedAt       DateTime?
 
   // Location context for chatbot AI
-  description         String?   @db.Text
-  paymentLink         String?
+  description     String? @db.Text
+  paymentLink     String?
+  feedbackSlug    String? @unique // short code for /r/[slug]
+  googleReviewUrl String? // direct Google review link
+  feedbackHeading String? // "How was your experience?"
+  feedbackMessage String? @db.Text // optional subtext
 
-  members         Member[]
-  workflows       Workflow[]
-  invitations     Invitation[]
-  usersWithMain   User[]           @relation("MainWorkspace")
-  taskColumns     TaskColumn[]
-  tasks           Task[]
-  reports         Report[]
-  reviews         Review[]
+  members        Member[]
+  workflows      Workflow[]
+  invitations    Invitation[]
+  usersWithMain  User[]          @relation("MainWorkspace")
+  taskColumns    TaskColumn[]
+  tasks          Task[]
+  reports        Report[]
+  reviews        Review[]
+  feedbackVisits FeedbackVisit[]
 
   // Chatbot relations (conversations routed to workspace)
-  chatContacts    ChatContact[]
-  chatRooms       ChatRoom[]
-  domains         Domain[]
+  chatContacts ChatContact[]
+  chatRooms    ChatRoom[]
+  domains      Domain[]
 
-  user       User @relation("CreatedWorkspaces", fields: [userId], references: [id], onDelete: Cascade)
+  twilioPhoneNumber TwilioPhoneNumber?
+  smsMessages       SmsMessage[]
+
+  user User @relation("CreatedWorkspaces", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("workspace")
 }
 
+model FeedbackVisit {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  path         String // "review" | "feedback"
+  contactPhone String? // if we know who clicked
+  createdAt    DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([workspaceId, createdAt])
+  @@map("feedback_visit")
+}
+
 model Domain {
-  id          String     @id @default(cuid())
+  id          String  @id @default(cuid())
   userId      String
   name        String
   icon        String?
   workspaceId String?
 
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   // Chatbot relations
   chatBot         ChatBot?
   helpDeskItems   HelpDeskItem[]
-  filterQuestions  FilterQuestion[]
+  filterQuestions FilterQuestion[]
   chatContacts    ChatContact[]
   chatRooms       ChatRoom[]
 
@@ -188,8 +211,8 @@ model Member {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
   @@index([userId])
@@ -209,8 +232,8 @@ model Workflow {
   connections Connection[]
   executions  Execution[]
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
   @@index([createdById])
@@ -232,12 +255,12 @@ enum NodeType {
 model Node {
   id         String   @id @default(cuid())
   workflowId String
-  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   name     String
   type     NodeType
   position Json
-  data     Json @default("{}")
+  data     Json     @default("{}")
 
   outputConnections Connection[] @relation("FromNode")
   inputConnections  Connection[] @relation("ToNode")
@@ -255,9 +278,9 @@ model Connection {
   workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   fromNodeId String
-  fromNode   Node @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  fromNode   Node   @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
   toNodeId   String
-  toNode     Node @relation("ToNode", fields: [toNodeId], references: [id], onDelete: Cascade)
+  toNode     Node   @relation("ToNode", fields: [toNodeId], references: [id], onDelete: Cascade)
 
   fromOutput String @default("main")
   toInput    String @default("main")
@@ -286,7 +309,7 @@ model Execution {
   error      String?         @db.Text
   errorStack String?         @db.Text
 
-  startedAt  DateTime @default(now())
+  startedAt  DateTime  @default(now())
   completeAt DateTime?
 
   inngestEventId String @unique
@@ -314,8 +337,8 @@ model Invitation {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  invitedBy   User      @relation("SentInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation("SentInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
 
   @@unique([email, workspaceId])
   @@index([email])
@@ -324,16 +347,16 @@ model Invitation {
 }
 
 model TaskColumn {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   workspaceId String
   name        String
-  color       String    @default("#6B7280")
+  color       String   @default("#6B7280")
   position    Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  tasks       Task[]
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks     Task[]
 
   @@unique([workspaceId, position])
   @@index([workspaceId])
@@ -356,10 +379,10 @@ model Task {
   updatedAt   DateTime  @updatedAt
   reviewId    String?
 
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  column      TaskColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  assignee    User?      @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
-  review      Review?    @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  column    TaskColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  assignee  User?      @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  review    Review?    @relation(fields: [reviewId], references: [id], onDelete: SetNull)
 
   @@unique([workspaceId, taskNumber])
   @@index([workspaceId])
@@ -382,39 +405,39 @@ enum ReportStatus {
 }
 
 model Report {
-  id                    String       @id @default(cuid())
-  workspaceId           String
+  id          String @id @default(cuid())
+  workspaceId String
 
-  status                ReportStatus @default(PENDING)
+  status ReportStatus @default(PENDING)
 
   // Top-level scores (0-100)
-  visibilityScore       Float?
-  reputationScore       Float?
+  visibilityScore Float?
+  reputationScore Float?
 
   // Detailed breakdowns (Zod-validated JSON)
-  visibilityBreakdown   Json?
-  reputationBreakdown   Json?
+  visibilityBreakdown Json?
+  reputationBreakdown Json?
 
   // AI-generated insights (Zod-validated JSON)
-  strengths             Json?
-  weaknesses            Json?
-  recommendations       Json?
+  strengths       Json?
+  weaknesses      Json?
+  recommendations Json?
 
   // Raw API response data (enables smart retry without re-fetching)
-  rawData               Json?
+  rawData Json?
 
   // Verification: did Outscraper match the workspace address?
-  verification          Json?
+  verification Json?
 
   // Map pack competitors snapshot
-  competitors           Json?
+  competitors Json?
 
-  error                 String?     @db.Text
+  error String? @db.Text
 
-  createdAt             DateTime    @default(now())
-  completedAt           DateTime?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
 
-  workspace             Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
   @@index([workspaceId, createdAt])
@@ -426,40 +449,39 @@ model Report {
 // =============================================
 
 model Review {
-  id               String    @id @default(cuid())
-  workspaceId      String
-  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  tasks            Task[]
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks       Task[]
 
   // Google identity (for dedup on re-scrape)
-  googleReviewId   String?
-  authorName       String?
-  authorUrl        String?
-  authorImageUrl   String?
+  googleReviewId String?
+  authorName     String?
+  authorUrl      String?
+  authorImageUrl String?
 
   // Core review data
-  rating           Float
-  text             String?   @db.Text
-  publishedAt      DateTime?
+  rating      Float
+  text        String?   @db.Text
+  publishedAt DateTime?
 
   // Owner response tracking
   ownerResponse    String?   @db.Text
   ownerRespondedAt DateTime?
 
   // Metadata
-  source           String    @default("google") // google, yelp, facebook later
-  language         String?
+  source   String  @default("google") // google, yelp, facebook later
+  language String?
 
   // Sync tracking
-  firstSeenAt      DateTime  @default(now())
-  lastSyncedAt     DateTime  @default(now())
+  firstSeenAt  DateTime @default(now())
+  lastSyncedAt DateTime @default(now())
 
   // Performance indexes
   @@unique([workspaceId, googleReviewId]) // Prevents duplicate reviews
-  @@index([workspaceId, publishedAt])     // Sort by date (paginated list)
-  @@index([workspaceId, rating])          // Filter by star rating
-  @@index([workspaceId, source])          // Filter by platform
-
+  @@index([workspaceId, publishedAt]) // Sort by date (paginated list)
+  @@index([workspaceId, rating]) // Filter by star rating
+  @@index([workspaceId, source]) // Filter by platform
   @@map("review")
 }
 
@@ -468,72 +490,72 @@ model Review {
 // =============================================
 
 model ChatBot {
-  id              String    @id @default(cuid())
-  domainId        String    @unique
+  id       String @id @default(cuid())
+  domainId String @unique
 
   // Widget appearance
-  welcomeMessage  String?   @default("Hi, how can we assist you today?")
-  icon            String?
-  headerText      String?   @default("Sales Rep")
-  themeColor      String?   @default("#14b8a6")
-  businessContext String?
+  welcomeMessage    String? @default("Hi, how can we assist you today?")
+  icon              String?
+  headerText        String? @default("Sales Rep")
+  themeColor        String? @default("#14b8a6")
+  businessContext   String?
   bubbleTransparent Boolean @default(false)
 
   // Behavior
-  helpdesk        Boolean   @default(false)
+  helpdesk Boolean @default(false)
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  domain          Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
   @@index([domainId])
   @@map("chatbot")
 }
 
 model HelpDeskItem {
-  id              String    @id @default(cuid())
-  domainId        String
-  question        String
-  answer          String    @db.Text
+  id       String @id @default(cuid())
+  domainId String
+  question String
+  answer   String @db.Text
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  domain          Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
   @@index([domainId])
   @@map("help_desk_item")
 }
 
 model FilterQuestion {
-  id              String    @id @default(cuid())
-  domainId        String
-  question        String
+  id       String @id @default(cuid())
+  domainId String
+  question String
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  domain          Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  responses       ChatContactResponse[]
+  domain    Domain                @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  responses ChatContactResponse[]
 
   @@index([domainId])
   @@map("filter_question")
 }
 
 model ChatContact {
-  id              String    @id @default(cuid())
-  domainId        String
-  workspaceId     String?
-  email           String?
+  id          String  @id @default(cuid())
+  domainId    String
+  workspaceId String?
+  email       String?
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  domain          Domain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
-  responses       ChatContactResponse[]
-  chatRooms       ChatRoom[]
+  domain    Domain                @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  workspace Workspace?            @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  responses ChatContactResponse[]
+  chatRooms ChatRoom[]
 
   @@index([domainId])
   @@index([workspaceId])
@@ -542,15 +564,15 @@ model ChatContact {
 }
 
 model ChatContactResponse {
-  id              String    @id @default(cuid())
-  contactId       String
-  questionId      String
-  answer          String?
+  id         String  @id @default(cuid())
+  contactId  String
+  questionId String
+  answer     String?
 
-  createdAt       DateTime  @default(now())
+  createdAt DateTime @default(now())
 
-  contact         ChatContact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  question        FilterQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  contact  ChatContact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  question FilterQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([contactId])
   @@index([questionId])
@@ -563,21 +585,24 @@ enum ChatMessageRole {
 }
 
 model ChatRoom {
-  id              String    @id @default(cuid())
-  domainId        String
-  workspaceId     String?
-  contactId       String?
+  id          String  @id @default(cuid())
+  domainId    String
+  workspaceId String?
+  contactId   String?
 
-  live            Boolean   @default(false)
-  mailed          Boolean   @default(false)
+  live   Boolean @default(false)
+  mailed Boolean @default(false)
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  channel String @default("webchat") // "webchat" | "sms" | "email"
 
-  domain          Domain       @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  workspace       Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
-  contact         ChatContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  messages        ChatMessage[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  domain      Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  workspace   Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  contact     ChatContact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  messages    ChatMessage[]
+  smsMessages SmsMessage[]
 
   @@index([domainId])
   @@index([workspaceId])
@@ -587,18 +612,87 @@ model ChatRoom {
 }
 
 model ChatMessage {
-  id              String          @id @default(cuid())
-  chatRoomId      String
-  message         String          @db.Text
-  role            ChatMessageRole
-  seen            Boolean         @default(false)
+  id         String          @id @default(cuid())
+  chatRoomId String
+  message    String          @db.Text
+  role       ChatMessageRole
+  seen       Boolean         @default(false)
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  chatRoom        ChatRoom  @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
 
   @@index([chatRoomId])
   @@index([chatRoomId, createdAt])
   @@map("chat_message")
+}
+
+// =============================================
+// Twilio / Messaging
+// =============================================
+
+model TwilioConfig {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+  subaccountSid       String
+  subaccountToken     String
+  friendlyName        String?
+  messagingServiceSid String?
+  verificationStatus  String  @default("pending") // pending | approved
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("twilio_config")
+}
+
+model TwilioPhoneNumber {
+  id           String  @id @default(cuid())
+  workspaceId  String  @unique
+  phoneNumber  String // e.g. +15551234567
+  phoneSid     String? // Twilio Phone Number SID (PN...)
+  friendlyName String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("twilio_phone_number")
+}
+
+enum SmsStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  UNDELIVERED
+  FAILED
+}
+
+model SmsMessage {
+  id          String    @id @default(cuid())
+  workspaceId String
+  chatRoomId  String? // links to conversation if part of a thread
+  direction   String // "inbound" | "outbound"
+  from        String // phone number
+  to          String // phone number
+  body        String    @db.Text
+  mediaUrl    String?
+  twilioSid   String?   @unique // Twilio Message SID
+  status      SmsStatus @default(QUEUED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  chatRoom  ChatRoom? @relation(fields: [chatRoomId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([chatRoomId])
+  @@index([twilioSid])
+  @@index([workspaceId, createdAt])
+  @@map("sms_message")
 }

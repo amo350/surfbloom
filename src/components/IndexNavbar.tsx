@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Plug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ChatBotQuickAccess } from "@/features/chatbot/components/ChatBotConfigDialog";
@@ -28,6 +29,10 @@ const indexMenuItems = [
   {
     title: "Members",
     href: "/index/members",
+  },
+  {
+    title: "Integrations",
+    href: "/index/integrations",
   },
   {
     title: "Account",
@@ -80,6 +85,11 @@ const IndexNavbar = () => {
       <div className="ml-auto pr-2 flex items-center gap-1">
         <ChatBotQuickAccess />
         <DomainSettingsButton />
+        <Button asChild variant="ghost" size="icon" title="Integrations">
+          <Link href="/index/integrations" prefetch>
+            <Plug className="size-5" />
+          </Link>
+        </Button>
         <NotificationsBell />
         {!hasActiveSubscription && !isLoading && (
           <Button
