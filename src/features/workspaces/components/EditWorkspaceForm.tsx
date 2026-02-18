@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MapPin } from "lucide-react";
+import { MapPin, MessageSquareHeart, Phone } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { ImageUpload } from "@/components/ImageUpload";
@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useUpdateWorkspace } from "../hooks/use-workspaces";
 
 const editWorkspaceSchema = z.object({
@@ -32,6 +33,15 @@ const editWorkspaceSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal("")),
+  feedbackSlug: z.string().optional().nullable(),
+  googleReviewUrl: z
+    .string()
+    .url("Must be a valid URL")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  feedbackHeading: z.string().optional().nullable(),
+  feedbackMessage: z.string().optional().nullable(),
 });
 
 type EditWorkspaceFormValues = z.infer<typeof editWorkspaceSchema>;
@@ -48,7 +58,12 @@ interface EditWorkspaceFormProps {
     phone: string | null;
     description: string | null;
     paymentLink: string | null;
+    feedbackSlug: string | null;
+    googleReviewUrl: string | null;
+    feedbackHeading: string | null;
+    feedbackMessage: string | null;
   };
+  smsNumber?: string | null;
 }
 
 function buildMapQuery(values: {
@@ -72,6 +87,7 @@ function buildMapQuery(values: {
 export const EditWorkspaceForm = ({
   workspaceId,
   initialValues,
+  smsNumber,
 }: EditWorkspaceFormProps) => {
   const updateWorkspace = useUpdateWorkspace();
 
@@ -87,6 +103,10 @@ export const EditWorkspaceForm = ({
       phone: initialValues.phone ?? "",
       description: initialValues.description ?? "",
       paymentLink: initialValues.paymentLink ?? "",
+      feedbackSlug: initialValues.feedbackSlug ?? "",
+      googleReviewUrl: initialValues.googleReviewUrl ?? "",
+      feedbackHeading: initialValues.feedbackHeading ?? "",
+      feedbackMessage: initialValues.feedbackMessage ?? "",
     },
   });
 
@@ -104,6 +124,10 @@ export const EditWorkspaceForm = ({
       phone: values.phone || null,
       description: values.description || null,
       paymentLink: values.paymentLink || null,
+      feedbackSlug: values.feedbackSlug || null,
+      googleReviewUrl: values.googleReviewUrl || null,
+      feedbackHeading: values.feedbackHeading || null,
+      feedbackMessage: values.feedbackMessage || null,
     });
   };
 
@@ -253,25 +277,59 @@ export const EditWorkspaceForm = ({
           </div>
         </div>
 
-        {/* Phone */}
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phone Number</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  value={field.value ?? ""}
-                  placeholder="(555) 123-4567"
-                  disabled={updateWorkspace.isPending}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+        {/* Phone Numbers */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Phone className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Phone</span>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Business Phone</FormLabel>
+                <p className="text-xs text-muted-foreground">
+                  Your main contact number. The chatbot shares this with customers.
+                </p>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="(555) 123-4567"
+                    disabled={updateWorkspace.isPending}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Twilio SMS Number — read only */}
+          {smsNumber ? (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">SMS Number</label>
+              <p className="text-xs text-muted-foreground">
+                This number sends and receives text messages. Managed in Integrations.
+              </p>
+              <div className="flex items-center gap-2 h-9 rounded-lg border border-input bg-muted/30 px-3">
+                <span className="text-sm font-mono">{smsNumber}</span>
+                <span className="ml-auto text-[10px] text-green-600 font-medium">SMS Active</span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">SMS Number</label>
+              <p className="text-xs text-muted-foreground">
+                No SMS number assigned.{" "}
+                <a href="/index/integrations" className="text-teal-600 hover:underline">
+                  Set up in Integrations
+                </a>
+              </p>
+            </div>
           )}
-        />
+        </div>
 
         {/* Description */}
         <FormField
@@ -320,6 +378,117 @@ export const EditWorkspaceForm = ({
             </FormItem>
           )}
         />
+
+        {/* Feedback Page */}
+        <div className="space-y-4 pt-4 border-t">
+          <div className="flex items-center gap-2">
+            <MessageSquareHeart className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Feedback Page</span>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="feedbackSlug"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Feedback Link</FormLabel>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {typeof window !== "undefined" ? window.location.origin : ""}/r/
+                  </span>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="my-business"
+                      disabled={updateWorkspace.isPending}
+                      className="font-mono text-sm"
+                    />
+                  </FormControl>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="googleReviewUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Google Review Link</FormLabel>
+                <p className="text-xs text-muted-foreground">
+                  Customers who had a great experience go here. Find yours at{" "}
+                  <a
+                    href="https://support.google.com/business/answer/7035772"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-teal-600 hover:underline"
+                  >
+                    Google Business Profile
+                  </a>
+                </p>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="https://g.page/r/your-business/review"
+                    disabled={updateWorkspace.isPending}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="feedbackHeading"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Page Heading</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="How was your experience?"
+                    disabled={updateWorkspace.isPending}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="feedbackMessage"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Subtext (optional)</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="We value your feedback and would love to hear about your visit."
+                    rows={2}
+                    disabled={updateWorkspace.isPending}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {form.watch("feedbackSlug") && (
+            <div className="rounded-lg bg-muted/30 border px-3 py-2">
+              <p className="text-xs text-muted-foreground">Preview link:</p>
+              <p className="text-sm font-mono text-teal-600">
+                {typeof window !== "undefined" ? window.location.origin : ""}/r/{form.watch("feedbackSlug")}
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Map Preview */}
         <div className="space-y-2">

@@ -10,6 +10,7 @@ import { workspacesRouter } from "@/features/workspaces/server/routers";
 import { createTRPCRouter } from "../init";
 import { reviewsRouter } from "@/features/reviews/server/routers";
 import { chatbotRouter } from "@/features/chatbot/server/routers";
+import { integrationsRouter } from "@/features/integrations/server/routers";
 
 export const appRouter = createTRPCRouter({
   executions: executionsRouter,
@@ -23,6 +24,7 @@ export const appRouter = createTRPCRouter({
   seoReports: seoReportsRouter,
   reviews: reviewsRouter,
   chatbot: chatbotRouter,
+  integrations: integrationsRouter,
 });
 //CRITICAL: Do not remove this line - required for tRPC type inference
 export type AppRouter = typeof appRouter;
