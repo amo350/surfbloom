@@ -8,6 +8,7 @@ import {
   MessageCircleIcon,
   StarIcon,
   Users2Icon,
+  UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -54,6 +55,18 @@ const menuItems = [
           workspaceId
             ? new RegExp(`^/workspaces/${workspaceId}/tasks`)
             : /^\/tasks/,
+      },
+      {
+        title: "Contacts",
+        icon: UsersIcon,
+        getUrl: (workspaceId?: string) =>
+          workspaceId
+            ? `/workspaces/${workspaceId}/contacts`
+            : "/index/contacts",
+        getActivePattern: (workspaceId?: string) =>
+          workspaceId
+            ? new RegExp(`^/workspaces/${workspaceId}/contacts`)
+            : /^\/index\/contacts/,
       },
       {
         title: "Conversations",
