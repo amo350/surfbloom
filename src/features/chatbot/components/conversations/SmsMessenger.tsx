@@ -66,19 +66,6 @@ export function SmsMessenger({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-4 py-3 border-b flex items-center gap-2">
-        <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center">
-          <span className="text-xs font-semibold text-blue-600">
-            {contactPhone.slice(-2)}
-          </span>
-        </div>
-        <div>
-          <p className="text-sm font-medium">{contactPhone}</p>
-          <p className="text-[10px] text-muted-foreground">SMS Conversation</p>
-        </div>
-      </div>
-
       {/* Messages */}
       <div
         ref={scrollRef}

@@ -415,10 +415,13 @@ export const chatbotRouter = createTRPCRouter({
         domainId: z.string().optional(),
         workspaceId: z.string().optional(),
         live: z.boolean().optional(),
-        tab: z.enum(["unread", "all", "expired", "starred"]),
+        tab: z.enum(["unread", "all", "expired", "starred"]).default("all"),
         page: z.number().int().min(1).default(1),
         pageSize: z.number().int().min(1).max(100).default(12),
         channel: z.enum(["all", "webchat", "sms", "feedback"]).default("all"),
+        view: z.enum(["all", "mine", "unassigned"]).default("all"),
+        stage: z.string().optional(),
+        categoryId: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -470,6 +473,37 @@ export const chatbotRouter = createTRPCRouter({
           where.channel = input.channel;
         }
 
+        // View filter (assignment)
+        if (input.view === "mine") {
+          where.contact = {
+            ...where.contact,
+            assignedToId: ctx.auth.user.id,
+          };
+        } else if (input.view === "unassigned") {
+          where.contact = {
+            ...where.contact,
+            assignedToId: null,
+          };
+        }
+
+        // Stage filter (through contact)
+        if (input.stage) {
+          where.contact = {
+            ...where.contact,
+            stage: input.stage,
+          };
+        }
+
+        // Category filter (through contact)
+        if (input.categoryId) {
+          where.contact = {
+            ...where.contact,
+            categories: {
+              some: { categoryId: input.categoryId },
+            },
+          };
+        }
+
         const [rooms, totalCount] = await Promise.all([
           prisma.chatRoom.findMany({
             where,
@@ -479,7 +513,15 @@ export const chatbotRouter = createTRPCRouter({
               channel: true,
               updatedAt: true,
               contact: {
-                select: { id: true, email: true, phone: true },
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  phone: true,
+                  stage: true,
+                  assignedToId: true,
+                },
               },
               domain: {
                 select: { id: true, name: true },
@@ -639,13 +681,20 @@ export const chatbotRouter = createTRPCRouter({
         },
         select: {
           id: true,
-          live: true,
           channel: true,
+          live: true,
+          workspaceId: true,
           contact: {
-            select: { id: true, email: true, phone: true },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              stage: true,
+              assignedToId: true,
+            },
           },
-          domain: { select: { id: true, name: true } },
-          workspace: { select: { id: true, name: true } },
         },
       });
       if (!room) {

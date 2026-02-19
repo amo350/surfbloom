@@ -1,21 +1,19 @@
 // src/features/chatbot/components/conversations/ConversationMessenger.tsx
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Button } from "@/components/ui/button";
 import {
-  useMessages,
-  useSendMessage,
   useMarkSeen,
+  useMessages,
   useRoom,
-  useUpdateRoom,
+  useSendMessage,
 } from "../../hooks/use-chatbot";
 import { MessageBubble } from "../shared/MessageBubble";
-import { Switch } from "@/components/ui/switch";
-import { Loader2, Send, Globe, MapPin } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const messageSchema = z.object({
   content: z.string().trim().min(1),
@@ -35,7 +33,6 @@ export function ConversationMessenger({ roomId }: Props) {
   const { data: messages, isLoading } = useMessages(roomId, messagePage);
   const sendMessage = useSendMessage(roomId);
   const markSeen = useMarkSeen(roomId);
-  const updateRoom = useUpdateRoom();
 
   const {
     register,
@@ -90,69 +87,6 @@ export function ConversationMessenger({ roomId }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="shrink-0 border-b border-border/40 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-            <svg
-              className="h-4 w-4 text-muted-foreground"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">
-              {room?.contact?.email ?? "Visitor"}
-            </p>
-            <div className="flex items-center gap-1.5">
-              {room?.domain && (
-                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <Globe className="h-2.5 w-2.5" />
-                  {room.domain.name}
-                </span>
-              )}
-              {room?.workspace && (
-                <>
-                  <span className="text-[10px] text-muted-foreground/40">·</span>
-                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <MapPin className="h-2.5 w-2.5" />
-                    {room.workspace.name}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Realtime toggle */}
-        <div className="flex items-center gap-2 shrink-0">
-          {room?.live && (
-            <span className="flex items-center gap-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-              </span>
-              <span className="text-[11px] font-medium text-green-600">Live</span>
-            </span>
-          )}
-          <Switch
-            checked={room?.live ?? false}
-            onCheckedChange={(checked) => {
-              updateRoom.mutate({ roomId, live: checked });
-            }}
-            disabled={updateRoom.isPending}
-          />
-        </div>
-      </div>
-
       {/* Messages */}
       <div
         ref={scrollRef}

@@ -23,6 +23,10 @@ const indexMenuItems = [
     href: "/index/seo-score",
   },
   {
+    title: "Contacts",
+    href: "/index/contacts",
+  },
+  {
     title: "Conversations",
     href: "/index/conversations",
   },

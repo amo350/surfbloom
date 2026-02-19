@@ -187,16 +187,21 @@ export const useConversations = (filters: {
   domainId?: string;
   workspaceId?: string;
   live?: boolean;
-  tab: "unread" | "all" | "expired" | "starred";
+  tab?: "unread" | "all" | "expired" | "starred";
   page: number;
   pageSize?: number;
   channel?: "all" | "webchat" | "sms" | "feedback";
+  view?: "all" | "mine" | "unassigned";
+  stage?: string;
+  categoryId?: string;
 }) => {
   const trpc = useTRPC();
   return useQuery(
     trpc.chatbot.getConversations.queryOptions({
       ...filters,
+      tab: filters.tab || "all",
       channel: filters.channel || "all",
+      view: filters.view || "all",
     }),
   );
 };

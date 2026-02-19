@@ -1,166 +1,86 @@
 // src/features/chatbot/components/conversations/ConversationsSidebar.tsx
 "use client";
 
-import { formatDistanceToNow } from "date-fns";
-import { Circle, Filter, Loader2, MessageCircle, Radio } from "lucide-react";
+import { Circle, Loader2, MessageCircle, Radio } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { useConversations, useDomains } from "../../hooks/use-chatbot";
+import { useConversations } from "../../hooks/use-chatbot";
 import { ChannelBadge } from "./ChannelBadge";
 
-type Props = {
-  workspaceId?: string;
-  selectedRoomId: string | null;
-  onSelectRoom: (roomId: string) => void;
-};
+function formatRelativeTime(date: string | Date) {
+  const now = new Date();
+  const d = new Date(date);
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "now";
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}d`;
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function getContactDisplayName(room: any) {
+  const contact = room.contact;
+  if (!contact) return "Unknown Visitor";
+
+  const fullName = [contact.firstName, contact.lastName]
+    .filter(Boolean)
+    .join(" ");
+  if (fullName) return fullName;
+  if (contact.phone) return contact.phone;
+  if (contact.email) return contact.email;
+
+  switch (room.channel) {
+    case "sms":
+      return "SMS Contact";
+    case "feedback":
+      return "Feedback";
+    default:
+      return "Chat Visitor";
+  }
+}
 
 export function ConversationsSidebar({
   workspaceId,
   selectedRoomId,
   onSelectRoom,
-}: Props) {
+  view,
+  channel,
+  stage,
+  categoryId,
+}: {
+  workspaceId?: string;
+  selectedRoomId: string | null;
+  onSelectRoom: (id: string) => void;
+  view: "all" | "mine" | "unassigned";
+  channel: "all" | "webchat" | "sms" | "feedback";
+  stage?: string;
+  categoryId?: string;
+}) {
   const [tab, setTab] = useState<"unread" | "all" | "expired" | "starred">(
-    "unread",
+    "all",
   );
-  const [channelFilter, setChannelFilter] = useState<
-    "all" | "webchat" | "sms" | "feedback"
-  >("all");
-  const [domainFilter, setDomainFilter] = useState<string | undefined>();
-  const [liveFilter, setLiveFilter] = useState<boolean | undefined>();
   const [page, setPage] = useState(1);
 
-  const { data: domains } = useDomains();
   const { data, isLoading } = useConversations({
     workspaceId,
-    domainId: domainFilter || undefined,
-    live: liveFilter,
     tab,
     page,
     pageSize: 12,
-    channel: channelFilter,
+    channel,
+    view,
+    stage,
+    categoryId,
   });
-
-  const hasActiveFilters =
-    domainFilter !== undefined ||
-    liveFilter !== undefined ||
-    channelFilter !== "all";
-
-  const clearFilters = () => {
-    setDomainFilter(undefined);
-    setLiveFilter(undefined);
-    setChannelFilter("all");
-    setPage(1);
-  };
 
   return (
     <div className="w-[340px] shrink-0 border-r border-border/40 flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border/40 shrink-0">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Conversations</h2>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-7 text-xs gap-1.5 ${hasActiveFilters ? "text-teal-600" : ""}`}
-              >
-                <Filter className="h-3.5 w-3.5" />
-                Filters
-                {hasActiveFilters && (
-                  <span className="h-4 w-4 rounded-full bg-teal-500 text-white text-[10px] flex items-center justify-center">
-                    {(domainFilter ? 1 : 0) +
-                      (liveFilter !== undefined ? 1 : 0) +
-                      (channelFilter !== "all" ? 1 : 0)}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-3 space-y-3" align="end">
-              {/* Domain filter */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-muted-foreground">
-                  Domain
-                </label>
-                <select
-                  value={domainFilter ?? ""}
-                  onChange={(e) => {
-                    setDomainFilter(e.target.value || undefined);
-                    setPage(1);
-                  }}
-                  className="w-full h-8 rounded-lg border border-border/60 bg-background px-2 text-xs outline-none"
-                >
-                  <option value="">All domains</option>
-                  {domains?.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Live filter */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-muted-foreground">
-                  Status
-                </label>
-                <select
-                  value={
-                    liveFilter === undefined ? "" : liveFilter ? "live" : "bot"
-                  }
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setLiveFilter(v === "" ? undefined : v === "live");
-                    setPage(1);
-                  }}
-                  className="w-full h-8 rounded-lg border border-border/60 bg-background px-2 text-xs outline-none"
-                >
-                  <option value="">All</option>
-                  <option value="live">Live (human)</option>
-                  <option value="bot">Bot</option>
-                </select>
-              </div>
-
-              {/* Channel */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Channel
-                </label>
-                <select
-                  value={channelFilter}
-                  onChange={(e) => {
-                    setChannelFilter(
-                      e.target.value as "all" | "webchat" | "sms" | "feedback",
-                    );
-                    setPage(1);
-                  }}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="all">All channels</option>
-                  <option value="webchat">Chat</option>
-                  <option value="sms">SMS</option>
-                  <option value="feedback">Feedback</option>
-                </select>
-              </div>
-
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="w-full h-7 text-xs text-muted-foreground"
-                >
-                  Clear filters
-                </Button>
-              )}
-            </PopoverContent>
-          </Popover>
-        </div>
+      <div className="px-4 h-12 flex items-center border-b border-border/40 shrink-0">
+        <h2 className="text-sm font-semibold">Conversations</h2>
       </div>
 
       {/* Quick filters */}
@@ -253,18 +173,12 @@ export function ConversationsSidebar({
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <ChannelBadge channel={room.channel ?? "webchat"} />
-                        <span className="text-sm font-medium truncate">
-                          {room.contact?.email ||
-                            room.contact?.phone ||
-                            "Visitor"}
-                        </span>
+                        <p className="text-sm font-medium truncate">
+                          {getContactDisplayName(room)}
+                        </p>
                       </div>
                       <span className="text-[10px] text-muted-foreground shrink-0">
-                        {preview
-                          ? formatDistanceToNow(new Date(preview.time), {
-                              addSuffix: true,
-                            })
-                          : ""}
+                        {formatRelativeTime(room.updatedAt ?? preview?.time ?? new Date())}
                       </span>
                     </div>
 
