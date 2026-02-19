@@ -416,8 +416,8 @@ export const chatbotRouter = createTRPCRouter({
         workspaceId: z.string().optional(),
         live: z.boolean().optional(),
         tab: z.enum(["unread", "all", "expired", "starred"]),
-        page: z.number().default(1),
-        pageSize: z.number().default(12),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(12),
         channel: z.enum(["all", "webchat", "sms", "feedback"]).default("all"),
       }),
     )
@@ -533,8 +533,8 @@ export const chatbotRouter = createTRPCRouter({
     .input(
       z.object({
         roomId: z.string(),
-        page: z.number().default(1),
-        pageSize: z.number().default(12),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(12),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -581,8 +581,8 @@ export const chatbotRouter = createTRPCRouter({
     .input(
       z.object({
         chatRoomId: z.string(),
-        page: z.number().default(1),
-        pageSize: z.number().default(12),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(12),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -747,6 +747,7 @@ export const chatbotRouter = createTRPCRouter({
         to: room.contact.phone,
         body: input.message,
       });
+      const mappedStatus = (result.status?.toUpperCase() as any) || "QUEUED";
 
       const smsMessage = await prisma.smsMessage.create({
         data: {
@@ -757,7 +758,7 @@ export const chatbotRouter = createTRPCRouter({
           to: room.contact.phone,
           body: input.message,
           twilioSid: result.sid,
-          status: "SENT",
+          status: mappedStatus,
         },
         select: {
           id: true,
@@ -827,6 +828,17 @@ export const chatbotRouter = createTRPCRouter({
       }
 
       const { roomId, ...data } = input;
+      if (input.workspaceId) {
+        const member = await prisma.member.findUnique({
+          where: {
+            userId_workspaceId: {
+              userId: ctx.auth.user.id,
+              workspaceId: input.workspaceId,
+            },
+          },
+        });
+        if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+      }
 
       return prisma.chatRoom.update({
         where: { id: roomId },

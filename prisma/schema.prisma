@@ -560,6 +560,7 @@ model ChatContact {
 
   @@index([domainId])
   @@index([workspaceId])
+  @@unique([workspaceId, phone])
   @@index([domainId, email])
   @@map("chat_contact")
 }

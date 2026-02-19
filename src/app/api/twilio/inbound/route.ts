@@ -52,24 +52,18 @@ export async function POST(req: NextRequest) {
     const workspaceDomainId = phoneRecord.workspace.domains[0]?.id ?? null;
 
     const roomId = await prisma.$transaction(async (tx) => {
-      let contact = await tx.chatContact.findFirst({
+      const contact = await tx.chatContact.upsert({
         where: {
+          workspaceId_phone: { workspaceId, phone: from },
+        } as any,
+        update: {},
+        create: {
+          domainId: workspaceDomainId ?? undefined,
           workspaceId,
           phone: from,
         },
         select: { id: true, domainId: true },
       });
-
-      if (!contact) {
-        contact = await tx.chatContact.create({
-          data: {
-            workspaceId,
-            phone: from,
-            domainId: workspaceDomainId ?? undefined,
-          },
-          select: { id: true, domainId: true },
-        });
-      }
 
       let room = await tx.chatRoom.findFirst({
         where: {
