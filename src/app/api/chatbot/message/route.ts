@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
           const c = await tx.chatContact.create({
             data: {
               domainId: domain.id,
-              workspaceId: locationContext?.id ?? domain.workspaceId,
+              workspaceId: locationContext?.id ?? domain.workspaceId ?? "",
               email: customerEmail,
               responses: {
                 create: domain.filterQuestions
@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
           await tx.chatRoom.create({
             data: {
               domainId: domain.id,
-              workspaceId: locationContext?.id ?? domain.workspaceId,
+              workspaceId: locationContext?.id ?? domain.workspaceId ?? "",
               contactId: c.id,
             },
           });

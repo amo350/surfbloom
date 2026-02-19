@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -53,7 +53,6 @@ export function ContactDetailContent({
   const router = useRouter();
   const { data: contact, isLoading } = useContact(contactId);
   const deleteContact = useDeleteContact();
-  const [tab, setTab] = useState<"details" | "activity">("details");
 
   const basePath = workspaceId
     ? `/workspaces/${workspaceId}/contacts`

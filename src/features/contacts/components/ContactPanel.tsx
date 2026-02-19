@@ -13,6 +13,7 @@ import {
   ArrowUpDown,
   FileText,
   Star,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useContact } from "../hooks/use-contacts";
@@ -41,6 +42,7 @@ function relativeTime(date: string | Date) {
   const now = new Date();
   const d = new Date(date);
   const diffMs = now.getTime() - d.getTime();
+  if (diffMs < 0) return "now";
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
@@ -65,7 +67,7 @@ export function ContactPanel({
   if (isLoading) {
     return (
       <div className="w-[340px] border-l bg-background flex items-center justify-center shrink-0">
-        <div className="h-5 w-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }

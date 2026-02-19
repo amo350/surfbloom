@@ -20,7 +20,7 @@ export async function logActivity({
       workspaceId,
       type,
       description,
-      metadata: metadata || undefined,
+      metadata,
     },
   });
 }

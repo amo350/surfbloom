@@ -235,12 +235,6 @@ export function CreateContactDialogControlled({
   const [selectedWorkspace, setSelectedWorkspace] = useState(workspaceId || "");
   const createContact = useCreateContact();
 
-  useEffect(() => {
-    if (open) {
-      setSelectedWorkspace(workspaceId || "");
-    }
-  }, [open, workspaceId]);
-
   const {
     register,
     handleSubmit,
@@ -257,6 +251,13 @@ export function CreateContactDialogControlled({
       notes: "",
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      reset();
+      setSelectedWorkspace(workspaceId || "");
+    }
+  }, [open, reset, workspaceId]);
 
   const onSubmit = (data: any) => {
     if (!selectedWorkspace) {

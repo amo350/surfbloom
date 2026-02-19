@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   Search,
-  Download,
   Loader2,
   Users,
   ChevronLeft,
@@ -14,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { useContacts } from "../hooks/use-contacts";
 import { ContactRow } from "./ContactRow";
 import { CreateContactDialog } from "./CreateContactDialog";
-import { StageBadge } from "./StageBadge";
 
 const STAGES = [
   { value: "", label: "All Stages" },

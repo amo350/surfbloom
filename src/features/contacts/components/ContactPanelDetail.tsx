@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, Pencil, X, Plus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +31,14 @@ export function ContactPanelDetails({ contact }: { contact: any }) {
   const [phone, setPhone] = useState(contact.phone || "");
   const [notes, setNotes] = useState(contact.notes || "");
   const [catSearch, setCatSearch] = useState("");
+
+  useEffect(() => {
+    setFirstName(contact.firstName || "");
+    setLastName(contact.lastName || "");
+    setEmail(contact.email || "");
+    setPhone(contact.phone || "");
+    setNotes(contact.notes || "");
+  }, [contact.id, contact.updatedAt]);
 
   const updateContact = useUpdateContact();
   const addCategory = useAddCategoryToContact();

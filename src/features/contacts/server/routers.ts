@@ -5,6 +5,46 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { logActivity } from "./log-activity";
 
+async function verifyContactAccess(userId: string, contactId: string) {
+  const contact = await prisma.chatContact.findUnique({
+    where: { id: contactId },
+    select: { workspaceId: true },
+  });
+  if (!contact) throw new TRPCError({ code: "NOT_FOUND" });
+
+  const member = await prisma.member.findUnique({
+    where: {
+      userId_workspaceId: {
+        userId,
+        workspaceId: contact.workspaceId,
+      },
+    },
+  });
+  if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
+  return contact;
+}
+
+async function verifyCategoryAccess(userId: string, categoryId: string) {
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+    select: { workspaceId: true },
+  });
+  if (!category) throw new TRPCError({ code: "NOT_FOUND" });
+
+  const member = await prisma.member.findUnique({
+    where: {
+      userId_workspaceId: {
+        userId,
+        workspaceId: category.workspaceId,
+      },
+    },
+  });
+  if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
+  return category;
+}
+
 const STAGES = [
   "new_lead",
   "prospecting",
@@ -114,7 +154,9 @@ export const contactsRouter = createTRPCRouter({
 
   getContact: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await verifyContactAccess(ctx.auth.user.id, input.id);
+
       const contact = await prisma.chatContact.findUnique({
         where: { id: input.id },
         select: {
@@ -262,6 +304,17 @@ export const contactsRouter = createTRPCRouter({
       });
       if (!current) throw new TRPCError({ code: "NOT_FOUND" });
 
+      // Auth check
+      const member = await prisma.member.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: ctx.auth.user.id,
+            workspaceId: current.workspaceId,
+          },
+        },
+      });
+      if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
       // Clean empty strings to null
       const cleanData: any = {};
       for (const [key, value] of Object.entries(data)) {
@@ -295,7 +348,8 @@ export const contactsRouter = createTRPCRouter({
 
   deleteContact: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      await verifyContactAccess(ctx.auth.user.id, input.id);
       await prisma.chatContact.delete({ where: { id: input.id } });
       return { success: true };
     }),
@@ -357,7 +411,8 @@ export const contactsRouter = createTRPCRouter({
 
   deleteCategory: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      await verifyCategoryAccess(ctx.auth.user.id, input.id);
       await prisma.category.delete({ where: { id: input.id } });
       return { success: true };
     }),
@@ -369,7 +424,8 @@ export const contactsRouter = createTRPCRouter({
         categoryId: z.string(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      await verifyContactAccess(ctx.auth.user.id, input.contactId);
       return prisma.contactCategory.create({
         data: {
           contactId: input.contactId,
@@ -385,7 +441,8 @@ export const contactsRouter = createTRPCRouter({
         categoryId: z.string(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      await verifyContactAccess(ctx.auth.user.id, input.contactId);
       await prisma.contactCategory.deleteMany({
         where: {
           contactId: input.contactId,
@@ -402,7 +459,9 @@ export const contactsRouter = createTRPCRouter({
         pageSize: z.number().int().min(1).max(100).default(20),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await verifyContactAccess(ctx.auth.user.id, input.contactId);
+
       const { contactId, page, pageSize } = input;
 
       const [activities, totalCount] = await Promise.all([
@@ -505,23 +564,16 @@ export const contactsRouter = createTRPCRouter({
       let created = 0;
 
       if (toCreate.length > 0) {
-        const result = await prisma.chatContact.createMany({
-          data: toCreate,
-          skipDuplicates: true,
-        });
-        created = result.count;
-
-        // Log activity for each created contact
-        // createMany doesn't return IDs, so fetch them
-        const newContacts = await prisma.chatContact.findMany({
-          where: {
-            workspaceId: input.workspaceId,
-            createdAt: { gte: new Date(Date.now() - 5000) },
-          },
-          select: { id: true, workspaceId: true },
-          orderBy: { createdAt: "desc" },
-          take: toCreate.length,
-        });
+        // Use transaction to get IDs back
+        const newContacts = await prisma.$transaction(
+          toCreate.map((data) =>
+            prisma.chatContact.create({
+              data,
+              select: { id: true, workspaceId: true },
+            }),
+          ),
+        );
+        created = newContacts.length;
 
         if (newContacts.length > 0) {
           await prisma.activity.createMany({
