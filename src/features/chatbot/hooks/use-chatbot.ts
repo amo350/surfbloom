@@ -183,32 +183,40 @@ export const useDeleteFilterQuestion = (domainId: string) => {
 
 // ─── Conversations ────────────────────────────────────────
 
-export const useConversations = (filters?: {
+export const useConversations = (filters: {
   domainId?: string;
   workspaceId?: string;
   live?: boolean;
-  tab?: "unread" | "all" | "expired" | "starred";
-  page?: number;
+  tab: "unread" | "all" | "expired" | "starred";
+  page: number;
   pageSize?: number;
+  channel?: "all" | "webchat" | "sms" | "feedback";
 }) => {
   const trpc = useTRPC();
   return useQuery(
-    trpc.chatbot.getConversations.queryOptions(filters ?? {}),
+    trpc.chatbot.getConversations.queryOptions({
+      ...filters,
+      channel: filters.channel || "all",
+    }),
   );
 };
 
-export const useMessages = (roomId: string) => {
+export const useMessages = (roomId: string | null, page: number = 1) => {
   const trpc = useTRPC();
   return useQuery({
-    ...trpc.chatbot.getMessages.queryOptions({ roomId }),
+    ...trpc.chatbot.getMessages.queryOptions({
+      roomId: roomId!,
+      page,
+      pageSize: 12,
+    }),
     enabled: !!roomId,
   });
 };
 
-export const useRoom = (roomId: string) => {
+export const useRoom = (roomId: string | null) => {
   const trpc = useTRPC();
   return useQuery({
-    ...trpc.chatbot.getRoom.queryOptions({ roomId }),
+    ...trpc.chatbot.getRoom.queryOptions({ roomId: roomId! }),
     enabled: !!roomId,
   });
 };
@@ -263,6 +271,36 @@ export const useUpdateRoom = () => {
       },
       onError: (err) => {
         toast.error(err.message);
+      },
+    }),
+  );
+};
+
+export const useSmsMessages = (chatRoomId: string | null, page: number = 1) => {
+  const trpc = useTRPC();
+  return useQuery({
+    ...trpc.chatbot.getSmsMessages.queryOptions({
+      chatRoomId: chatRoomId!,
+      page,
+      pageSize: 12,
+    }),
+    enabled: !!chatRoomId,
+  });
+};
+
+export const useSendSmsReply = () => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return useMutation(
+    trpc.chatbot.sendSmsReply.mutationOptions({
+      onSuccess: (_data, variables) => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.chatbot.getSmsMessages.queryKey({
+            chatRoomId: variables.roomId,
+            page: 1,
+            pageSize: 12,
+          }),
+        });
       },
     }),
   );

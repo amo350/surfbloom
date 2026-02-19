@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { sendMail } from "@/lib/mailer";
 import { getAIResponse } from "@/lib/ai";
+import { sendMail } from "@/lib/mailer";
+import { prisma } from "@/lib/prisma";
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -28,11 +28,18 @@ function buildNoEmailPrompt(
   } | null,
 ): string {
   const contextParts: string[] = [];
-  if (businessContext) contextParts.push(`About the business:\n${businessContext}`);
-  if (locationContext?.description) contextParts.push(`About the ${locationContext.name} location:\n${locationContext.description}`);
-  if (locationContext?.phone) contextParts.push(`Location phone: ${locationContext.phone}`);
-  if (locationContext?.paymentLink) contextParts.push(`Payment portal: ${locationContext.paymentLink}`);
-  const contextBlock = contextParts.length > 0 ? `\n${contextParts.join("\n\n")}\n` : "";
+  if (businessContext)
+    contextParts.push(`About the business:\n${businessContext}`);
+  if (locationContext?.description)
+    contextParts.push(
+      `About the ${locationContext.name} location:\n${locationContext.description}`,
+    );
+  if (locationContext?.phone)
+    contextParts.push(`Location phone: ${locationContext.phone}`);
+  if (locationContext?.paymentLink)
+    contextParts.push(`Payment portal: ${locationContext.paymentLink}`);
+  const contextBlock =
+    contextParts.length > 0 ? `\n${contextParts.join("\n\n")}\n` : "";
 
   return `You are a friendly and knowledgeable sales representative for ${domainName}${locationContext ? ` (${locationContext.name} location)` : ""}.
 You are talking to a first-time visitor.
@@ -67,11 +74,18 @@ function buildWithEmailPrompt(
   } | null,
 ): string {
   const contextParts: string[] = [];
-  if (businessContext) contextParts.push(`About the business:\n${businessContext}`);
-  if (locationContext?.description) contextParts.push(`About the ${locationContext.name} location:\n${locationContext.description}`);
-  if (locationContext?.phone) contextParts.push(`Location phone: ${locationContext.phone}`);
-  if (locationContext?.paymentLink) contextParts.push(`Payment portal: ${locationContext.paymentLink}`);
-  const contextBlock = contextParts.length > 0 ? `\n${contextParts.join("\n\n")}\n` : "";
+  if (businessContext)
+    contextParts.push(`About the business:\n${businessContext}`);
+  if (locationContext?.description)
+    contextParts.push(
+      `About the ${locationContext.name} location:\n${locationContext.description}`,
+    );
+  if (locationContext?.phone)
+    contextParts.push(`Location phone: ${locationContext.phone}`);
+  if (locationContext?.paymentLink)
+    contextParts.push(`Payment portal: ${locationContext.paymentLink}`);
+  const contextBlock =
+    contextParts.length > 0 ? `\n${contextParts.join("\n\n")}\n` : "";
 
   return `You are a friendly and knowledgeable assistant for ${domainName}${locationContext ? ` (${locationContext.name} location)` : ""}.
 You are helping a customer who has already provided their email.
@@ -103,11 +117,18 @@ function buildEmailSkippedPrompt(
   } | null,
 ): string {
   const contextParts: string[] = [];
-  if (businessContext) contextParts.push(`About the business:\n${businessContext}`);
-  if (locationContext?.description) contextParts.push(`About the ${locationContext.name} location:\n${locationContext.description}`);
-  if (locationContext?.phone) contextParts.push(`Location phone: ${locationContext.phone}`);
-  if (locationContext?.paymentLink) contextParts.push(`Payment portal: ${locationContext.paymentLink}`);
-  const contextBlock = contextParts.length > 0 ? `\n${contextParts.join("\n\n")}\n` : "";
+  if (businessContext)
+    contextParts.push(`About the business:\n${businessContext}`);
+  if (locationContext?.description)
+    contextParts.push(
+      `About the ${locationContext.name} location:\n${locationContext.description}`,
+    );
+  if (locationContext?.phone)
+    contextParts.push(`Location phone: ${locationContext.phone}`);
+  if (locationContext?.paymentLink)
+    contextParts.push(`Payment portal: ${locationContext.paymentLink}`);
+  const contextBlock =
+    contextParts.length > 0 ? `\n${contextParts.join("\n\n")}\n` : "";
 
   return `You are a friendly and knowledgeable assistant for ${domainName}${locationContext ? ` (${locationContext.name} location)` : ""}.
 The customer chose not to share their email. That is completely fine — do NOT ask for it again under any circumstances.
@@ -268,6 +289,10 @@ export async function POST(req: NextRequest) {
         await prisma.chatMessage.create({
           data: { chatRoomId: room.id, message, role: "USER" },
         });
+        await prisma.chatRoom.update({
+          where: { id: room.id },
+          data: { updatedAt: new Date() },
+        });
 
         // Email notification if not already sent
         if (!room.mailed) {
@@ -297,6 +322,10 @@ export async function POST(req: NextRequest) {
         // Store user message
         await prisma.chatMessage.create({
           data: { chatRoomId: room.id, message, role: "USER" },
+        });
+        await prisma.chatRoom.update({
+          where: { id: room.id },
+          data: { updatedAt: new Date() },
         });
 
         // Get AI response (exclude scripted steps from qualification questions)
@@ -348,6 +377,10 @@ export async function POST(req: NextRequest) {
               role: "ASSISTANT",
             },
           });
+          await prisma.chatRoom.update({
+            where: { id: room.id },
+            data: { updatedAt: new Date() },
+          });
 
           return NextResponse.json({
             response: { role: "assistant", content: cleanContent },
@@ -384,6 +417,10 @@ export async function POST(req: NextRequest) {
             message: cleanContent,
             role: "ASSISTANT",
           },
+        });
+        await prisma.chatRoom.update({
+          where: { id: room.id },
+          data: { updatedAt: new Date() },
         });
 
         if (extractedUrl) {
