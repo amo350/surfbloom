@@ -1,11 +1,148 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { prisma } from "@/lib/prisma";
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "@/trpc/init";
-import { prisma } from "@/lib/prisma";
-import { TRPCError } from "@trpc/server";
+
+const getUserWorkspaceIds = async (userId: string) => {
+  const [memberWorkspaces, ownedWorkspaces] = await Promise.all([
+    prisma.member.findMany({
+      where: { userId },
+      select: { workspaceId: true },
+    }),
+    prisma.workspace.findMany({
+      where: { userId },
+      select: { id: true },
+    }),
+  ]);
+
+  return [
+    ...new Set([
+      ...memberWorkspaces.map((member) => member.workspaceId),
+      ...ownedWorkspaces.map((workspace) => workspace.id),
+    ]),
+  ];
+};
+
+const getRoomVisibilityWhere = (userId: string, workspaceIds: string[]) => ({
+  OR: [{ domain: { userId } }, { workspaceId: { in: workspaceIds } }],
+});
+
+const repairOrphanSmsRooms = async (workspaceIds: string[]) => {
+  if (workspaceIds.length === 0) return;
+
+  const orphanSms = await prisma.smsMessage.findMany({
+    where: {
+      workspaceId: { in: workspaceIds },
+      chatRoomId: null,
+    },
+    select: {
+      workspaceId: true,
+      direction: true,
+      from: true,
+      to: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
+
+  if (orphanSms.length === 0) return;
+
+  const keys = new Map<string, { workspaceId: string; phone: string }>();
+  for (const sms of orphanSms) {
+    const phone = sms.direction === "outbound" ? sms.to : sms.from;
+    if (!phone) continue;
+
+    const key = `${sms.workspaceId}:${phone}`;
+    if (!keys.has(key)) {
+      keys.set(key, { workspaceId: sms.workspaceId, phone });
+    }
+  }
+
+  const targetWorkspaces = [
+    ...new Set([...keys.values()].map((x) => x.workspaceId)),
+  ];
+  const workspaceDomainRows = await prisma.workspace.findMany({
+    where: { id: { in: targetWorkspaces } },
+    select: {
+      id: true,
+      domains: {
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+  const workspaceDomainMap = new Map(
+    workspaceDomainRows.map((workspace) => [
+      workspace.id,
+      workspace.domains[0]?.id ?? null,
+    ]),
+  );
+
+  for (const { workspaceId, phone } of keys.values()) {
+    await prisma.$transaction(async (tx) => {
+      let contact = await tx.chatContact.findFirst({
+        where: { workspaceId, phone },
+        select: { id: true, domainId: true },
+      });
+
+      if (!contact) {
+        contact = await tx.chatContact.create({
+          data: {
+            workspaceId,
+            phone,
+            domainId: workspaceDomainMap.get(workspaceId) ?? undefined,
+          },
+          select: { id: true, domainId: true },
+        });
+      }
+
+      let room = await tx.chatRoom.findFirst({
+        where: {
+          workspaceId,
+          contactId: contact.id,
+          channel: "sms",
+        },
+        select: { id: true },
+      });
+
+      if (!room) {
+        room = await tx.chatRoom.create({
+          data: {
+            workspaceId,
+            contactId: contact.id,
+            domainId:
+              contact.domainId ??
+              workspaceDomainMap.get(workspaceId) ??
+              undefined,
+            channel: "sms",
+          },
+          select: { id: true },
+        });
+      }
+
+      await tx.smsMessage.updateMany({
+        where: {
+          workspaceId,
+          chatRoomId: null,
+          OR: [
+            { direction: "inbound", from: phone },
+            { direction: "outbound", to: phone },
+          ],
+        },
+        data: { chatRoomId: room.id },
+      });
+
+      await tx.chatRoom.update({
+        where: { id: room.id },
+        data: { updatedAt: new Date() },
+      });
+    });
+  }
+};
 
 export const chatbotRouter = createTRPCRouter({
   // ─── Domains ────────────────────────────────────────────
@@ -278,77 +415,161 @@ export const chatbotRouter = createTRPCRouter({
         domainId: z.string().optional(),
         workspaceId: z.string().optional(),
         live: z.boolean().optional(),
-        tab: z.enum(["unread", "all", "expired", "starred"]).default("unread"),
-        page: z.number().int().min(1).default(1),
-        pageSize: z.number().int().min(1).max(50).default(12),
+        tab: z.enum(["unread", "all", "expired", "starred"]),
+        page: z.number().default(1),
+        pageSize: z.number().default(12),
+        channel: z.enum(["all", "webchat", "sms", "feedback"]).default("all"),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const { page, pageSize, domainId, workspaceId, live, tab } = input;
+      try {
+        const { page, pageSize, domainId, workspaceId, live, tab } = input;
 
-      const now = new Date();
-      const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+        const now = new Date();
+        const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+        const workspaceIds = await getUserWorkspaceIds(ctx.auth.user.id);
+        await repairOrphanSmsRooms(workspaceIds);
 
-      const where: any = {
-        domain: { userId: ctx.auth.user.id },
-        ...(domainId && { domainId }),
-        ...(workspaceId && { workspaceId }),
-        ...(live !== undefined && { live }),
-      };
+        const where: any = {
+          workspaceId: { in: workspaceIds },
+          ...(domainId && { domainId }),
+          ...(workspaceId && { workspaceId }),
+          ...(live !== undefined && { live }),
+        };
 
-      // Tab-specific filters
-      switch (tab) {
-        case "unread":
-          where.messages = {
-            some: { seen: false, role: "USER" },
-          };
-          break;
-        case "expired":
-          where.updatedAt = { lt: twoDaysAgo };
-          where.live = false;
-          break;
-        case "starred":
-          // TODO: add `starred` boolean to ChatRoom schema when needed
-          break;
-        case "all":
-        default:
-          break;
-      }
+        // Tab-specific filters
+        switch (tab) {
+          case "unread":
+            where.AND = [
+              ...(where.AND ?? []),
+              {
+                OR: [
+                  { messages: { some: { seen: false, role: "USER" } } },
+                  {
+                    channel: "sms",
+                    smsMessages: { some: { direction: "inbound" } },
+                  },
+                ],
+              },
+            ];
+            break;
+          case "expired":
+            where.updatedAt = { lt: twoDaysAgo };
+            where.live = false;
+            break;
+          case "starred":
+            // TODO: add `starred` boolean to ChatRoom schema when needed
+            break;
+          case "all":
+          default:
+            break;
+        }
 
-      const [rooms, totalCount] = await Promise.all([
-        prisma.chatRoom.findMany({
-          where,
-          include: {
-            contact: {
-              select: { id: true, email: true },
-            },
-            domain: {
-              select: { id: true, name: true },
-            },
-            workspace: {
-              select: { id: true, name: true },
-            },
-            messages: {
-              orderBy: { createdAt: "desc" },
-              take: 1,
-              select: {
-                id: true,
-                message: true,
-                role: true,
-                seen: true,
-                createdAt: true,
+        // Channel filter
+        if (input.channel && input.channel !== "all") {
+          where.channel = input.channel;
+        }
+
+        const [rooms, totalCount] = await Promise.all([
+          prisma.chatRoom.findMany({
+            where,
+            select: {
+              id: true,
+              live: true,
+              channel: true,
+              updatedAt: true,
+              contact: {
+                select: { id: true, email: true, phone: true },
+              },
+              domain: {
+                select: { id: true, name: true },
+              },
+              workspace: {
+                select: { id: true, name: true },
+              },
+              messages: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: {
+                  id: true,
+                  message: true,
+                  role: true,
+                  seen: true,
+                  createdAt: true,
+                },
+              },
+              smsMessages: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: {
+                  id: true,
+                  body: true,
+                  direction: true,
+                  createdAt: true,
+                },
               },
             },
-          },
-          orderBy: { updatedAt: "desc" },
+            orderBy: { updatedAt: "desc" },
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+          }),
+          prisma.chatRoom.count({ where }),
+        ]);
+
+        return {
+          items: rooms,
+          page,
+          pageSize,
+          totalCount,
+          totalPages: Math.ceil(totalCount / pageSize),
+        };
+      } catch (error) {
+        console.error("[getConversations] Error:", error);
+        throw error;
+      }
+    }),
+
+  getMessages: protectedProcedure
+    .input(
+      z.object({
+        roomId: z.string(),
+        page: z.number().default(1),
+        pageSize: z.number().default(12),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const { roomId, page, pageSize } = input;
+      const workspaceIds = await getUserWorkspaceIds(ctx.auth.user.id);
+
+      const room = await prisma.chatRoom.findFirst({
+        where: {
+          id: roomId,
+          ...getRoomVisibilityWhere(ctx.auth.user.id, workspaceIds),
+        },
+      });
+      if (!room) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Room not found" });
+      }
+
+      const [messages, totalCount] = await Promise.all([
+        prisma.chatMessage.findMany({
+          where: { chatRoomId: roomId },
+          orderBy: { createdAt: "desc" },
           skip: (page - 1) * pageSize,
           take: pageSize,
+          select: {
+            id: true,
+            message: true,
+            role: true,
+            seen: true,
+            createdAt: true,
+          },
         }),
-        prisma.chatRoom.count({ where }),
+        prisma.chatMessage.count({ where: { chatRoomId: roomId } }),
       ]);
 
       return {
-        items: rooms,
+        items: messages.reverse(),
         page,
         pageSize,
         totalCount,
@@ -356,49 +577,73 @@ export const chatbotRouter = createTRPCRouter({
       };
     }),
 
-  getMessages: protectedProcedure
+  getSmsMessages: protectedProcedure
     .input(
       z.object({
-        roomId: z.string(),
+        chatRoomId: z.string(),
+        page: z.number().default(1),
+        pageSize: z.number().default(12),
       }),
     )
     .query(async ({ ctx, input }) => {
-      // Verify ownership through domain
+      const { chatRoomId, page, pageSize } = input;
+      const workspaceIds = await getUserWorkspaceIds(ctx.auth.user.id);
+
       const room = await prisma.chatRoom.findFirst({
         where: {
-          id: input.roomId,
-          domain: { userId: ctx.auth.user.id },
+          id: chatRoomId,
+          ...getRoomVisibilityWhere(ctx.auth.user.id, workspaceIds),
         },
       });
       if (!room) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Room not found" });
       }
 
-      return prisma.chatMessage.findMany({
-        where: { chatRoomId: input.roomId },
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          message: true,
-          role: true,
-          seen: true,
-          createdAt: true,
-        },
-      });
+      const [messages, totalCount] = await Promise.all([
+        prisma.smsMessage.findMany({
+          where: { chatRoomId },
+          orderBy: { createdAt: "desc" },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+          select: {
+            id: true,
+            direction: true,
+            from: true,
+            to: true,
+            body: true,
+            mediaUrl: true,
+            status: true,
+            createdAt: true,
+          },
+        }),
+        prisma.smsMessage.count({ where: { chatRoomId } }),
+      ]);
+
+      return {
+        items: messages.reverse(),
+        page,
+        pageSize,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+      };
     }),
 
   getRoom: protectedProcedure
     .input(z.object({ roomId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const workspaceIds = await getUserWorkspaceIds(ctx.auth.user.id);
       const room = await prisma.chatRoom.findFirst({
         where: {
           id: input.roomId,
-          domain: { userId: ctx.auth.user.id },
+          ...getRoomVisibilityWhere(ctx.auth.user.id, workspaceIds),
         },
         select: {
           id: true,
           live: true,
-          contact: { select: { id: true, email: true } },
+          channel: true,
+          contact: {
+            select: { id: true, email: true, phone: true },
+          },
           domain: { select: { id: true, name: true } },
           workspace: { select: { id: true, name: true } },
         },
@@ -417,10 +662,11 @@ export const chatbotRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const workspaceIds = await getUserWorkspaceIds(ctx.auth.user.id);
       const room = await prisma.chatRoom.findFirst({
         where: {
           id: input.roomId,
-          domain: { userId: ctx.auth.user.id },
+          ...getRoomVisibilityWhere(ctx.auth.user.id, workspaceIds),
         },
       });
       if (!room) {
@@ -441,10 +687,94 @@ export const chatbotRouter = createTRPCRouter({
           createdAt: true,
         },
       });
+      await prisma.chatRoom.update({
+        where: { id: input.roomId },
+        data: { updatedAt: new Date() },
+      });
 
       // TODO: Phase 7 — Inngest Realtime trigger so visitor sees reply live
 
       return msg;
+    }),
+
+  sendSmsReply: protectedProcedure
+    .input(
+      z.object({
+        roomId: z.string(),
+        message: z.string().min(1).max(1600),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const workspaceIds = await getUserWorkspaceIds(ctx.auth.user.id);
+      const room = await prisma.chatRoom.findFirst({
+        where: {
+          id: input.roomId,
+          ...getRoomVisibilityWhere(ctx.auth.user.id, workspaceIds),
+        },
+        select: {
+          id: true,
+          workspaceId: true,
+          contact: { select: { phone: true } },
+          workspace: {
+            select: {
+              twilioPhoneNumber: {
+                select: { phoneNumber: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!room.contact?.phone) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No phone number for this contact.",
+        });
+      }
+      if (!room.workspace?.twilioPhoneNumber?.phoneNumber) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No SMS number assigned to this location.",
+        });
+      }
+
+      const { sendSms } = await import("@/lib/twilio");
+
+      const result = await sendSms({
+        userId: ctx.auth.user.id,
+        from: room.workspace.twilioPhoneNumber.phoneNumber,
+        to: room.contact.phone,
+        body: input.message,
+      });
+
+      const smsMessage = await prisma.smsMessage.create({
+        data: {
+          workspaceId: room.workspaceId!,
+          chatRoomId: room.id,
+          direction: "outbound",
+          from: room.workspace.twilioPhoneNumber.phoneNumber,
+          to: room.contact.phone,
+          body: input.message,
+          twilioSid: result.sid,
+          status: "SENT",
+        },
+        select: {
+          id: true,
+          direction: true,
+          from: true,
+          to: true,
+          body: true,
+          status: true,
+          createdAt: true,
+        },
+      });
+      await prisma.chatRoom.update({
+        where: { id: room.id },
+        data: { updatedAt: new Date() },
+      });
+
+      return smsMessage;
     }),
 
   markSeen: protectedProcedure
@@ -454,10 +784,11 @@ export const chatbotRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const workspaceIds = await getUserWorkspaceIds(ctx.auth.user.id);
       const room = await prisma.chatRoom.findFirst({
         where: {
           id: input.roomId,
-          domain: { userId: ctx.auth.user.id },
+          ...getRoomVisibilityWhere(ctx.auth.user.id, workspaceIds),
         },
       });
       if (!room) {
@@ -484,10 +815,11 @@ export const chatbotRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const workspaceIds = await getUserWorkspaceIds(ctx.auth.user.id);
       const room = await prisma.chatRoom.findFirst({
         where: {
           id: input.roomId,
-          domain: { userId: ctx.auth.user.id },
+          ...getRoomVisibilityWhere(ctx.auth.user.id, workspaceIds),
         },
       });
       if (!room) {

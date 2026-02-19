@@ -1,7 +1,7 @@
 // src/features/chatbot/components/conversations/ConversationMessenger.tsx
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,9 +29,10 @@ type Props = {
 
 export function ConversationMessenger({ roomId }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [messagePage, setMessagePage] = useState(1);
 
   const { data: room } = useRoom(roomId);
-  const { data: messages, isLoading } = useMessages(roomId);
+  const { data: messages, isLoading } = useMessages(roomId, messagePage);
   const sendMessage = useSendMessage(roomId);
   const markSeen = useMarkSeen(roomId);
   const updateRoom = useUpdateRoom();
@@ -55,11 +56,17 @@ export function ConversationMessenger({ roomId }: Props) {
     });
   }, [messages]);
 
+  // Reset page when room changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run only when roomId changes
+  useEffect(() => {
+    setMessagePage(1);
+  }, [roomId]);
+
   // Mark messages as seen when opening a conversation (roomId change only)
   // biome-ignore lint/correctness/useExhaustiveDependencies: only run on roomId change to avoid duplicate markSeen on every message update
   useEffect(() => {
     if (
-      messages?.some((m) => !m.seen && m.role === "USER") &&
+      messages?.items?.some((m) => !m.seen && m.role === "USER") &&
       !markSeen.isPending
     ) {
       markSeen.mutate({ roomId });
@@ -151,8 +158,34 @@ export function ConversationMessenger({ roomId }: Props) {
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
       >
-        {messages && messages.length > 0 ? (
-          messages.map((msg) => (
+        {messages && messages.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 py-2">
+            <button
+              type="button"
+              onClick={() =>
+                setMessagePage((p) => Math.min(p + 1, messages.totalPages))
+              }
+              disabled={messagePage >= messages.totalPages}
+              className="p-1 rounded hover:bg-muted disabled:opacity-30 text-xs"
+            >
+              ← Older
+            </button>
+            <span className="text-[10px] text-muted-foreground">
+              {messagePage} / {messages.totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setMessagePage((p) => Math.max(p - 1, 1))}
+              disabled={messagePage <= 1}
+              className="p-1 rounded hover:bg-muted disabled:opacity-30 text-xs"
+            >
+              Newer →
+            </button>
+          </div>
+        )}
+
+        {messages?.items && messages.items.length > 0 ? (
+          messages.items.map((msg) => (
             <MessageBubble
               key={msg.id}
               role={msg.role}

@@ -92,21 +92,25 @@ export async function POST(req: NextRequest) {
     await prisma.$transaction(async (tx) => {
       // 1) Create/find contact
       let contact = null;
-      const contactKey = email || (phone ? `phone:${phone}` : null);
-      if (contactKey) {
-        contact = await tx.chatContact.findFirst({
-          where: {
-            workspaceId,
-            email: contactKey,
-          },
-        });
+      if (email || phone) {
+        if (email) {
+          contact = await tx.chatContact.findFirst({
+            where: { workspaceId, email },
+          });
+        }
+        if (!contact && phone) {
+          contact = await tx.chatContact.findFirst({
+            where: { workspaceId, phone },
+          });
+        }
 
         if (!contact) {
           contact = await tx.chatContact.create({
             data: {
               domainId,
               workspaceId,
-              email: contactKey,
+              email: email || null,
+              phone: phone || null,
             },
           });
         }

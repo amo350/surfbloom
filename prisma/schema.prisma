@@ -545,14 +545,15 @@ model FilterQuestion {
 
 model ChatContact {
   id          String  @id @default(cuid())
-  domainId    String
+  domainId    String?
   workspaceId String?
   email       String?
+  phone       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  domain    Domain                @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domain    Domain?               @relation(fields: [domainId], references: [id], onDelete: Cascade)
   workspace Workspace?            @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   responses ChatContactResponse[]
   chatRooms ChatRoom[]
@@ -586,7 +587,7 @@ enum ChatMessageRole {
 
 model ChatRoom {
   id          String  @id @default(cuid())
-  domainId    String
+  domainId    String?
   workspaceId String?
   contactId   String?
 
@@ -598,7 +599,7 @@ model ChatRoom {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  domain      Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domain      Domain?       @relation(fields: [domainId], references: [id], onDelete: Cascade)
   workspace   Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   contact     ChatContact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
   messages    ChatMessage[]

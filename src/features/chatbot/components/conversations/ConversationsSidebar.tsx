@@ -1,22 +1,17 @@
 // src/features/chatbot/components/conversations/ConversationsSidebar.tsx
 "use client";
 
-import { useState } from "react";
-import { useConversations, useDomains } from "../../hooks/use-chatbot";
 import { formatDistanceToNow } from "date-fns";
-import {
-  Loader2,
-  MessageCircle,
-  Circle,
-  Radio,
-  Filter,
-} from "lucide-react";
+import { Circle, Filter, Loader2, MessageCircle, Radio } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useConversations, useDomains } from "../../hooks/use-chatbot";
+import { ChannelBadge } from "./ChannelBadge";
 
 type Props = {
   workspaceId?: string;
@@ -29,7 +24,12 @@ export function ConversationsSidebar({
   selectedRoomId,
   onSelectRoom,
 }: Props) {
-  const [tab, setTab] = useState<"unread" | "all" | "expired" | "starred">("unread");
+  const [tab, setTab] = useState<"unread" | "all" | "expired" | "starred">(
+    "unread",
+  );
+  const [channelFilter, setChannelFilter] = useState<
+    "all" | "webchat" | "sms" | "feedback"
+  >("all");
   const [domainFilter, setDomainFilter] = useState<string | undefined>();
   const [liveFilter, setLiveFilter] = useState<boolean | undefined>();
   const [page, setPage] = useState(1);
@@ -37,19 +37,23 @@ export function ConversationsSidebar({
   const { data: domains } = useDomains();
   const { data, isLoading } = useConversations({
     workspaceId,
-    domainId: domainFilter,
+    domainId: domainFilter || undefined,
     live: liveFilter,
     tab,
     page,
     pageSize: 12,
+    channel: channelFilter,
   });
 
   const hasActiveFilters =
-    domainFilter !== undefined || liveFilter !== undefined;
+    domainFilter !== undefined ||
+    liveFilter !== undefined ||
+    channelFilter !== "all";
 
   const clearFilters = () => {
     setDomainFilter(undefined);
     setLiveFilter(undefined);
+    setChannelFilter("all");
     setPage(1);
   };
 
@@ -71,7 +75,8 @@ export function ConversationsSidebar({
                 {hasActiveFilters && (
                   <span className="h-4 w-4 rounded-full bg-teal-500 text-white text-[10px] flex items-center justify-center">
                     {(domainFilter ? 1 : 0) +
-                      (liveFilter !== undefined ? 1 : 0)}
+                      (liveFilter !== undefined ? 1 : 0) +
+                      (channelFilter !== "all" ? 1 : 0)}
                   </span>
                 )}
               </Button>
@@ -121,6 +126,28 @@ export function ConversationsSidebar({
                 </select>
               </div>
 
+              {/* Channel */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Channel
+                </label>
+                <select
+                  value={channelFilter}
+                  onChange={(e) => {
+                    setChannelFilter(
+                      e.target.value as "all" | "webchat" | "sms" | "feedback",
+                    );
+                    setPage(1);
+                  }}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="all">All channels</option>
+                  <option value="webchat">Chat</option>
+                  <option value="sms">SMS</option>
+                  <option value="feedback">Feedback</option>
+                </select>
+              </div>
+
               {hasActiveFilters && (
                 <Button
                   variant="ghost"
@@ -165,10 +192,47 @@ export function ConversationsSidebar({
           </div>
         ) : data?.items.length ? (
           data.items.map((room) => {
-            const lastMessage = room.messages[0];
+            const lastMessage = room.messages?.[0];
+            const lastSms = room.smsMessages?.[0];
+            const preview = (() => {
+              if (lastMessage && lastSms) {
+                return new Date(lastSms.createdAt) >
+                  new Date(lastMessage.createdAt)
+                  ? {
+                      text: lastSms.body,
+                      time: lastSms.createdAt,
+                      isSms: true,
+                    }
+                  : {
+                      text: lastMessage.message,
+                      time: lastMessage.createdAt,
+                      isSms: false,
+                    };
+              }
+              if (lastSms) {
+                return {
+                  text: lastSms.body,
+                  time: lastSms.createdAt,
+                  isSms: true,
+                };
+              }
+              if (lastMessage) {
+                return {
+                  text: lastMessage.message,
+                  time: lastMessage.createdAt,
+                  isSms: false,
+                };
+              }
+              return null;
+            })();
             const isSelected = room.id === selectedRoomId;
+            const isSmsUnread =
+              room.channel === "sms" &&
+              preview?.isSms &&
+              lastSms?.direction === "inbound";
             const isUnseen =
-              lastMessage && !lastMessage.seen && lastMessage.role === "USER";
+              isSmsUnread ||
+              (lastMessage && !lastMessage.seen && lastMessage.role === "USER");
 
             return (
               <button
@@ -187,19 +251,19 @@ export function ConversationsSidebar({
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span
-                        className={`text-sm truncate ${isUnseen ? "font-semibold" : "font-medium"}`}
-                      >
-                        {room.contact?.email ?? "Visitor"}
-                      </span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <ChannelBadge channel={room.channel ?? "webchat"} />
+                        <span className="text-sm font-medium truncate">
+                          {room.contact?.email ||
+                            room.contact?.phone ||
+                            "Visitor"}
+                        </span>
+                      </div>
                       <span className="text-[10px] text-muted-foreground shrink-0">
-                        {lastMessage
-                          ? formatDistanceToNow(
-                              new Date(lastMessage.createdAt),
-                              {
-                                addSuffix: true,
-                              },
-                            )
+                        {preview
+                          ? formatDistanceToNow(new Date(preview.time), {
+                              addSuffix: true,
+                            })
                           : ""}
                       </span>
                     </div>
@@ -208,9 +272,9 @@ export function ConversationsSidebar({
                       <p
                         className={`text-xs truncate ${isUnseen ? "text-foreground" : "text-muted-foreground"}`}
                       >
-                        {lastMessage
-                          ? lastMessage.message.substring(0, 50) +
-                            (lastMessage.message.length > 50 ? "..." : "")
+                        {preview
+                          ? preview.text.substring(0, 50) +
+                            (preview.text.length > 50 ? "..." : "")
                           : "No messages yet"}
                       </p>
 

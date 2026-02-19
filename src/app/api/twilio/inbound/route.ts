@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         workspace: {
           select: {
             domains: {
-              select: { id: true, userId: true },
+              select: { id: true },
               take: 1,
             },
           },
@@ -49,72 +49,80 @@ export async function POST(req: NextRequest) {
     }
 
     const workspaceId = phoneRecord.workspaceId;
-    const domain = phoneRecord.workspace.domains[0];
+    const workspaceDomainId = phoneRecord.workspace.domains[0]?.id ?? null;
 
-    // Find or create a contact by phone number
-    let contact = await prisma.chatContact.findFirst({
-      where: {
-        domainId: domain?.id,
-        email: from, // Using email field to store phone for SMS contacts
-      },
-      include: {
-        chatRooms: {
-          where: { channel: "sms" },
-          select: { id: true },
-          take: 1,
+    const roomId = await prisma.$transaction(async (tx) => {
+      let contact = await tx.chatContact.findFirst({
+        where: {
+          workspaceId,
+          phone: from,
         },
-      },
-    });
+        select: { id: true, domainId: true },
+      });
 
-    // Create contact + room if new
-    if (!contact && domain) {
-      contact = await prisma.$transaction(async (tx) => {
-        const c = await tx.chatContact.create({
+      if (!contact) {
+        contact = await tx.chatContact.create({
           data: {
-            domainId: domain.id,
             workspaceId,
-            email: from, // phone number stored here for now
+            phone: from,
+            domainId: workspaceDomainId ?? undefined,
           },
+          select: { id: true, domainId: true },
         });
+      }
 
-        await tx.chatRoom.create({
+      let room = await tx.chatRoom.findFirst({
+        where: {
+          workspaceId,
+          contactId: contact.id,
+          channel: "sms",
+        },
+        select: { id: true },
+      });
+
+      if (!room) {
+        room = await tx.chatRoom.create({
           data: {
-            domainId: domain.id,
             workspaceId,
-            contactId: c.id,
+            contactId: contact.id,
+            domainId: contact.domainId ?? workspaceDomainId ?? undefined,
             channel: "sms",
           },
+          select: { id: true },
         });
+      }
 
-        // Re-fetch with rooms
-        return tx.chatContact.findUnique({
-          where: { id: c.id },
-          include: {
-            chatRooms: {
-              where: { channel: "sms" },
-              select: { id: true },
-              take: 1,
-            },
-          },
-        });
+      await tx.smsMessage.upsert({
+        where: { twilioSid: messageSid },
+        update: {
+          workspaceId,
+          chatRoomId: room.id,
+          direction: "inbound",
+          from,
+          to,
+          body: body || "",
+          mediaUrl,
+          status: "DELIVERED",
+        },
+        create: {
+          workspaceId,
+          chatRoomId: room.id,
+          direction: "inbound",
+          from,
+          to,
+          body: body || "",
+          mediaUrl,
+          twilioSid: messageSid,
+          status: "DELIVERED",
+        },
       });
-    }
 
-    const roomId = contact?.chatRooms[0]?.id;
+      await tx.chatRoom.update({
+        where: { id: room.id },
+        data: { updatedAt: new Date() },
+      });
 
-    // Store in SMS message log
-    await prisma.smsMessage.create({
-      data: {
-        workspaceId,
-        chatRoomId: roomId,
-        direction: "inbound",
-        from,
-        to,
-        body: body || "",
-        mediaUrl,
-        twilioSid: messageSid,
-        status: "DELIVERED",
-      },
+      return room.id;
     });
 
     // Handle STOP/START opt-out (Twilio handles this automatically,
@@ -128,6 +136,8 @@ export async function POST(req: NextRequest) {
     if (["START", "YES", "UNSTOP"].includes(upperBody)) {
       console.log("[Inbound SMS] Opt-in received from:", from);
     }
+
+    console.log("[Inbound SMS] Stored message in room:", roomId);
 
     // Return empty TwiML — no auto-reply for now
     // TODO: Could auto-reply with AI or canned response
