@@ -46,14 +46,18 @@ async function verifyCategoryAccess(userId: string, categoryId: string) {
   return category;
 }
 
-const STAGES = [
-  "new_lead",
-  "prospecting",
-  "appointment",
-  "payment",
-  "not_a_fit",
-  "lost",
-] as const;
+async function validateStage(userId: string, slug?: string) {
+  if (!slug) return;
+  const exists = await prisma.stage.findFirst({
+    where: { userId, slug },
+  });
+  if (!exists) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Invalid stage: "${slug}"`,
+    });
+  }
+}
 
 const SOURCES = [
   "manual",
@@ -71,7 +75,7 @@ export const contactsRouter = createTRPCRouter({
       z.object({
         workspaceId: z.string().optional(),
         search: z.string().optional(),
-        stage: z.enum(STAGES).optional(),
+        stage: z.string().optional(),
         source: z.enum(SOURCES).optional(),
         categoryId: z.string().optional(),
         page: z.number().int().min(1).default(1),
@@ -79,6 +83,9 @@ export const contactsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      if (input.stage) {
+        await validateStage(ctx.auth.user.id, input.stage);
+      }
       const { search, stage, source, categoryId, page, pageSize } = input;
 
       // Get user's workspaces
@@ -225,7 +232,7 @@ export const contactsRouter = createTRPCRouter({
         lastName: z.string().trim().optional(),
         email: z.string().email().optional().or(z.literal("")),
         phone: z.string().optional(),
-        stage: z.enum(STAGES).default("new_lead"),
+        stage: z.string().default("new_lead"),
         source: z.enum(SOURCES).default("manual"),
         notes: z.string().optional(),
       }),
@@ -241,6 +248,8 @@ export const contactsRouter = createTRPCRouter({
         },
       });
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
+      await validateStage(ctx.auth.user.id, input.stage);
 
       // Check for duplicate phone in same workspace
       if (input.phone) {
@@ -292,21 +301,13 @@ export const contactsRouter = createTRPCRouter({
         lastName: z.string().trim().optional(),
         email: z.string().optional(),
         phone: z.string().optional(),
-        stage: z
-          .enum([
-            "new_lead",
-            "prospecting",
-            "appointment",
-            "payment",
-            "not_a_fit",
-            "lost",
-          ])
-          .default("new_lead"),
+        stage: z.string().default("new_lead"),
         notes: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       await verifyContactAccess(ctx.auth.user.id, input.id);
+      await validateStage(ctx.auth.user.id, input.stage);
 
       const contact = await prisma.chatContact.update({
         where: { id: input.id },
@@ -340,7 +341,7 @@ export const contactsRouter = createTRPCRouter({
         lastName: z.string().trim().optional().nullable(),
         email: z.string().email().optional().nullable().or(z.literal("")),
         phone: z.string().optional().nullable(),
-        stage: z.enum(STAGES).optional(),
+        stage: z.string().optional(),
         notes: z.string().optional().nullable(),
         workspaceId: z.string().optional(),
         assignedToId: z.string().optional().nullable(),
@@ -366,6 +367,10 @@ export const contactsRouter = createTRPCRouter({
         },
       });
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
+      if (input.stage) {
+        await validateStage(ctx.auth.user.id, input.stage);
+      }
 
       // Clean empty strings to null
       const cleanData: any = {};
@@ -518,6 +523,7 @@ export const contactsRouter = createTRPCRouter({
             userId: ctx.auth.user.id,
             ...s,
           })),
+          skipDuplicates: true,
         });
 
         stages = await prisma.stage.findMany({
@@ -647,7 +653,17 @@ export const contactsRouter = createTRPCRouter({
         stageIds: z.array(z.string()),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Verify all stages belong to user
+      const owned = await prisma.stage.findMany({
+        where: { userId: ctx.auth.user.id, id: { in: input.stageIds } },
+        select: { id: true },
+      });
+
+      if (owned.length !== input.stageIds.length) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
       await prisma.$transaction(
         input.stageIds.map((id, i) =>
           prisma.stage.update({
@@ -708,7 +724,7 @@ export const contactsRouter = createTRPCRouter({
               lastName: z.string().trim().optional(),
               email: z.string().email().optional().or(z.literal("")),
               phone: z.string().optional(),
-              stage: z.enum(STAGES).default("new_lead"),
+              stage: z.string().default("new_lead"),
               source: z.enum(SOURCES).default("csv"),
               notes: z.string().optional(),
             }),
@@ -728,6 +744,11 @@ export const contactsRouter = createTRPCRouter({
         },
       });
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const uniqueStages = [...new Set(input.contacts.map((c) => c.stage))];
+      for (const s of uniqueStages) {
+        await validateStage(ctx.auth.user.id, s);
+      }
 
       // Get existing phones in this workspace for dedup
       const existingPhones = new Set(
@@ -808,7 +829,7 @@ export const contactsRouter = createTRPCRouter({
     .input(
       z.object({
         workspaceId: z.string().optional(),
-        stage: z.enum(STAGES).optional(),
+        stage: z.string().optional(),
         source: z.enum(SOURCES).optional(),
         categoryId: z.string().optional(),
       }),
@@ -991,7 +1012,15 @@ export const contactsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { keepId, mergeIds } = input;
+      const { keepId } = input;
+      const mergeIds = input.mergeIds.filter((id) => id !== keepId);
+
+      if (mergeIds.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No valid contacts to merge",
+        });
+      }
 
       // Verify access to all contacts
       await verifyContactAccess(ctx.auth.user.id, keepId);

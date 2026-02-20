@@ -96,8 +96,8 @@ export function StageManagerDialog() {
   };
 
   const handleDelete = (id: string, slug: string) => {
-    if (!stages || stages.length <= 1) {
-      toast.error("Must have at least one stage");
+    if (!stages || stages.length <= 3) {
+      toast.error("Must have at least 3 stages");
       return;
     }
     const reassignTo = stages.find((s: any) => s.id !== id);
