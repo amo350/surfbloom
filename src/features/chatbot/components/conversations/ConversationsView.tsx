@@ -1,10 +1,11 @@
 // src/features/chatbot/components/conversations/ConversationsView.tsx
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ContactPanel } from "@/features/contacts/components/ContactPanel";
 import { CreateContactDialogControlled } from "@/features/contacts/components/CreateContactDialog";
+import { PromoteContactDialog } from "@/features/contacts/components/PromoteContactDialog";
 import { useTRPC } from "@/trpc/client";
 import { useRoom } from "../../hooks/use-chatbot";
 import { ConversationHeader } from "./ConversationHeader";
@@ -24,17 +25,14 @@ export function ConversationsView({ workspaceId }: { workspaceId?: string }) {
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [contactPanelId, setContactPanelId] = useState<string | null>(null);
   const [showCreateContact, setShowCreateContact] = useState(false);
-  const [promoteContactId, setPromoteContactId] = useState<string | null>(null);
-  const [promoteInitialValues, setPromoteInitialValues] = useState<{
+  const [promoteContact, setPromoteContact] = useState<{
+    id: string;
     firstName?: string | null;
     lastName?: string | null;
     email?: string | null;
     phone?: string | null;
-    stage?: string | null;
-    notes?: string | null;
   } | null>(null);
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const { data: workspacesData } = useQuery(
     trpc.workspaces.getMany.queryOptions({}),
   );
@@ -106,13 +104,12 @@ export function ConversationsView({ workspaceId }: { workspaceId?: string }) {
                 }
                 onUnknownContactClick={() => {
                   if (room?.contact?.id) {
-                    setPromoteContactId(room.contact.id);
-                    setPromoteInitialValues({
+                    setPromoteContact({
+                      id: room.contact.id,
                       firstName: room.contact.firstName,
                       lastName: room.contact.lastName,
                       email: room.contact.email,
                       phone: room.contact.phone,
-                      stage: room.contact.stage,
                     });
                   } else {
                     setShowCreateContact(true);
@@ -138,25 +135,21 @@ export function ConversationsView({ workspaceId }: { workspaceId?: string }) {
       </div>
 
       <CreateContactDialogControlled
-        open={showCreateContact || !!promoteContactId}
+        open={showCreateContact}
         onOpenChange={(open) => {
           if (!open) {
             setShowCreateContact(false);
-            setPromoteContactId(null);
-            setPromoteInitialValues(null);
           }
         }}
         workspaceId={room?.workspaceId ?? undefined}
         workspaces={workspacesData?.items}
-        promoteContactId={promoteContactId}
-        promoteInitialValues={promoteInitialValues ?? undefined}
-        onPromoteSuccess={() => {
-          if (selectedRoomId) {
-            queryClient.invalidateQueries({
-              queryKey: trpc.chatbot.getRoom.queryKey({ roomId: selectedRoomId }),
-            });
-          }
+      />
+      <PromoteContactDialog
+        open={!!promoteContact}
+        onOpenChange={(open) => {
+          if (!open) setPromoteContact(null);
         }}
+        contact={promoteContact}
       />
     </div>
   );

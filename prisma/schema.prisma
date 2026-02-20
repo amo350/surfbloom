@@ -44,6 +44,7 @@ model User {
   assignedContacts ChatContact[] @relation("AssignedContacts")
   domains          Domain[]
   twilioConfig     TwilioConfig?
+  stages           Stage[]
 
   @@unique([email])
   @@index([accountOwnerId])
@@ -160,6 +161,20 @@ model Workspace {
 
   @@index([userId])
   @@map("workspace")
+}
+
+model Stage {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  color       String    @default("slate")
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, slug])
+  @@map("stage")
 }
 
 model FeedbackVisit {

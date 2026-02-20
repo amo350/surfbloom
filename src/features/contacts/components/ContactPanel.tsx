@@ -15,6 +15,7 @@ import {
   Star,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useContact } from "../hooks/use-contacts";
 import { ContactPanelDetails } from "./ContactPanelDetail";
@@ -154,11 +155,43 @@ export function ContactPanel({
       {/* Action bubbles — evenly spaced, bottom border */}
       <div className="px-4 py-3 border-t border-b">
         <div className="grid grid-cols-5">
-          <ActionBubble icon={MessageSquare} label="Text" />
-          <ActionBubble icon={Phone} label="Call" />
-          <ActionBubble icon={Mail} label="Email" />
-          <ActionBubble icon={Calendar} label="Book" />
-          <ActionBubble icon={MoreHorizontal} label="More" />
+          <ActionBubble
+            icon={MessageSquare}
+            label="Text"
+            onClick={() => {
+              if (contact.phone) {
+                window.open(`sms:${contact.phone}`, "_self");
+              } else {
+                toast.error("No phone number");
+              }
+            }}
+          />
+          <ActionBubble
+            icon={Phone}
+            label="Call"
+            href={contact.phone ? `tel:${contact.phone}` : undefined}
+            onClick={
+              !contact.phone ? () => toast.error("No phone number") : undefined
+            }
+          />
+          <ActionBubble
+            icon={Mail}
+            label="Email"
+            href={contact.email ? `mailto:${contact.email}` : undefined}
+            onClick={
+              !contact.email ? () => toast.error("No email address") : undefined
+            }
+          />
+          <ActionBubble
+            icon={Calendar}
+            label="Book"
+            onClick={() => toast("Booking coming soon")}
+          />
+          <ActionBubble
+            icon={MoreHorizontal}
+            label="More"
+            onClick={() => toast("More actions coming soon")}
+          />
         </div>
       </div>
 
@@ -209,24 +242,36 @@ export function ContactPanel({
 function ActionBubble({
   icon: Icon,
   label,
+  href,
   onClick,
 }: {
   icon: any;
   label: string;
+  href?: string;
   onClick?: () => void;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex flex-col items-center gap-1.5 group"
-    >
-      <div className="h-9 w-9 rounded-full border border-border/50 flex items-center justify-center group-hover:bg-muted group-hover:border-border transition-all">
-        <Icon className="h-[15px] w-[15px] text-muted-foreground group-hover:text-foreground transition-colors" />
+  const content = (
+    <div className="flex flex-col items-center gap-1.5 group">
+      <div className="h-10 w-10 rounded-full border border-border/60 bg-background flex items-center justify-center group-hover:bg-muted group-hover:border-border transition-all">
+        <Icon className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
       </div>
       <span className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
         {label}
       </span>
+    </div>
+  );
+
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick}>
+      {content}
     </button>
   );
 }

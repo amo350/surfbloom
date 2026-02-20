@@ -3,24 +3,17 @@
 import { Inbox, Loader2, Plus, Search, User, UserX, X } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { StageBadge } from "@/features/contacts/components/StageBadge";
 import {
   useCategories,
   useCreateCategory,
+  useStages,
 } from "@/features/contacts/hooks/use-contacts";
 
 const VIEWS = [
   { value: "all" as const, label: "All Conversations", icon: Inbox },
   { value: "mine" as const, label: "My Conversations", icon: User },
   { value: "unassigned" as const, label: "Unassigned", icon: UserX },
-];
-
-const STAGES = [
-  { value: "new_lead", label: "New Lead" },
-  { value: "prospecting", label: "Prospecting" },
-  { value: "appointment", label: "Appointment" },
-  { value: "payment", label: "Payment" },
-  { value: "not_a_fit", label: "Not a Fit" },
-  { value: "lost", label: "Lost" },
 ];
 
 export function ConversationsFilterSidebar({
@@ -51,6 +44,7 @@ export function ConversationsFilterSidebar({
     workspaceId,
     catSearch || undefined,
   );
+  const { data: stages } = useStages();
   const createCategory = useCreateCategory();
 
   const handleCreateCategory = () => {
@@ -130,20 +124,20 @@ export function ConversationsFilterSidebar({
           Stages
         </p>
         <div className="space-y-0.5">
-          {STAGES.map((s) => (
+          {(stages || []).map((s: any) => (
             <button
-              key={s.value}
+              key={s.slug}
               type="button"
               onClick={() =>
-                onStageChange(stage === s.value ? undefined : s.value)
+                onStageChange(stage === s.slug ? undefined : s.slug)
               }
               className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                stage === s.value
+                stage === s.slug
                   ? "bg-background font-medium text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/50"
               }`}
             >
-              {s.label}
+              <StageBadge stage={s.slug} name={s.name} color={s.color} />
             </button>
           ))}
         </div>

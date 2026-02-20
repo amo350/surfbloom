@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
+import { DEFAULT_STAGES } from "./default-stages";
 import { logActivity } from "./log-activity";
 
 async function verifyContactAccess(userId: string, contactId: string) {
@@ -502,6 +503,162 @@ export const contactsRouter = createTRPCRouter({
       });
       return { success: true };
     }),
+
+  getStages: protectedProcedure
+    .query(async ({ ctx }) => {
+      let stages = await prisma.stage.findMany({
+        where: { userId: ctx.auth.user.id },
+        orderBy: { order: "asc" },
+      });
+
+      // Auto-seed defaults if user has none
+      if (stages.length === 0) {
+        await prisma.stage.createMany({
+          data: DEFAULT_STAGES.map((s) => ({
+            userId: ctx.auth.user.id,
+            ...s,
+          })),
+        });
+
+        stages = await prisma.stage.findMany({
+          where: { userId: ctx.auth.user.id },
+          orderBy: { order: "asc" },
+        });
+      }
+
+      return stages;
+    }),
+
+  createStage: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(30),
+        color: z.string().default("slate"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const count = await prisma.stage.count({
+        where: { userId: ctx.auth.user.id },
+      });
+      if (count >= 7) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Maximum 7 stages allowed",
+        });
+      }
+
+      const slug = input.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_|_$/g, "");
+
+      const last = await prisma.stage.findFirst({
+        where: { userId: ctx.auth.user.id },
+        orderBy: { order: "desc" },
+        select: { order: true },
+      });
+
+      return prisma.stage.create({
+        data: {
+          userId: ctx.auth.user.id,
+          name: input.name.trim(),
+          slug,
+          color: input.color,
+          order: (last?.order ?? -1) + 1,
+        },
+      });
+    }),
+
+  updateStage: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().trim().min(1).max(30).optional(),
+        color: z.string().optional(),
+        order: z.number().int().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await prisma.stage.findUnique({
+        where: { id: input.id },
+        select: { userId: true },
+      });
+      if (!existing || existing.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const { id, ...data } = input;
+      if (data.name) {
+        (data as any).slug = data.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_|_$/g, "");
+      }
+      return prisma.stage.update({ where: { id }, data });
+    }),
+
+  deleteStage: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        reassignToSlug: z.string().default("new_lead"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const stage = await prisma.stage.findUnique({
+        where: { id: input.id },
+        select: { slug: true, userId: true },
+      });
+      if (!stage) throw new TRPCError({ code: "NOT_FOUND" });
+      if (stage.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const count = await prisma.stage.count({
+        where: { userId: ctx.auth.user.id },
+      });
+      if (count <= 3) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Minimum 3 stages required",
+        });
+      }
+
+      // Reassign contacts across ALL workspaces
+      const userWorkspaces = await prisma.member.findMany({
+        where: { userId: ctx.auth.user.id },
+        select: { workspaceId: true },
+      });
+
+      await prisma.chatContact.updateMany({
+        where: {
+          workspaceId: { in: userWorkspaces.map((m) => m.workspaceId) },
+          stage: stage.slug,
+        },
+        data: { stage: input.reassignToSlug },
+      });
+
+      return prisma.stage.delete({ where: { id: input.id } });
+    }),
+
+  reorderStages: protectedProcedure
+    .input(
+      z.object({
+        stageIds: z.array(z.string()),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      await prisma.$transaction(
+        input.stageIds.map((id, i) =>
+          prisma.stage.update({
+            where: { id },
+            data: { order: i },
+          }),
+        ),
+      );
+      return { success: true };
+    }),
+
   getActivities: protectedProcedure
     .input(
       z.object({
@@ -724,5 +881,200 @@ export const contactsRouter = createTRPCRouter({
         lastContacted: c.lastContactedAt?.toISOString() || "",
         created: c.createdAt.toISOString(),
       }));
+    }),
+
+  getDuplicates: protectedProcedure
+    .input(
+      z.object({
+        workspaceId: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userWorkspaces = await prisma.member.findMany({
+        where: { userId: ctx.auth.user.id },
+        select: { workspaceId: true },
+      });
+      const workspaceIds = input.workspaceId
+        ? [input.workspaceId]
+        : userWorkspaces.map((m) => m.workspaceId);
+
+      // Find contacts with duplicate phones
+      const phoneDupes = await prisma.$queryRaw<
+        { phone: string; ids: string[]; count: number }[]
+      >`
+        SELECT phone, array_agg(id) as ids, count(*)::int as count
+        FROM "chat_contact"
+        WHERE "workspaceId" = ANY(${workspaceIds})
+          AND "isContact" = true
+          AND phone IS NOT NULL
+          AND phone != ''
+        GROUP BY phone
+        HAVING count(*) > 1
+        LIMIT 50
+      `;
+
+      // Find contacts with duplicate emails
+      const emailDupes = await prisma.$queryRaw<
+        { email: string; ids: string[]; count: number }[]
+      >`
+        SELECT email, array_agg(id) as ids, count(*)::int as count
+        FROM "chat_contact"
+        WHERE "workspaceId" = ANY(${workspaceIds})
+          AND "isContact" = true
+          AND email IS NOT NULL
+          AND email != ''
+        GROUP BY email
+        HAVING count(*) > 1
+        LIMIT 50
+      `;
+
+      // Collect all unique contact IDs
+      const allIds = new Set<string>();
+      for (const d of [...phoneDupes, ...emailDupes]) {
+        for (const id of d.ids) allIds.add(id);
+      }
+
+      if (allIds.size === 0) return { groups: [] };
+
+      const contacts = await prisma.chatContact.findMany({
+        where: { id: { in: Array.from(allIds) } },
+        include: {
+          workspace: { select: { name: true } },
+          _count: { select: { chatRooms: true, activities: true } },
+        },
+      });
+
+      const contactMap = new Map(contacts.map((c) => [c.id, c]));
+
+      // Build groups, dedup by sorted ID set
+      const seen = new Set<string>();
+      const groups: {
+        matchField: string;
+        matchValue: string;
+        contacts: typeof contacts;
+      }[] = [];
+
+      for (const d of phoneDupes) {
+        const key = d.ids.sort().join(",");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        groups.push({
+          matchField: "phone",
+          matchValue: d.phone,
+          contacts: d.ids
+            .map((id) => contactMap.get(id))
+            .filter(Boolean) as typeof contacts,
+        });
+      }
+
+      for (const d of emailDupes) {
+        const key = d.ids.sort().join(",");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        groups.push({
+          matchField: "email",
+          matchValue: d.email,
+          contacts: d.ids
+            .map((id) => contactMap.get(id))
+            .filter(Boolean) as typeof contacts,
+        });
+      }
+
+      return { groups };
+    }),
+
+  mergeContacts: protectedProcedure
+    .input(
+      z.object({
+        keepId: z.string(),
+        mergeIds: z.array(z.string()).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { keepId, mergeIds } = input;
+
+      // Verify access to all contacts
+      await verifyContactAccess(ctx.auth.user.id, keepId);
+      for (const id of mergeIds) {
+        await verifyContactAccess(ctx.auth.user.id, id);
+      }
+
+      // Get all contacts
+      const keep = await prisma.chatContact.findUnique({
+        where: { id: keepId },
+        include: { categories: true },
+      });
+      if (!keep) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const merging = await prisma.chatContact.findMany({
+        where: { id: { in: mergeIds } },
+        include: { categories: true },
+      });
+
+      // Merge data — fill gaps in keeper from merge contacts
+      const merged = {
+        firstName: keep.firstName || merging.find((m) => m.firstName)?.firstName,
+        lastName: keep.lastName || merging.find((m) => m.lastName)?.lastName,
+        email: keep.email || merging.find((m) => m.email)?.email,
+        phone: keep.phone || merging.find((m) => m.phone)?.phone,
+        notes:
+          [keep.notes, ...merging.map((m) => m.notes)]
+            .filter(Boolean)
+            .join("\n---\n") || null,
+      };
+
+      // Transfer all related records to keeper
+      await prisma.$transaction([
+        // Update keeper with merged data
+        prisma.chatContact.update({
+          where: { id: keepId },
+          data: merged,
+        }),
+
+        // Move conversations
+        prisma.chatRoom.updateMany({
+          where: { contactId: { in: mergeIds } },
+          data: { contactId: keepId },
+        }),
+
+        // Move activities
+        prisma.activity.updateMany({
+          where: { contactId: { in: mergeIds } },
+          data: { contactId: keepId },
+        }),
+
+        // Move categories (ignore conflicts)
+        ...merging
+          .flatMap((m) => m.categories)
+          .filter(
+            (cc) =>
+              !keep.categories.some((kc) => kc.categoryId === cc.categoryId),
+          )
+          .map((cc) =>
+            prisma.contactCategory.create({
+              data: { contactId: keepId, categoryId: cc.categoryId },
+            }),
+          ),
+
+        // Delete category links for merge contacts
+        prisma.contactCategory.deleteMany({
+          where: { contactId: { in: mergeIds } },
+        }),
+
+        // Delete merged contacts
+        prisma.chatContact.deleteMany({
+          where: { id: { in: mergeIds } },
+        }),
+      ]);
+
+      // Log
+      await logActivity({
+        contactId: keepId,
+        workspaceId: keep.workspaceId,
+        type: "contact_updated",
+        description: `Merged ${mergeIds.length} duplicate contact${mergeIds.length > 1 ? "s" : ""}`,
+      });
+
+      return { success: true, mergedCount: mergeIds.length };
     }),
 });
