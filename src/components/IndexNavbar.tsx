@@ -18,17 +18,21 @@ const indexMenuItems = [
     title: "Locations",
     href: "/index/locations",
   },
+  // {
+  //   title: "SEO Score",
+  //   href: "/index/seo-score",
+  // },
   {
-    title: "SEO Score",
-    href: "/index/seo-score",
+    title: "Conversations",
+    href: "/index/conversations",
   },
   {
     title: "Contacts",
     href: "/index/contacts",
   },
   {
-    title: "Conversations",
-    href: "/index/conversations",
+    title: "Campaigns",
+    href: "/index/campaigns",
   },
   {
     title: "Members",

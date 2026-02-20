@@ -5,6 +5,7 @@ import {
   FolderOpenIcon,
   HistoryIcon,
   LogOutIcon,
+  Megaphone,
   MessageCircleIcon,
   StarIcon,
   Users2Icon,
@@ -67,6 +68,18 @@ const menuItems = [
           workspaceId
             ? new RegExp(`^/workspaces/${workspaceId}/contacts`)
             : /^\/index\/contacts/,
+      },
+      {
+        title: "Campaigns",
+        icon: Megaphone,
+        getUrl: (workspaceId?: string) =>
+          workspaceId
+            ? `/workspaces/${workspaceId}/campaigns`
+            : "/index/campaigns",
+        getActivePattern: (workspaceId?: string) =>
+          workspaceId
+            ? new RegExp(`^/workspaces/${workspaceId}/campaigns`)
+            : /^\/index\/campaigns/,
       },
       {
         title: "Conversations",
