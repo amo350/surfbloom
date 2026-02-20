@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  BarChart3,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronRight as ChevronRightSmall,
+  FileText,
   Megaphone,
   MessageSquare,
   Plus,
@@ -77,12 +79,26 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
           ))}
         </div>
 
-        <Button size="sm" asChild>
-          <Link href={`${basePath}/new`}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            New Campaign
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/index/campaigns/templates">
+              <FileText className="h-4 w-4 mr-1.5" />
+              Templates
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/index/campaigns/reporting">
+              <BarChart3 className="h-4 w-4 mr-1.5" />
+              Reporting
+            </Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href={`${basePath}/new`}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              New Campaign
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -163,7 +179,10 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
 
                 {/* Status */}
                 <div>
-                  <CampaignStatusBadge status={item.status} />
+                  <CampaignStatusBadge
+                    status={item.status}
+                    recurring={!!item.recurringType}
+                  />
                 </div>
 
                 {/* Location */}
@@ -244,7 +263,10 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
                           <span className="truncate">
                             {campaign.workspace?.name}
                           </span>
-                          <CampaignStatusBadge status={campaign.status} />
+                          <CampaignStatusBadge
+                            status={campaign.status}
+                            recurring={!!campaign.recurringType}
+                          />
                         </Link>
                       ))}
                     </div>

@@ -89,3 +89,12 @@ export const sendCampaignSend = async (data: { campaignId: string }) => {
     id: createId(),
   });
 };
+
+// Recurring campaign check
+export const sendRecurringCampaignCheck = async () => {
+  return inngest.send({
+    name: "campaigns/check.recurring",
+    data: {},
+    id: createId(),
+  });
+};

@@ -6,6 +6,37 @@ import { inngest } from "./client";
 const BATCH_SIZE = 50;
 const THROTTLE_MS = 1100; // just over 1/sec for Twilio
 
+function isWithinSendWindow(
+  windowStart: string | null,
+  windowEnd: string | null,
+): { allowed: boolean; waitMs: number } {
+  if (!windowStart || !windowEnd) return { allowed: true, waitMs: 0 };
+
+  const now = new Date();
+  const [startH, startM] = windowStart.split(":").map(Number);
+  const [endH, endM] = windowEnd.split(":").map(Number);
+
+  const currentMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+    return { allowed: true, waitMs: 0 };
+  }
+
+  // Calculate wait until next window open
+  let waitMinutes: number;
+  if (currentMinutes < startMinutes) {
+    // Before today's window
+    waitMinutes = startMinutes - currentMinutes;
+  } else {
+    // After today's window - wait until tomorrow's start
+    waitMinutes = 24 * 60 - currentMinutes + startMinutes;
+  }
+
+  return { allowed: false, waitMs: waitMinutes * 60 * 1000 };
+}
+
 function resolveTemplate(
   template: string,
   contact: {
@@ -69,11 +100,15 @@ export const sendCampaign = inngest.createFunction(
           workspaceId: true,
           status: true,
           messageTemplate: true,
+          variantB: true,
+          variantSplit: true,
           audienceType: true,
           audienceStage: true,
           audienceCategoryId: true,
           audienceInactiveDays: true,
           frequencyCapDays: true,
+          sendWindowStart: true,
+          sendWindowEnd: true,
           workspace: {
             select: {
               id: true,
@@ -104,11 +139,15 @@ export const sendCampaign = inngest.createFunction(
         workspaceId: c.workspaceId,
         status: c.status,
         messageTemplate: c.messageTemplate,
+        variantB: c.variantB,
+        variantSplit: c.variantSplit,
         audienceType: c.audienceType,
         audienceStage: c.audienceStage,
         audienceCategoryId: c.audienceCategoryId,
         audienceInactiveDays: c.audienceInactiveDays,
         frequencyCapDays: c.frequencyCapDays,
+        sendWindowStart: c.sendWindowStart,
+        sendWindowEnd: c.sendWindowEnd,
         workspaceName: c.workspace.name,
         twilioPhone: c.workspace.twilioPhoneNumber.phoneNumber,
         workspaceUserId: c.workspace.userId,
@@ -206,6 +245,39 @@ export const sendCampaign = inngest.createFunction(
         skipDuplicates: true,
       });
 
+      // Assign A/B variants if enabled
+      if (campaign.variantB) {
+        const allRecipients = await prisma.campaignRecipient.findMany({
+          where: { campaignId: campaign.id, variant: null },
+          select: { id: true },
+          orderBy: { id: "asc" },
+        });
+
+        // Shuffle deterministically, then split
+        const shuffled = allRecipients.sort(() => Math.random() - 0.5);
+
+        const splitIndex = Math.round(
+          shuffled.length * (campaign.variantSplit / 100),
+        );
+
+        const variantAIds = shuffled.slice(0, splitIndex).map((r) => r.id);
+        const variantBIds = shuffled.slice(splitIndex).map((r) => r.id);
+
+        if (variantAIds.length > 0) {
+          await prisma.campaignRecipient.updateMany({
+            where: { id: { in: variantAIds } },
+            data: { variant: "A" },
+          });
+        }
+
+        if (variantBIds.length > 0) {
+          await prisma.campaignRecipient.updateMany({
+            where: { id: { in: variantBIds } },
+            data: { variant: "B" },
+          });
+        }
+      }
+
       // Update total
       const totalRecipients = await prisma.campaignRecipient.count({
         where: { campaignId: campaign.id },
@@ -223,6 +295,33 @@ export const sendCampaign = inngest.createFunction(
       return { campaignId, status: "completed", sent: 0 };
     }
 
+    // ─── Step 2.5: Business hours gate ──────────────────
+    if (campaign.sendWindowStart && campaign.sendWindowEnd) {
+      await step.run("business-hours-gate", async () => {
+        const { allowed, waitMs } = isWithinSendWindow(
+          campaign.sendWindowStart,
+          campaign.sendWindowEnd,
+        );
+
+        if (!allowed && waitMs > 0) {
+          // Return wait info - we'll use step.sleep after this
+          return { wait: true, waitMs };
+        }
+
+        return { wait: false, waitMs: 0 };
+      });
+
+      // Check again and sleep if needed
+      const { allowed, waitMs } = isWithinSendWindow(
+        campaign.sendWindowStart,
+        campaign.sendWindowEnd,
+      );
+
+      if (!allowed && waitMs > 0) {
+        await step.sleep("wait-for-send-window", waitMs);
+      }
+    }
+
     // ─── Step 3: Send in batches ────────────────────────
     let totalSent = 0;
     let batchIndex = 0;
@@ -231,6 +330,18 @@ export const sendCampaign = inngest.createFunction(
       const batchResult = await step.run(
         `send-batch-${batchIndex}`,
         async () => {
+          // Check business hours
+          if (campaign.sendWindowStart && campaign.sendWindowEnd) {
+            const { allowed } = isWithinSendWindow(
+              campaign.sendWindowStart,
+              campaign.sendWindowEnd,
+            );
+
+            if (!allowed) {
+              return { sent: 0, done: false, reason: "outside_window" };
+            }
+          }
+
           // Check if campaign was paused/cancelled
           const current = await prisma.campaign.findUnique({
             where: { id: campaign.id },
@@ -292,8 +403,13 @@ export const sendCampaign = inngest.createFunction(
             }
 
             try {
+              const template =
+                recipient.variant === "B" && campaign.variantB
+                  ? campaign.variantB
+                  : campaign.messageTemplate;
+
               const message = resolveTemplate(
-                campaign.messageTemplate,
+                template,
                 recipient.contact,
                 {
                   name: campaign.workspaceName,
@@ -364,6 +480,19 @@ export const sendCampaign = inngest.createFunction(
         break;
       }
 
+      // If outside business hours, sleep until window opens
+      if (batchResult.reason === "outside_window") {
+        const { waitMs } = isWithinSendWindow(
+          campaign.sendWindowStart,
+          campaign.sendWindowEnd,
+        );
+        if (waitMs > 0) {
+          await step.sleep(`wait-for-window-${batchIndex}`, waitMs);
+        }
+        // Don't increment batchIndex - retry this batch
+        continue;
+      }
+
       batchIndex++;
 
       // Safety: cap at 200 batches (10,000 messages)
@@ -376,15 +505,67 @@ export const sendCampaign = inngest.createFunction(
     await step.run("finalize", async () => {
       const current = await prisma.campaign.findUnique({
         where: { id: campaign.id },
-        select: { status: true },
+        select: { status: true, variantB: true },
       });
 
-      // Only mark completed if still sending (not paused/cancelled)
       if (current?.status === "sending") {
-        await updateCampaignStats(campaign.id);
+        // Overall stats
+        const stats = await prisma.campaignRecipient.groupBy({
+          by: ["status"],
+          where: { campaignId: campaign.id },
+          _count: true,
+        });
+
+        const statMap: Record<string, number> = {};
+        for (const s of stats) {
+          statMap[s.status] = s._count;
+        }
+
+        const updateData: any = {
+          status: "completed",
+          completedAt: new Date(),
+          sentCount:
+            (statMap["sent"] || 0) +
+            (statMap["delivered"] || 0) +
+            (statMap["replied"] || 0),
+          deliveredCount: statMap["delivered"] || 0,
+          failedCount: statMap["failed"] || 0,
+          repliedCount: statMap["replied"] || 0,
+        };
+
+        // Per-variant stats if A/B test
+        if (current.variantB) {
+          const variantStats = await prisma.campaignRecipient.groupBy({
+            by: ["variant", "status"],
+            where: { campaignId: campaign.id },
+            _count: true,
+          });
+
+          const vMap: Record<string, Record<string, number>> = { A: {}, B: {} };
+          for (const s of variantStats) {
+            if (s.variant === "A" || s.variant === "B") {
+              vMap[s.variant][s.status] = s._count;
+            }
+          }
+
+          updateData.variantASent =
+            (vMap.A["sent"] || 0) +
+            (vMap.A["delivered"] || 0) +
+            (vMap.A["replied"] || 0);
+          updateData.variantADelivered = vMap.A["delivered"] || 0;
+          updateData.variantAReplied = vMap.A["replied"] || 0;
+
+          updateData.variantBSent =
+            (vMap.B["sent"] || 0) +
+            (vMap.B["delivered"] || 0) +
+            (vMap.B["replied"] || 0);
+          updateData.variantBDelivered = vMap.B["delivered"] || 0;
+          updateData.variantBReplied = vMap.B["replied"] || 0;
+        }
+
         await prisma.campaign.update({
           where: { id: campaign.id },
-          data: { status: "completed", completedAt: new Date() },
+          data: updateData,
         });
       }
     });

@@ -287,7 +287,32 @@ export const campaignsRouter = createTRPCRouter({
       });
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
 
-      return campaign;
+      // If this is a recurring campaign, fetch its child executions
+      const childCampaigns = campaign.recurringType
+        ? await prisma.campaign.findMany({
+            where: {
+              name: { startsWith: campaign.name + " — " },
+              workspaceId: campaign.workspaceId,
+              createdById: campaign.createdById,
+              recurringType: null,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 10,
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              totalRecipients: true,
+              sentCount: true,
+              deliveredCount: true,
+              repliedCount: true,
+              createdAt: true,
+              completedAt: true,
+            },
+          })
+        : [];
+
+      return { ...campaign, childCampaigns };
     }),
 
   // ─── CREATE ───────────────────────────────────────────
@@ -297,6 +322,16 @@ export const campaignsRouter = createTRPCRouter({
         workspaceId: z.string(),
         name: z.string().trim().min(1).max(100),
         messageTemplate: z.string().trim().min(1).max(1600),
+        templateId: z.string().optional(),
+        segmentId: z.string().optional(),
+        variantB: z.string().max(1600).optional(),
+        variantSplit: z.number().int().min(10).max(90).optional(),
+        recurringType: z.enum(["weekly", "monthly"]).optional(),
+        recurringDay: z.number().int().min(0).max(28).optional(),
+        recurringTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        recurringEndAt: z.date().optional(),
+        sendWindowStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        sendWindowEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
         audienceType: z.enum(AUDIENCE_TYPES).default("all"),
         audienceStage: z.string().optional(),
         audienceCategoryId: z.string().optional(),
@@ -329,7 +364,11 @@ export const campaignsRouter = createTRPCRouter({
         });
       }
 
-      const status = input.scheduledAt ? "scheduled" : "draft";
+      const status = input.recurringType
+        ? "scheduled"
+        : input.scheduledAt
+          ? "scheduled"
+          : "draft";
 
       return prisma.campaign.create({
         data: {
@@ -337,6 +376,18 @@ export const campaignsRouter = createTRPCRouter({
           createdById: ctx.auth.user.id,
           name: input.name,
           messageTemplate: input.messageTemplate,
+          templateId: input.templateId || null,
+          segmentId: input.segmentId || null,
+          variantB: input.variantB || null,
+          variantSplit: input.variantB ? (input.variantSplit ?? 50) : 50,
+          recurringType: input.recurringType || null,
+          recurringDay: input.recurringType ? (input.recurringDay ?? 1) : null,
+          recurringTime: input.recurringType
+            ? (input.recurringTime ?? "09:00")
+            : null,
+          recurringEndAt: input.recurringEndAt || null,
+          sendWindowStart: input.sendWindowStart || null,
+          sendWindowEnd: input.sendWindowEnd || null,
           audienceType: input.audienceType,
           audienceStage: input.audienceStage || null,
           audienceCategoryId: input.audienceCategoryId || null,
@@ -354,6 +405,16 @@ export const campaignsRouter = createTRPCRouter({
         name: z.string().trim().min(1).max(100),
         workspaceIds: z.array(z.string()).min(2),
         messageTemplate: z.string().trim().min(1).max(1600),
+        templateId: z.string().optional(),
+        segmentId: z.string().optional(),
+        variantB: z.string().max(1600).optional(),
+        variantSplit: z.number().int().min(10).max(90).optional(),
+        recurringType: z.enum(["weekly", "monthly"]).optional(),
+        recurringDay: z.number().int().min(0).max(28).optional(),
+        recurringTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        recurringEndAt: z.date().optional(),
+        sendWindowStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        sendWindowEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
         audienceType: z.enum(AUDIENCE_TYPES).default("all"),
         audienceStage: z.string().optional(),
         audienceCategoryId: z.string().optional(),
@@ -403,7 +464,11 @@ export const campaignsRouter = createTRPCRouter({
         });
       }
 
-      const status = input.scheduledAt ? "scheduled" : "draft";
+      const status = input.recurringType
+        ? "scheduled"
+        : input.scheduledAt
+          ? "scheduled"
+          : "draft";
       return prisma.$transaction(async (tx) => {
         const group = await tx.campaignGroup.create({
           data: {
@@ -419,6 +484,18 @@ export const campaignsRouter = createTRPCRouter({
             createdById: ctx.auth.user.id,
             name: input.name,
             messageTemplate: input.messageTemplate,
+            templateId: input.templateId || null,
+            segmentId: input.segmentId || null,
+            variantB: input.variantB || null,
+            variantSplit: input.variantB ? (input.variantSplit ?? 50) : 50,
+            recurringType: input.recurringType || null,
+            recurringDay: input.recurringType ? (input.recurringDay ?? 1) : null,
+            recurringTime: input.recurringType
+              ? (input.recurringTime ?? "09:00")
+              : null,
+            recurringEndAt: input.recurringEndAt || null,
+            sendWindowStart: input.sendWindowStart || null,
+            sendWindowEnd: input.sendWindowEnd || null,
             audienceType: input.audienceType,
             audienceStage: input.audienceStage || null,
             audienceCategoryId: input.audienceCategoryId || null,
@@ -773,7 +850,19 @@ export const campaignsRouter = createTRPCRouter({
           orderBy: { createdAt: "desc" },
           skip: (input.page - 1) * input.pageSize,
           take: input.pageSize,
-          include: {
+          select: {
+            id: true,
+            campaignId: true,
+            contactId: true,
+            status: true,
+            sentAt: true,
+            deliveredAt: true,
+            failedAt: true,
+            repliedAt: true,
+            errorMessage: true,
+            smsMessageId: true,
+            createdAt: true,
+            variant: true,
             contact: {
               select: {
                 id: true,

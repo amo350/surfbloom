@@ -42,21 +42,34 @@ const STATUS_CONFIG: Record<
   },
 };
 
-export function CampaignStatusBadge({ status }: { status: string }) {
+export function CampaignStatusBadge({
+  status,
+  recurring,
+}: {
+  status: string;
+  recurring?: boolean;
+}) {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border ${config.bg} ${config.text} ${config.border}`}
-    >
-      {config.dot && (
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${config.dot} ${
-            status === "sending" ? "animate-pulse" : ""
-          }`}
-        />
+    <div className="flex items-center gap-1.5">
+      <span
+        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border ${config.bg} ${config.text} ${config.border}`}
+      >
+        {config.dot && (
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${config.dot} ${
+              status === "sending" ? "animate-pulse" : ""
+            }`}
+          />
+        )}
+        {config.label}
+      </span>
+      {recurring && (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-violet-50 text-violet-700 border border-violet-200">
+          Recurring
+        </span>
       )}
-      {config.label}
-    </span>
+    </div>
   );
 }
