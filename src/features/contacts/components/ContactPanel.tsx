@@ -1,39 +1,57 @@
 "use client";
 
-import { useState } from "react";
 import {
-  X,
-  Phone,
-  Mail,
-  MessageSquare,
-  Calendar,
-  MoreHorizontal,
-  MessageCircle,
-  UserPlus,
   ArrowUpDown,
+  Ban,
+  Calendar,
   FileText,
-  Star,
   Loader2,
+  Mail,
+  MessageCircle,
+  MessageSquare,
+  MoreHorizontal,
+  Phone,
+  Star,
+  UserPlus,
+  X,
 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useContact } from "../hooks/use-contacts";
-import { ContactPanelDetails } from "./ContactPanelDetail";
 import { ContactPanelActivity } from "./ContactPanelActivity";
+import { ContactPanelDetails } from "./ContactPanelDetail";
 
-const ACTIVITY_CONFIG: Record<string, { icon: any; bg: string; text: string }> = {
-  contact_created: { icon: UserPlus, bg: "bg-blue-500", text: "text-white" },
-  stage_changed: { icon: ArrowUpDown, bg: "bg-violet-500", text: "text-white" },
-  sms_sent: { icon: MessageSquare, bg: "bg-teal-500", text: "text-white" },
-  sms_received: { icon: MessageCircle, bg: "bg-green-500", text: "text-white" },
-  chatbot_session: { icon: MessageCircle, bg: "bg-amber-500", text: "text-white" },
-  feedback_submitted: { icon: FileText, bg: "bg-orange-500", text: "text-white" },
-  review_requested: { icon: Star, bg: "bg-pink-500", text: "text-white" },
-  review_received: { icon: Star, bg: "bg-yellow-500", text: "text-white" },
-  task_created: { icon: FileText, bg: "bg-indigo-500", text: "text-white" },
-  note_added: { icon: FileText, bg: "bg-slate-500", text: "text-white" },
-  contact_updated: { icon: UserPlus, bg: "bg-sky-500", text: "text-white" },
-};
+const ACTIVITY_CONFIG: Record<string, { icon: any; bg: string; text: string }> =
+  {
+    contact_created: { icon: UserPlus, bg: "bg-blue-500", text: "text-white" },
+    stage_changed: {
+      icon: ArrowUpDown,
+      bg: "bg-violet-500",
+      text: "text-white",
+    },
+    sms_sent: { icon: MessageSquare, bg: "bg-teal-500", text: "text-white" },
+    sms_received: {
+      icon: MessageCircle,
+      bg: "bg-green-500",
+      text: "text-white",
+    },
+    chatbot_session: {
+      icon: MessageCircle,
+      bg: "bg-amber-500",
+      text: "text-white",
+    },
+    feedback_submitted: {
+      icon: FileText,
+      bg: "bg-orange-500",
+      text: "text-white",
+    },
+    review_requested: { icon: Star, bg: "bg-pink-500", text: "text-white" },
+    review_received: { icon: Star, bg: "bg-yellow-500", text: "text-white" },
+    task_created: { icon: FileText, bg: "bg-indigo-500", text: "text-white" },
+    note_added: { icon: FileText, bg: "bg-slate-500", text: "text-white" },
+    contact_updated: { icon: UserPlus, bg: "bg-sky-500", text: "text-white" },
+  };
 
 function getInitials(first?: string | null, last?: string | null) {
   return [first?.[0], last?.[0]].filter(Boolean).join("").toUpperCase() || "?";
@@ -82,7 +100,8 @@ export function ContactPanel({
   }
 
   const name =
-    [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Unknown";
+    [contact.firstName, contact.lastName].filter(Boolean).join(" ") ||
+    "Unknown";
   const initials = getInitials(contact.firstName, contact.lastName);
 
   return (
@@ -120,6 +139,15 @@ export function ContactPanel({
           </Button>
         </div>
       </div>
+
+      {contact.optedOut && (
+        <div className="mx-4 mt-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-50 border border-red-200">
+          <Ban className="h-3 w-3 text-red-500 shrink-0" />
+          <span className="text-[11px] text-red-600 font-medium">
+            Opted out of messages
+          </span>
+        </div>
+      )}
 
       {/* Recent Activity */}
       {contact.activities?.length > 0 && (

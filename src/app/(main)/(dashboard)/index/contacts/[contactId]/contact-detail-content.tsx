@@ -1,28 +1,22 @@
 "use client";
 
-import { use } from "react";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Phone,
+  Ban,
+  Calendar,
+  ExternalLink,
+  Loader2,
   Mail,
   MessageSquare,
-  Calendar,
   MoreHorizontal,
+  Phone,
   Trash2,
-  Loader2,
-  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { use } from "react";
+import { toast } from "sonner";
 import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
-import {
-  useContact,
-  useDeleteContact,
-} from "@/features/contacts/hooks/use-contacts";
-import { ContactPanelDetails } from "@/features/contacts/components/ContactPanelDetail";
-import { ContactPanelActivity } from "@/features/contacts/components/ContactPanelActivity";
-import { StageBadge } from "@/features/contacts/components/StageBadge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +28,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { ContactPanelActivity } from "@/features/contacts/components/ContactPanelActivity";
+import { ContactPanelDetails } from "@/features/contacts/components/ContactPanelDetail";
+import { StageBadge } from "@/features/contacts/components/StageBadge";
+import {
+  useContact,
+  useDeleteContact,
+} from "@/features/contacts/hooks/use-contacts";
 
 function getInitials(first?: string | null, last?: string | null) {
   return [first?.[0], last?.[0]].filter(Boolean).join("").toUpperCase() || "?";
@@ -154,6 +155,15 @@ export function ContactDetailContent({
                   <p className="text-xs text-muted-foreground/60 mt-1.5">
                     {contact.workspace.name}
                   </p>
+                )}
+
+                {contact.optedOut && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-50 border border-red-200 mt-2">
+                    <Ban className="h-3 w-3 text-red-500 shrink-0" />
+                    <span className="text-[11px] text-red-600 font-medium">
+                      Opted out of messages
+                    </span>
+                  </div>
                 )}
 
                 {/* Categories */}

@@ -65,20 +65,15 @@ export async function hasSubaccount(userId: string): Promise<boolean> {
   return !!config;
 }
 
-export async function sendSms({
-  userId,
-  from,
-  to,
-  body,
-  mediaUrl,
-}: {
+export async function sendSms(opts: {
   userId: string;
   from: string;
   to: string;
   body: string;
   mediaUrl?: string;
+  statusCallback?: string;
 }) {
-  const client = await getSubaccountClient(userId);
+  const client = await getSubaccountClient(opts.userId);
 
   const messageOptions: {
     body: string;
@@ -86,15 +81,19 @@ export async function sendSms({
     to: string;
     mediaUrl?: string[];
     statusCallback?: string;
-  } = { body, from, to };
+  } = { body: opts.body, from: opts.from, to: opts.to };
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (appUrl && !appUrl.includes("localhost")) {
-    messageOptions.statusCallback = `${appUrl}/api/twilio/status`;
+  if (opts.statusCallback) {
+    messageOptions.statusCallback = opts.statusCallback;
+  } else {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (appUrl && !appUrl.includes("localhost")) {
+      messageOptions.statusCallback = `${appUrl}/api/twilio/status`;
+    }
   }
 
-  if (mediaUrl) {
-    messageOptions.mediaUrl = [mediaUrl];
+  if (opts.mediaUrl) {
+    messageOptions.mediaUrl = [opts.mediaUrl];
   }
 
   const message = await client.messages.create(messageOptions);

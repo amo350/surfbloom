@@ -664,11 +664,8 @@ export const campaignsRouter = createTRPCRouter({
       });
 
       // Trigger Inngest function
-      const { inngest } = await import("@/inngest/client");
-      await inngest.send({
-        name: "campaign/send",
-        data: { campaignId: input.id },
-      });
+      const { sendCampaignSend } = await import("@/inngest/utils");
+      await sendCampaignSend({ campaignId: input.id });
 
       return { success: true };
     }),
@@ -736,11 +733,8 @@ export const campaignsRouter = createTRPCRouter({
       });
 
       // Re-trigger Inngest to continue sending pending recipients
-      const { inngest } = await import("@/inngest/client");
-      await inngest.send({
-        name: "campaign/send",
-        data: { campaignId: input.id },
-      });
+      const { sendCampaignSend } = await import("@/inngest/utils");
+      await sendCampaignSend({ campaignId: input.id });
 
       return { success: true };
     }),

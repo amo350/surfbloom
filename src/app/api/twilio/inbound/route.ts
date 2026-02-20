@@ -1,7 +1,7 @@
 // src/app/api/twilio/inbound/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/features/contacts/server/log-activity";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
@@ -122,6 +122,135 @@ export async function POST(req: NextRequest) {
 
     const { roomId: savedRoomId, contactId } = roomId;
 
+    // ─── Opt-out / opt-in keyword detection ─────────────
+    const OPT_OUT_KEYWORDS = ["stop", "unsubscribe", "cancel", "quit", "end"];
+    const OPT_IN_KEYWORDS = ["start", "unstop", "subscribe", "yes"];
+    const normalizedBody = (body || "").trim().toLowerCase();
+
+    if (contactId) {
+      if (OPT_OUT_KEYWORDS.includes(normalizedBody)) {
+        await prisma.chatContact.update({
+          where: { id: contactId },
+          data: { optedOut: true },
+        });
+
+        await prisma.campaignRecipient.updateMany({
+          where: {
+            contactId,
+            status: "pending",
+          },
+          data: {
+            status: "opted_out",
+            failedAt: new Date(),
+            errorMessage: "Contact opted out",
+          },
+        });
+
+        try {
+          await logActivity({
+            contactId,
+            workspaceId,
+            type: "contact_updated",
+            description: "Opted out of messages (STOP)",
+          });
+        } catch {
+          // best-effort
+        }
+      } else if (OPT_IN_KEYWORDS.includes(normalizedBody)) {
+        await prisma.chatContact.update({
+          where: { id: contactId },
+          data: { optedOut: false },
+        });
+
+        try {
+          await logActivity({
+            contactId,
+            workspaceId,
+            type: "contact_updated",
+            description: "Opted back in to messages (START)",
+          });
+        } catch {
+          // best-effort
+        }
+      }
+    }
+
+    // ─── Campaign reply detection ───────────────────────
+    try {
+      if (contactId) {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const recentRecipient = await prisma.campaignRecipient.findFirst({
+          where: {
+            contactId,
+            status: { in: ["sent", "delivered"] },
+            sentAt: { gte: sevenDaysAgo },
+          },
+          orderBy: { sentAt: "desc" },
+          select: { id: true, campaignId: true },
+        });
+
+        if (recentRecipient) {
+          await prisma.campaignRecipient.update({
+            where: { id: recentRecipient.id },
+            data: {
+              status: "replied",
+              repliedAt: new Date(),
+            },
+          });
+
+          // Log reply on contact timeline
+          try {
+            const campaignDetail = await prisma.campaign.findUnique({
+              where: { id: recentRecipient.campaignId },
+              select: { name: true, workspaceId: true },
+            });
+
+            if (campaignDetail) {
+              await prisma.activity.create({
+                data: {
+                  contactId,
+                  workspaceId: campaignDetail.workspaceId,
+                  type: "campaign_replied",
+                  description: `Replied to campaign "${campaignDetail.name}"`,
+                },
+              });
+            }
+          } catch {
+            // best-effort
+          }
+
+          // Update campaign stats
+          const stats = await prisma.campaignRecipient.groupBy({
+            by: ["status"],
+            where: { campaignId: recentRecipient.campaignId },
+            _count: true,
+          });
+
+          const statMap: Record<string, number> = {};
+          for (const s of stats) {
+            statMap[s.status] = s._count;
+          }
+
+          await prisma.campaign.update({
+            where: { id: recentRecipient.campaignId },
+            data: {
+              sentCount:
+                (statMap.sent || 0) +
+                (statMap.delivered || 0) +
+                (statMap.replied || 0),
+              deliveredCount: statMap.delivered || 0,
+              failedCount: statMap.failed || 0,
+              repliedCount: statMap.replied || 0,
+            },
+          });
+        }
+      }
+    } catch {
+      // Best-effort — don't break inbound SMS processing
+    }
+
     // Log activity
     if (contactId && workspaceId) {
       await logActivity({
@@ -131,18 +260,6 @@ export async function POST(req: NextRequest) {
         description: `SMS received: "${(body || "").slice(0, 60)}${(body || "").length > 60 ? "..." : ""}"`,
         metadata: { from, direction: "inbound" },
       });
-    }
-
-    // Handle STOP/START opt-out (Twilio handles this automatically,
-    // but we track it locally too)
-    const upperBody = (body || "").trim().toUpperCase();
-    if (["STOP", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(upperBody)) {
-      // Mark contact as opted out — we'll add an optedOut field later
-      console.log("[Inbound SMS] Opt-out received from:", from);
-    }
-
-    if (["START", "YES", "UNSTOP"].includes(upperBody)) {
-      console.log("[Inbound SMS] Opt-in received from:", from);
     }
 
     console.log("[Inbound SMS] Stored message in room:", savedRoomId);
