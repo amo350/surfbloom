@@ -32,16 +32,18 @@ export function MergeDuplicatesDialog({
   const [open, setOpen] = useState(false);
   const { data, isLoading, refetch } = useDuplicates(workspaceId);
   const merge = useMergeContacts();
-  const [expandedGroup, setExpandedGroup] = useState<number | null>(null);
-  const [selectedKeep, setSelectedKeep] = useState<Record<number, string>>({});
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [selectedKeep, setSelectedKeep] = useState<Record<string, string>>({});
 
   const groups = data?.groups || [];
 
-  const handleMerge = (groupIndex: number) => {
-    const group = groups[groupIndex];
+  const groupKey = (group: any) => `${group.matchField}:${group.matchValue}`;
+
+  const handleMerge = (key: string) => {
+    const group = groups.find((g: any) => groupKey(g) === key);
     if (!group) return;
 
-    const keepId = selectedKeep[groupIndex] || group.contacts[0]?.id;
+    const keepId = selectedKeep[key] || group.contacts[0]?.id;
     if (!keepId) return;
 
     const mergeIds = group.contacts
@@ -104,17 +106,18 @@ export function MergeDuplicatesDialog({
           )}
 
           <div className="space-y-3 pb-4">
-            {groups.map((group: any, i: number) => {
-              const isExpanded = expandedGroup === i;
-              const keepId = selectedKeep[i] || group.contacts[0]?.id;
+            {groups.map((group: any) => {
+              const key = groupKey(group);
+              const isExpanded = expandedGroup === key;
+              const keepId = selectedKeep[key] || group.contacts[0]?.id;
 
               return (
-                <div key={i} className="border rounded-lg overflow-hidden">
+                <div key={key} className="border rounded-lg overflow-hidden">
                   {/* Group header */}
                   <button
                     type="button"
                     onClick={() =>
-                      setExpandedGroup(isExpanded ? null : i)
+                      setExpandedGroup(isExpanded ? null : key)
                     }
                     className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/30 transition-colors"
                   >
@@ -156,7 +159,7 @@ export function MergeDuplicatesDialog({
                             onClick={() =>
                               setSelectedKeep((prev) => ({
                                 ...prev,
-                                [i]: contact.id,
+                                [key]: contact.id,
                               }))
                             }
                             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors text-left ${
@@ -246,7 +249,7 @@ export function MergeDuplicatesDialog({
                         </p>
                         <Button
                           size="sm"
-                          onClick={() => handleMerge(i)}
+                          onClick={() => handleMerge(key)}
                           disabled={merge.isPending}
                         >
                           {merge.isPending ? (

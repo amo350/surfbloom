@@ -12,17 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { usePromoteToContact } from "../hooks/use-contacts";
+import { usePromoteToContact, useStages } from "../hooks/use-contacts";
 import { StageBadge } from "./StageBadge";
-
-const STAGES = [
-  "new_lead",
-  "prospecting",
-  "appointment",
-  "payment",
-  "not_a_fit",
-  "lost",
-] as const;
 
 export function PromoteContactDialog({
   open,
@@ -40,12 +31,24 @@ export function PromoteContactDialog({
   } | null;
 }) {
   const promote = usePromoteToContact();
+  const { data: stages } = useStages();
+  const stageList =
+    stages && stages.length > 0
+      ? stages
+      : [
+          { slug: "new_lead", name: "New Lead", color: "blue" },
+          { slug: "prospecting", name: "Prospecting", color: "violet" },
+          { slug: "appointment", name: "Appointment", color: "amber" },
+          { slug: "payment", name: "Payment", color: "emerald" },
+          { slug: "not_a_fit", name: "Not a Fit", color: "slate" },
+          { slug: "lost", name: "Lost", color: "red" },
+        ];
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [stage, setStage] = useState<(typeof STAGES)[number]>("new_lead");
+  const [stage, setStage] = useState("new_lead");
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
@@ -155,16 +158,16 @@ export function PromoteContactDialog({
               Stage
             </label>
             <div className="flex flex-wrap gap-1.5">
-              {STAGES.map((s) => (
+              {stageList.map((s: { slug: string; name: string; color: string }) => (
                 <button
-                  key={s}
+                  key={s.slug}
                   type="button"
-                  onClick={() => setStage(s)}
+                  onClick={() => setStage(s.slug)}
                   className={`transition-opacity ${
-                    stage === s ? "opacity-100" : "opacity-40 hover:opacity-70"
+                    stage === s.slug ? "opacity-100" : "opacity-40 hover:opacity-70"
                   }`}
                 >
-                  <StageBadge stage={s} />
+                  <StageBadge stage={s.slug} name={s.name} color={s.color} />
                 </button>
               ))}
             </div>
