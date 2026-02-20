@@ -41,11 +41,12 @@ export function ConversationsView({ workspaceId }: { workspaceId?: string }) {
   const { data: room } = useRoom(selectedRoomId);
 
   // Auto-update contact panel when switching conversations
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only run when room contact changes
   useEffect(() => {
-    if (contactPanelId && room?.contact?.id) {
-      setContactPanelId(room.contact.id);
+    if (contactPanelId) {
+      setContactPanelId(room?.contact?.id ?? null);
     }
-  }, [contactPanelId, room?.contact?.id]);
+  }, [room?.contact?.id]);
 
   const renderMessenger = () => {
     if (!selectedRoomId || !room) return null;

@@ -37,6 +37,15 @@ import {
   type ColumnMapping,
 } from "@/lib/csv-parser";
 
+const VALID_STAGES = [
+  "new_lead",
+  "prospecting",
+  "appointment",
+  "payment",
+  "not_a_fit",
+  "lost",
+];
+
 type Step = "upload" | "map" | "preview";
 
 export function CSVImportDialog({
@@ -110,6 +119,16 @@ export function CSVImportDialog({
       return;
     }
 
+    if (mappedContacts.length === 0) {
+      toast.error("No valid contacts to import");
+      return;
+    }
+
+    if (mappedContacts.length > 500) {
+      toast.error("Maximum 500 contacts per import. Please split your CSV.");
+      return;
+    }
+
     batchCreate.mutate(
       {
         workspaceId: selectedWorkspace,
@@ -118,7 +137,9 @@ export function CSVImportDialog({
           lastName: c.lastName,
           email: c.email,
           phone: c.phone,
-          stage: (c.stage as any) || "new_lead",
+          stage: (VALID_STAGES.includes(c.stage?.toLowerCase?.())
+            ? c.stage.toLowerCase()
+            : "new_lead") as any,
           source: "csv" as any,
           notes: c.notes,
         })),

@@ -291,7 +291,16 @@ export const contactsRouter = createTRPCRouter({
         lastName: z.string().trim().optional(),
         email: z.string().optional(),
         phone: z.string().optional(),
-        stage: z.string().default("new_lead"),
+        stage: z
+          .enum([
+            "new_lead",
+            "prospecting",
+            "appointment",
+            "payment",
+            "not_a_fit",
+            "lost",
+          ])
+          .default("new_lead"),
         notes: z.string().optional(),
       }),
     )
@@ -306,7 +315,7 @@ export const contactsRouter = createTRPCRouter({
           lastName: input.lastName || null,
           email: input.email || null,
           phone: input.phone || null,
-          stage: input.stage as any,
+          stage: input.stage,
           notes: input.notes || null,
           source: "manual",
         },
@@ -655,10 +664,12 @@ export const contactsRouter = createTRPCRouter({
       const workspaceIds = userWorkspaces.map((m) => m.workspaceId);
 
       const where: any = {
-        workspaceId: input.workspaceId
-          ? input.workspaceId
-          : { in: workspaceIds },
+        isContact: true,
       };
+
+      where.workspaceId = input.workspaceId
+        ? input.workspaceId
+        : { in: workspaceIds };
 
       if (input.stage) where.stage = input.stage;
       if (input.source) where.source = input.source;
