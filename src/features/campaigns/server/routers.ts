@@ -591,6 +591,14 @@ export const campaignsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const member = await prisma.member.findFirst({
+        where: {
+          userId: ctx.auth.user.id,
+          workspaceId: input.workspaceId,
+        },
+      });
+      if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
       const where = await buildAudienceWhere(
         input.workspaceId,
         input.audienceType,

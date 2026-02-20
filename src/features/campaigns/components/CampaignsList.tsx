@@ -157,7 +157,7 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
                   <p className="text-xs text-muted-foreground truncate mt-0.5">
                     {isGroup
                       ? `${item.campaignCount} location campaign${item.campaignCount !== 1 ? "s" : ""}`
-                      : `${item.messageTemplate.slice(0, 60)}${item.messageTemplate.length > 60 ? "..." : ""}`}
+                      : `${(item.messageTemplate ?? "").slice(0, 60)}${(item.messageTemplate ?? "").length > 60 ? "..." : ""}`}
                   </p>
                 </div>
 

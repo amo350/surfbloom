@@ -208,7 +208,7 @@ export function CampaignBuilder({
       );
       router.push(`${basePath}/group/${group.id}`);
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err?.message || String(err) || "Failed to create campaign");
     }
   };
 

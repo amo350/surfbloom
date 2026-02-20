@@ -162,6 +162,9 @@ export const usePauseCampaign = () => {
     trpc.campaigns.pauseCampaign.mutationOptions({
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries({
+          queryKey: trpc.campaigns.getCampaigns.queryKey(),
+        });
+        queryClient.invalidateQueries({
           queryKey: trpc.campaigns.getCampaign.queryKey({ id: variables.id }),
         });
       },
@@ -175,6 +178,9 @@ export const useResumeCampaign = () => {
   return useMutation(
     trpc.campaigns.resumeCampaign.mutationOptions({
       onSuccess: (_data, variables) => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.campaigns.getCampaigns.queryKey(),
+        });
         queryClient.invalidateQueries({
           queryKey: trpc.campaigns.getCampaign.queryKey({ id: variables.id }),
         });

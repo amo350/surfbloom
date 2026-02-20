@@ -16,8 +16,6 @@ import {
   Trash2,
   Ban,
   Clock,
-  Phone,
-  Mail,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -527,7 +525,11 @@ export function CampaignDetail({
                       </span>
                     </div>
                     <Link
-                      href={`/index/contacts/${r.contactId}`}
+                      href={
+                        workspaceId
+                          ? `/workspaces/${workspaceId}/contacts/${r.contactId}`
+                          : `/index/contacts/${r.contactId}`
+                      }
                       className="text-sm font-medium truncate hover:underline"
                     >
                       {name}
