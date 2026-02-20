@@ -1,6 +1,7 @@
 // src/app/api/feedback/submit/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logActivity } from "@/features/contacts/server/log-activity";
 import { sendMail } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
 
@@ -11,6 +12,7 @@ const feedbackSubmitSchema = z.object({
   email: z.string().trim().email().optional().nullable().or(z.literal("")),
   phone: z.string().trim().optional().nullable(),
   message: z.string().trim().min(1),
+  rating: z.number().optional().nullable(),
 });
 
 export async function POST(req: NextRequest) {
@@ -27,6 +29,7 @@ export async function POST(req: NextRequest) {
       email: rawEmail,
       phone,
       message,
+      rating,
     } = parsed.data;
     const email = rawEmail || null;
 
@@ -89,9 +92,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    await prisma.$transaction(async (tx) => {
+    const contactId = await prisma.$transaction(async (tx) => {
       // 1) Create/find contact
-      let contact = null;
+      let contact: { id: string } | null = null;
       if (email || phone) {
         if (email) {
           contact = await tx.chatContact.findFirst({
@@ -195,7 +198,20 @@ export async function POST(req: NextRequest) {
           },
         });
       }
+
+      return contact?.id ?? null;
     });
+
+    // Log activity
+    if (contactId && workspaceId) {
+      await logActivity({
+        contactId,
+        workspaceId,
+        type: "feedback_submitted",
+        description: `Submitted feedback${message ? `: "${message.slice(0, 60)}${message.length > 60 ? "..." : ""}"` : ""}`,
+        metadata: { rating: rating ?? undefined },
+      });
+    }
 
     // 5) Email notification to owner/admins
     const notifyEmails = [

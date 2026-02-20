@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/features/contacts/server/log-activity";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -693,6 +694,7 @@ export const chatbotRouter = createTRPCRouter({
               phone: true,
               stage: true,
               assignedToId: true,
+              isContact: true,
             },
           },
         },
@@ -823,6 +825,23 @@ export const chatbotRouter = createTRPCRouter({
         where: { id: room.id },
         data: { updatedAt: new Date() },
       });
+
+      // Log activity
+      if (room.workspaceId && room.contact?.phone) {
+        const chatRoom = await prisma.chatRoom.findUnique({
+          where: { id: input.roomId },
+          select: { contactId: true },
+        });
+        if (chatRoom?.contactId) {
+          await logActivity({
+            contactId: chatRoom.contactId,
+            workspaceId: room.workspaceId,
+            type: "sms_sent",
+            description: `SMS sent: "${input.message.slice(0, 60)}${input.message.length > 60 ? "..." : ""}"`,
+            metadata: { to: room.contact.phone, direction: "outbound" },
+          });
+        }
+      }
 
       return smsMessage;
     }),

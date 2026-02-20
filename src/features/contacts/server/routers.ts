@@ -110,6 +110,7 @@ export const contactsRouter = createTRPCRouter({
           some: { categoryId },
         };
       }
+      where.isContact = true;
 
       const [contacts, totalCount] = await Promise.all([
         prisma.chatContact.findMany({
@@ -194,6 +195,7 @@ export const contactsRouter = createTRPCRouter({
               id: true,
               type: true,
               description: true,
+              metadata: true,
               createdAt: true,
             },
           },
@@ -266,6 +268,7 @@ export const contactsRouter = createTRPCRouter({
           stage: input.stage,
           source: input.source,
           notes: input.notes || null,
+          isContact: true,
         },
       });
 
@@ -275,6 +278,45 @@ export const contactsRouter = createTRPCRouter({
         workspaceId: input.workspaceId,
         type: "contact_created",
         description: `Contact created by ${ctx.auth.user.name || "team member"}`,
+      });
+
+      return contact;
+    }),
+
+  promoteToContact: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        firstName: z.string().trim().min(1),
+        lastName: z.string().trim().optional(),
+        email: z.string().optional(),
+        phone: z.string().optional(),
+        stage: z.string().default("new_lead"),
+        notes: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await verifyContactAccess(ctx.auth.user.id, input.id);
+
+      const contact = await prisma.chatContact.update({
+        where: { id: input.id },
+        data: {
+          isContact: true,
+          firstName: input.firstName,
+          lastName: input.lastName || null,
+          email: input.email || null,
+          phone: input.phone || null,
+          stage: input.stage as any,
+          notes: input.notes || null,
+          source: "manual",
+        },
+      });
+
+      await logActivity({
+        contactId: contact.id,
+        workspaceId: contact.workspaceId,
+        type: "contact_created",
+        description: "Promoted from conversation to contact",
       });
 
       return contact;
@@ -553,6 +595,7 @@ export const contactsRouter = createTRPCRouter({
           stage: contact.stage,
           source: contact.source,
           notes: contact.notes || null,
+          isContact: true,
         });
 
         // Track phone so we don't create dupes within the batch itself
