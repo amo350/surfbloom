@@ -1,5 +1,6 @@
 // src/app/api/twilio/inbound/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { updateCampaignStats } from "@/features/campaigns/server/update-campaign-stats";
 import { logActivity } from "@/features/contacts/server/log-activity";
 import { prisma } from "@/lib/prisma";
 
@@ -221,30 +222,7 @@ export async function POST(req: NextRequest) {
             // best-effort
           }
 
-          // Update campaign stats
-          const stats = await prisma.campaignRecipient.groupBy({
-            by: ["status"],
-            where: { campaignId: recentRecipient.campaignId },
-            _count: true,
-          });
-
-          const statMap: Record<string, number> = {};
-          for (const s of stats) {
-            statMap[s.status] = s._count;
-          }
-
-          await prisma.campaign.update({
-            where: { id: recentRecipient.campaignId },
-            data: {
-              sentCount:
-                (statMap.sent || 0) +
-                (statMap.delivered || 0) +
-                (statMap.replied || 0),
-              deliveredCount: statMap.delivered || 0,
-              failedCount: statMap.failed || 0,
-              repliedCount: statMap.replied || 0,
-            },
-          });
+          await updateCampaignStats(recentRecipient.campaignId);
         }
       }
     } catch {

@@ -1,4 +1,5 @@
 import { NonRetriableError } from "inngest";
+import { updateCampaignStats } from "@/features/campaigns/server/update-campaign-stats";
 import { prisma } from "@/lib/prisma";
 import { inngest } from "./client";
 
@@ -77,6 +78,7 @@ export const sendCampaign = inngest.createFunction(
             select: {
               id: true,
               name: true,
+              userId: true,
               twilioPhoneNumber: {
                 select: { phoneNumber: true },
               },
@@ -109,6 +111,7 @@ export const sendCampaign = inngest.createFunction(
         frequencyCapDays: c.frequencyCapDays,
         workspaceName: c.workspace.name,
         twilioPhone: c.workspace.twilioPhoneNumber.phoneNumber,
+        workspaceUserId: c.workspace.userId,
       };
     });
 
@@ -266,6 +269,12 @@ export const sendCampaign = inngest.createFunction(
             return { sent: 0, done: true, reason: "complete" };
           }
 
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+          const isLocal = /localhost|127\.0\.0\.1/i.test(appUrl);
+          const statusCallbackUrl = isLocal
+            ? undefined
+            : `${appUrl}/api/twilio/status`;
+
           const { sendSms } = await import("@/lib/twilio");
           let batchSent = 0;
 
@@ -293,11 +302,11 @@ export const sendCampaign = inngest.createFunction(
               );
 
               const result = await sendSms({
-                userId: "system",
+                userId: campaign.workspaceUserId,
                 from: campaign.twilioPhone,
                 to: recipient.contact.phone,
                 body: message,
-                statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/status`,
+                statusCallback: statusCallbackUrl,
               });
 
               // Create SmsMessage for inbox tracking
@@ -343,30 +352,7 @@ export const sendCampaign = inngest.createFunction(
             }
           }
 
-          // Update campaign stats
-          const stats = await prisma.campaignRecipient.groupBy({
-            by: ["status"],
-            where: { campaignId: campaign.id },
-            _count: true,
-          });
-
-          const statMap: Record<string, number> = {};
-          for (const s of stats) {
-            statMap[s.status] = s._count;
-          }
-
-          await prisma.campaign.update({
-            where: { id: campaign.id },
-            data: {
-              sentCount:
-                (statMap["sent"] || 0) +
-                (statMap["delivered"] || 0) +
-                (statMap["replied"] || 0),
-              deliveredCount: statMap["delivered"] || 0,
-              failedCount: statMap["failed"] || 0,
-              repliedCount: statMap["replied"] || 0,
-            },
-          });
+          await updateCampaignStats(campaign.id);
 
           return { sent: batchSent, done: false, reason: null };
         },
@@ -395,31 +381,10 @@ export const sendCampaign = inngest.createFunction(
 
       // Only mark completed if still sending (not paused/cancelled)
       if (current?.status === "sending") {
-        // Final stats
-        const stats = await prisma.campaignRecipient.groupBy({
-          by: ["status"],
-          where: { campaignId: campaign.id },
-          _count: true,
-        });
-
-        const statMap: Record<string, number> = {};
-        for (const s of stats) {
-          statMap[s.status] = s._count;
-        }
-
+        await updateCampaignStats(campaign.id);
         await prisma.campaign.update({
           where: { id: campaign.id },
-          data: {
-            status: "completed",
-            completedAt: new Date(),
-            sentCount:
-              (statMap["sent"] || 0) +
-              (statMap["delivered"] || 0) +
-              (statMap["replied"] || 0),
-            deliveredCount: statMap["delivered"] || 0,
-            failedCount: statMap["failed"] || 0,
-            repliedCount: statMap["replied"] || 0,
-          },
+          data: { status: "completed", completedAt: new Date() },
         });
       }
     });

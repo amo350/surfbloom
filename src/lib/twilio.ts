@@ -81,16 +81,12 @@ export async function sendSms(opts: {
     to: string;
     mediaUrl?: string[];
     statusCallback?: string;
-  } = { body: opts.body, from: opts.from, to: opts.to };
-
-  if (opts.statusCallback) {
-    messageOptions.statusCallback = opts.statusCallback;
-  } else {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (appUrl && !appUrl.includes("localhost")) {
-      messageOptions.statusCallback = `${appUrl}/api/twilio/status`;
-    }
-  }
+  } = {
+    body: opts.body,
+    from: opts.from,
+    to: opts.to,
+    ...(opts.statusCallback && { statusCallback: opts.statusCallback }),
+  };
 
   if (opts.mediaUrl) {
     messageOptions.mediaUrl = [opts.mediaUrl];

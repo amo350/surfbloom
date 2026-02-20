@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SmsStatus } from "@/generated/prisma/enums";
+import { updateCampaignStats } from "@/features/campaigns/server/update-campaign-stats";
 import { prisma } from "@/lib/prisma";
 
 const STATUS_MAP: Record<string, SmsStatus> = {
@@ -153,30 +154,4 @@ export async function POST(req: NextRequest) {
     // Return 200 to prevent Twilio retries on our errors
     return NextResponse.json({ success: true });
   }
-}
-
-async function updateCampaignStats(campaignId: string) {
-  const stats = await prisma.campaignRecipient.groupBy({
-    by: ["status"],
-    where: { campaignId },
-    _count: true,
-  });
-
-  const statMap: Record<string, number> = {};
-  for (const s of stats) {
-    statMap[s.status] = s._count;
-  }
-
-  await prisma.campaign.update({
-    where: { id: campaignId },
-    data: {
-      sentCount:
-        (statMap["sent"] || 0) +
-        (statMap["delivered"] || 0) +
-        (statMap["replied"] || 0),
-      deliveredCount: statMap["delivered"] || 0,
-      failedCount: statMap["failed"] || 0,
-      repliedCount: statMap["replied"] || 0,
-    },
-  });
 }

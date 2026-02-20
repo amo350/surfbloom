@@ -766,7 +766,7 @@ export const chatbotRouter = createTRPCRouter({
         select: {
           id: true,
           workspaceId: true,
-          contact: { select: { phone: true } },
+          contact: { select: { id: true, phone: true, optedOut: true } },
           workspace: {
             select: {
               twilioPhoneNumber: {
@@ -779,22 +779,11 @@ export const chatbotRouter = createTRPCRouter({
 
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
 
-      // Check opt-out status
-      if (room.contact?.phone) {
-        const contactRecord = await prisma.chatContact.findFirst({
-          where: {
-            phone: room.contact.phone,
-            workspaceId: room.workspaceId!,
-          },
-          select: { optedOut: true },
+      if (room.contact?.optedOut) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This contact has opted out of messages",
         });
-
-        if (contactRecord?.optedOut) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "This contact has opted out of messages",
-          });
-        }
       }
 
       if (!room.contact?.phone) {
