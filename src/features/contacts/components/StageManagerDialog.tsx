@@ -236,9 +236,6 @@ export function StageManagerDialog() {
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-muted-foreground text-center">
-            {stages?.length ?? 0}/7 stages (min 3, max 7)
-          </p>
 
           {/* Add new stage */}
           <div className="border-t pt-3 space-y-2">

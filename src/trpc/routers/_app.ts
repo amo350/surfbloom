@@ -12,6 +12,7 @@ import { reviewsRouter } from "@/features/reviews/server/routers";
 import { chatbotRouter } from "@/features/chatbot/server/routers";
 import { integrationsRouter } from "@/features/integrations/server/routers";
 import { contactsRouter } from "@/features/contacts/server/routers";
+import { campaignsRouter } from "@/features/campaigns/server/routers";
 
 export const appRouter = createTRPCRouter({
   executions: executionsRouter,
@@ -27,6 +28,7 @@ export const appRouter = createTRPCRouter({
   chatbot: chatbotRouter,
   integrations: integrationsRouter,
   contacts: contactsRouter,
+  campaigns: campaignsRouter,
 });
 //CRITICAL: Do not remove this line - required for tRPC type inference
 export type AppRouter = typeof appRouter;

@@ -45,6 +45,8 @@ model User {
   domains          Domain[]
   twilioConfig     TwilioConfig?
   stages           Stage[]
+  campaigns        Campaign[]
+  campaignGroups   CampaignGroup[]
 
   @@unique([email])
   @@index([accountOwnerId])
@@ -153,6 +155,7 @@ model Workspace {
   domains      Domain[]
   categories   Category[]
   activities   Activity[]
+  campaigns    Campaign[]
 
   twilioPhoneNumber TwilioPhoneNumber?
   smsMessages       SmsMessage[]
@@ -584,6 +587,7 @@ model ChatContact {
   assignedToId    String?
   lastContactedAt DateTime?
   isContact       Boolean   @default(false)
+  optedOut        Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -596,6 +600,7 @@ model ChatContact {
   categories ContactCategory[]
   activities Activity[]
   tasks      Task[]
+  campaignRecipients CampaignRecipient[]
 
   @@index([workspaceId])
   @@index([workspaceId, email])
@@ -603,6 +608,84 @@ model ChatContact {
   @@index([workspaceId, stage])
   @@index([assignedToId])
   @@map("chat_contact")
+}
+
+model Campaign {
+  id                  String    @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById         String
+  createdBy           User      @relation(fields: [createdById], references: [id])
+  groupId             String?
+  group               CampaignGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  name                String
+  channel             String    @default("sms")
+  messageTemplate     String
+
+  // Audience config
+  audienceType        String    @default("all") // all, stage, category, inactive
+  audienceStage       String?
+  audienceCategoryId  String?
+  audienceInactiveDays Int?
+  frequencyCapDays    Int?      // skip contacts messaged in last X days
+
+  status              String    @default("draft") // draft, scheduled, sending, paused, completed, cancelled
+  scheduledAt         DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+
+  // Stats
+  totalRecipients     Int       @default(0)
+  sentCount           Int       @default(0)
+  deliveredCount      Int       @default(0)
+  failedCount         Int       @default(0)
+  repliedCount        Int       @default(0)
+
+  recipients          CampaignRecipient[]
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([workspaceId])
+  @@index([createdById])
+  @@index([groupId])
+  @@index([status])
+  @@map("campaign")
+}
+
+model CampaignGroup {
+  id          String     @id @default(cuid())
+  createdById String
+  createdBy   User       @relation(fields: [createdById], references: [id])
+  name        String
+  campaigns   Campaign[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([createdById])
+  @@map("campaign_group")
+}
+
+model CampaignRecipient {
+  id           String      @id @default(cuid())
+  campaignId   String
+  campaign     Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId    String
+  contact      ChatContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  status       String    @default("pending") // pending, sent, delivered, failed, replied, opted_out
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  failedAt     DateTime?
+  repliedAt    DateTime?
+  errorMessage String?
+  smsMessageId String?
+
+  createdAt    DateTime  @default(now())
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId, status])
+  @@index([contactId])
+  @@map("campaign_recipient")
 }
 
 model Category {
