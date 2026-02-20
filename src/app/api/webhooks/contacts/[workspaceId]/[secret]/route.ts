@@ -83,13 +83,17 @@ export async function POST(
             },
           });
 
-          await logActivity({
-            contactId: existing.id,
-            workspaceId,
-            type: "contact_updated",
-            description: "Updated via webhook",
-            metadata: { source: "webhook" },
-          });
+          try {
+            await logActivity({
+              contactId: existing.id,
+              workspaceId,
+              type: "contact_updated",
+              description: "Updated via webhook",
+              metadata: { source: "webhook" },
+            });
+          } catch {
+            // best-effort, don't fail the import
+          }
 
           results.updated++;
           continue;
@@ -115,13 +119,17 @@ export async function POST(
             },
           });
 
-          await logActivity({
-            contactId: existing.id,
-            workspaceId,
-            type: "contact_updated",
-            description: "Updated via webhook",
-            metadata: { source: "webhook" },
-          });
+          try {
+            await logActivity({
+              contactId: existing.id,
+              workspaceId,
+              type: "contact_updated",
+              description: "Updated via webhook",
+              metadata: { source: "webhook" },
+            });
+          } catch {
+            // best-effort, don't fail the import
+          }
 
           results.updated++;
           continue;
@@ -143,13 +151,17 @@ export async function POST(
         },
       });
 
-      await logActivity({
-        contactId: newContact.id,
-        workspaceId,
-        type: "contact_created",
-        description: "Created via webhook",
-        metadata: { source: "webhook" },
-      });
+      try {
+        await logActivity({
+          contactId: newContact.id,
+          workspaceId,
+          type: "contact_created",
+          description: "Created via webhook",
+          metadata: { source: "webhook" },
+        });
+      } catch {
+        // best-effort, don't fail the import
+      }
 
       results.created++;
     } catch (err: any) {

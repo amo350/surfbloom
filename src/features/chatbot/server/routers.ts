@@ -522,6 +522,7 @@ export const chatbotRouter = createTRPCRouter({
                   phone: true,
                   stage: true,
                   assignedToId: true,
+                  isContact: true,
                 },
               },
               domain: {
@@ -826,21 +827,24 @@ export const chatbotRouter = createTRPCRouter({
         data: { updatedAt: new Date() },
       });
 
-      // Log activity
-      if (room.workspaceId && room.contact?.phone) {
-        const chatRoom = await prisma.chatRoom.findUnique({
-          where: { id: input.roomId },
-          select: { contactId: true },
-        });
-        if (chatRoom?.contactId) {
-          await logActivity({
-            contactId: chatRoom.contactId,
-            workspaceId: room.workspaceId,
-            type: "sms_sent",
-            description: `SMS sent: "${input.message.slice(0, 60)}${input.message.length > 60 ? "..." : ""}"`,
-            metadata: { to: room.contact.phone, direction: "outbound" },
+      try {
+        if (room.workspaceId && room.contact?.phone) {
+          const chatRoom = await prisma.chatRoom.findUnique({
+            where: { id: input.roomId },
+            select: { contactId: true },
           });
+          if (chatRoom?.contactId) {
+            await logActivity({
+              contactId: chatRoom.contactId,
+              workspaceId: room.workspaceId,
+              type: "sms_sent",
+              description: `SMS sent: "${input.message.slice(0, 60)}${input.message.length > 60 ? "..." : ""}"`,
+              metadata: { to: room.contact.phone, direction: "outbound" },
+            });
+          }
         }
+      } catch {
+        // best-effort logging
       }
 
       return smsMessage;

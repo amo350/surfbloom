@@ -42,8 +42,8 @@ export function ConversationsView({ workspaceId }: { workspaceId?: string }) {
 
   // Auto-update contact panel when switching conversations
   useEffect(() => {
-    if (contactPanelId && room?.contact?.id) {
-      setContactPanelId(room.contact.id);
+    if (contactPanelId) {
+      setContactPanelId(room?.contact?.id ?? null);
     }
   }, [contactPanelId, room?.contact?.id]);
 
