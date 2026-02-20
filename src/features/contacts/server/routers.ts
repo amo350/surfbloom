@@ -1,7 +1,8 @@
 // src/features/contacts/server/routers.ts
+
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { DEFAULT_STAGES } from "./default-stages";
 import { logActivity } from "./log-activity";
@@ -176,6 +177,7 @@ export const contactsRouter = createTRPCRouter({
           phone: true,
           imageUrl: true,
           stage: true,
+          optedOut: true,
           source: true,
           notes: true,
           lastContactedAt: true,
@@ -509,31 +511,30 @@ export const contactsRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  getStages: protectedProcedure
-    .query(async ({ ctx }) => {
-      let stages = await prisma.stage.findMany({
+  getStages: protectedProcedure.query(async ({ ctx }) => {
+    let stages = await prisma.stage.findMany({
+      where: { userId: ctx.auth.user.id },
+      orderBy: { order: "asc" },
+    });
+
+    // Auto-seed defaults if user has none
+    if (stages.length === 0) {
+      await prisma.stage.createMany({
+        data: DEFAULT_STAGES.map((s) => ({
+          userId: ctx.auth.user.id,
+          ...s,
+        })),
+        skipDuplicates: true,
+      });
+
+      stages = await prisma.stage.findMany({
         where: { userId: ctx.auth.user.id },
         orderBy: { order: "asc" },
       });
+    }
 
-      // Auto-seed defaults if user has none
-      if (stages.length === 0) {
-        await prisma.stage.createMany({
-          data: DEFAULT_STAGES.map((s) => ({
-            userId: ctx.auth.user.id,
-            ...s,
-          })),
-          skipDuplicates: true,
-        });
-
-        stages = await prisma.stage.findMany({
-          where: { userId: ctx.auth.user.id },
-          orderBy: { order: "asc" },
-        });
-      }
-
-      return stages;
-    }),
+    return stages;
+  }),
 
   createStage: protectedProcedure
     .input(
@@ -1042,7 +1043,8 @@ export const contactsRouter = createTRPCRouter({
 
       // Merge data — fill gaps in keeper from merge contacts
       const merged = {
-        firstName: keep.firstName || merging.find((m) => m.firstName)?.firstName,
+        firstName:
+          keep.firstName || merging.find((m) => m.firstName)?.firstName,
         lastName: keep.lastName || merging.find((m) => m.lastName)?.lastName,
         email: keep.email || merging.find((m) => m.email)?.email,
         phone: keep.phone || merging.find((m) => m.phone)?.phone,

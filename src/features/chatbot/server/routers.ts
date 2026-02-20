@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/features/contacts/server/log-activity";
+import { prisma } from "@/lib/prisma";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -778,6 +778,25 @@ export const chatbotRouter = createTRPCRouter({
       });
 
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Check opt-out status
+      if (room.contact?.phone) {
+        const contactRecord = await prisma.chatContact.findFirst({
+          where: {
+            phone: room.contact.phone,
+            workspaceId: room.workspaceId!,
+          },
+          select: { optedOut: true },
+        });
+
+        if (contactRecord?.optedOut) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This contact has opted out of messages",
+          });
+        }
+      }
+
       if (!room.contact?.phone) {
         throw new TRPCError({
           code: "BAD_REQUEST",

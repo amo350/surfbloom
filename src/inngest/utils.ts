@@ -80,3 +80,12 @@ export const sendReviewSync = async (data: {
     id: createId(),
   });
 };
+
+// Campaign send
+export const sendCampaignSend = async (data: { campaignId: string }) => {
+  return inngest.send({
+    name: "campaigns/send.campaign",
+    data,
+    id: createId(),
+  });
+};
