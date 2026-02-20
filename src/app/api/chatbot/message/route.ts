@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAIResponse } from "@/lib/ai";
+import { logActivity } from "@/features/contacts/server/log-activity";
 import { sendMail } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
 
@@ -232,7 +233,7 @@ export async function POST(req: NextRequest) {
         },
         include: {
           chatRooms: {
-            select: { id: true, live: true, mailed: true },
+            select: { id: true, workspaceId: true, live: true, mailed: true },
             take: 1,
           },
           responses: {
@@ -294,6 +295,23 @@ export async function POST(req: NextRequest) {
           data: { updatedAt: new Date() },
         });
 
+        // Log chatbot session on first message
+        const liveMessageCount = await prisma.chatMessage.count({
+          where: { chatRoomId: room.id },
+        });
+        if (
+          liveMessageCount <= 2 &&
+          existingContact?.id &&
+          room.workspaceId
+        ) {
+          await logActivity({
+            contactId: existingContact.id,
+            workspaceId: room.workspaceId,
+            type: "chatbot_session",
+            description: "Started a chatbot conversation",
+          });
+        }
+
         // Email notification if not already sent
         if (!room.mailed) {
           if (domain.user?.email) {
@@ -327,6 +345,19 @@ export async function POST(req: NextRequest) {
           where: { id: room.id },
           data: { updatedAt: new Date() },
         });
+
+        // Log chatbot session on first message
+        const messageCount = await prisma.chatMessage.count({
+          where: { chatRoomId: room.id },
+        });
+        if (messageCount <= 2 && existingContact?.id && room.workspaceId) {
+          await logActivity({
+            contactId: existingContact.id,
+            workspaceId: room.workspaceId,
+            type: "chatbot_session",
+            description: "Started a chatbot conversation",
+          });
+        }
 
         // Get AI response (exclude scripted steps from qualification questions)
         const aiFilterQuestions = domain.filterQuestions

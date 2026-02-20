@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreateContact } from "../hooks/use-contacts";
+import { useCreateContact, usePromoteToContact } from "../hooks/use-contacts";
 
 const schema = z.object({
   firstName: z.string().trim().min(1, "First name is required"),
@@ -226,14 +226,29 @@ export function CreateContactDialogControlled({
   onOpenChange,
   workspaceId,
   workspaces,
+  promoteContactId,
+  promoteInitialValues,
+  onPromoteSuccess,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId?: string;
   workspaces?: { id: string; name: string }[];
+  promoteContactId?: string | null;
+  promoteInitialValues?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    stage?: string | null;
+    notes?: string | null;
+  };
+  onPromoteSuccess?: () => void;
 }) {
   const [selectedWorkspace, setSelectedWorkspace] = useState(workspaceId || "");
   const createContact = useCreateContact();
+  const promoteContact = usePromoteToContact();
+  const isPromoteMode = !!promoteContactId;
 
   const {
     register,
@@ -254,12 +269,49 @@ export function CreateContactDialogControlled({
 
   useEffect(() => {
     if (open) {
-      reset();
+      if (isPromoteMode) {
+        reset({
+          firstName: promoteInitialValues?.firstName || "",
+          lastName: promoteInitialValues?.lastName || "",
+          email: promoteInitialValues?.email || "",
+          phone: promoteInitialValues?.phone || "",
+          stage: promoteInitialValues?.stage || "new_lead",
+          notes: promoteInitialValues?.notes || "",
+        });
+      } else {
+        reset();
+      }
       setSelectedWorkspace(workspaceId || "");
     }
-  }, [open, reset, workspaceId]);
+  }, [open, reset, workspaceId, isPromoteMode, promoteInitialValues]);
 
   const onSubmit = (data: any) => {
+    if (isPromoteMode && promoteContactId) {
+      promoteContact.mutate(
+        {
+          id: promoteContactId,
+          firstName: data.firstName,
+          lastName: data.lastName || undefined,
+          email: data.email || undefined,
+          phone: data.phone || undefined,
+          stage: data.stage as any,
+          notes: data.notes || undefined,
+        },
+        {
+          onSuccess: () => {
+            toast.success("Contact promoted");
+            reset();
+            onOpenChange(false);
+            onPromoteSuccess?.();
+          },
+          onError: (err) => {
+            toast.error(err.message);
+          },
+        },
+      );
+      return;
+    }
+
     if (!selectedWorkspace) {
       toast.error("Select a location");
       return;
@@ -293,10 +345,12 @@ export function CreateContactDialogControlled({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New Contact</DialogTitle>
+          <DialogTitle>
+            {isPromoteMode ? "Promote to Contact" : "New Contact"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
-          {!workspaceId && workspaces && workspaces.length > 0 && (
+          {!isPromoteMode && !workspaceId && workspaces && workspaces.length > 0 && (
             <div className="space-y-1.5">
               <Label className="text-xs">Location</Label>
               <Select
@@ -383,12 +437,12 @@ export function CreateContactDialogControlled({
           <Button
             type="submit"
             className="w-full"
-            disabled={createContact.isPending}
+            disabled={createContact.isPending || promoteContact.isPending}
           >
-            {createContact.isPending ? (
+            {createContact.isPending || promoteContact.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
             ) : null}
-            Create Contact
+            {isPromoteMode ? "Promote Contact" : "Create Contact"}
           </Button>
         </form>
       </DialogContent>

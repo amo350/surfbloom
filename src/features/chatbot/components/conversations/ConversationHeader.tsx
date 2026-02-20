@@ -33,6 +33,7 @@ export function ConversationHeader({
       phone: string | null;
       stage: string;
       assignedToId: string | null;
+      isContact?: boolean;
     } | null;
   };
   onContactClick?: (contactId: string) => void;
@@ -47,7 +48,8 @@ export function ConversationHeader({
   );
 
   const contact = room.contact;
-  const name = contact
+  const isKnownContact = !!contact?.isContact;
+  const name = isKnownContact && contact
     ? [contact.firstName, contact.lastName].filter(Boolean).join(" ") ||
       "Unknown"
     : "Unknown Visitor";
@@ -63,7 +65,7 @@ export function ConversationHeader({
   return (
     <div className="flex items-center gap-3 px-4 h-12 border-b shrink-0">
       {/* Contact info — clickable */}
-      {contact ? (
+      {isKnownContact && contact ? (
         <button
           type="button"
           onClick={() => onContactClick?.(contact.id)}

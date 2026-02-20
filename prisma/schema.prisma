@@ -99,10 +99,11 @@ model Verification {
 }
 
 model Workspace {
-  id         String   @id @default(cuid())
-  name       String
-  imageUrl   String?
-  inviteCode String   @unique
+  id             String   @id @default(cuid())
+  name           String
+  imageUrl       String?
+  inviteCode     String   @unique
+  webhookSecret  String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   userId     String // original creator/owner
@@ -567,6 +568,7 @@ model ChatContact {
   notes           String?   @db.Text
   assignedToId    String?
   lastContactedAt DateTime?
+  isContact       Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

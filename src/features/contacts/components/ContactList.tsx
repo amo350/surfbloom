@@ -7,11 +7,14 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  Download,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useContacts } from "../hooks/use-contacts";
+import { toast } from "sonner";
+import { useContacts, useExportContacts } from "../hooks/use-contacts";
 import { ContactRow } from "./ContactRow";
+import { CSVImportDialog } from "./CSVImportDialog";
 import { CreateContactDialog } from "./CreateContactDialog";
 
 const STAGES = [
@@ -34,6 +37,7 @@ export function ContactsList({
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState("");
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
 
   const { data, isLoading } = useContacts({
     workspaceId,
@@ -43,9 +47,83 @@ export function ContactsList({
     pageSize: 20,
   });
 
+  const {
+    refetch: refetchExport,
+  } = useExportContacts({
+    workspaceId,
+    stage: stage || undefined,
+    enabled: false,
+  });
+
   const basePath = workspaceId
     ? `/workspaces/${workspaceId}/contacts`
     : "/index/contacts";
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const { data } = await refetchExport();
+
+      if (!data || data.length === 0) {
+        toast.error("No contacts to export");
+        setExporting(false);
+        return;
+      }
+
+      const headers = [
+        "First Name",
+        "Last Name",
+        "Email",
+        "Phone",
+        "Stage",
+        "Source",
+        "Categories",
+        "Location",
+        "Notes",
+        "Conversations",
+        "Activities",
+        "Last Contacted",
+        "Created",
+      ];
+
+      const rows = data.map((c: any) =>
+        [
+          c.firstName,
+          c.lastName,
+          c.email,
+          c.phone,
+          c.stage,
+          c.source,
+          c.categories,
+          c.location,
+          c.notes,
+          c.conversations,
+          c.totalActivities,
+          c.lastContacted,
+          c.created,
+        ].map((v) => {
+          const str = String(v ?? "");
+          return str.includes(",") || str.includes('"') || str.includes("\n")
+            ? `"${str.replace(/"/g, '""')}"`
+            : str;
+        }),
+      );
+
+      const csv = [headers.join(","), ...rows.map((r: string[]) => r.join(","))].join(
+        "\n",
+      );
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `contacts-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err.message || "Export failed");
+    }
+    setExporting(false);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -69,6 +147,23 @@ export function ContactsList({
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={exporting}
+            >
+              {exporting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+              ) : (
+                <Download className="h-4 w-4 mr-1.5" />
+              )}
+              Export
+            </Button>
+            <CSVImportDialog
+              workspaceId={workspaceId}
+              workspaces={workspaces}
+            />
             <CreateContactDialog
               workspaceId={workspaceId}
               workspaces={workspaces}

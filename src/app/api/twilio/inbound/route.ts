@@ -1,6 +1,7 @@
 // src/app/api/twilio/inbound/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/features/contacts/server/log-activity";
 
 export async function POST(req: NextRequest) {
   try {
@@ -116,8 +117,21 @@ export async function POST(req: NextRequest) {
         data: { updatedAt: new Date() },
       });
 
-      return room.id;
+      return { roomId: room.id, contactId: contact.id };
     });
+
+    const { roomId: savedRoomId, contactId } = roomId;
+
+    // Log activity
+    if (contactId && workspaceId) {
+      await logActivity({
+        contactId,
+        workspaceId,
+        type: "sms_received",
+        description: `SMS received: "${(body || "").slice(0, 60)}${(body || "").length > 60 ? "..." : ""}"`,
+        metadata: { from, direction: "inbound" },
+      });
+    }
 
     // Handle STOP/START opt-out (Twilio handles this automatically,
     // but we track it locally too)
@@ -131,7 +145,7 @@ export async function POST(req: NextRequest) {
       console.log("[Inbound SMS] Opt-in received from:", from);
     }
 
-    console.log("[Inbound SMS] Stored message in room:", roomId);
+    console.log("[Inbound SMS] Stored message in room:", savedRoomId);
 
     // Return empty TwiML — no auto-reply for now
     // TODO: Could auto-reply with AI or canned response

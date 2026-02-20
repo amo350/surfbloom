@@ -175,6 +175,20 @@ export const useBatchCreateContacts = () => {
   );
 };
 
+export const usePromoteToContact = () => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return useMutation(
+    trpc.contacts.promoteToContact.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.contacts.getContacts.queryKey(),
+        });
+      },
+    }),
+  );
+};
+
 export const useExportContacts = (filters: {
   workspaceId?: string;
   stage?: string;
