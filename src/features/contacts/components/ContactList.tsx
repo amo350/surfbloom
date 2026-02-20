@@ -12,20 +12,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useContacts, useExportContacts } from "../hooks/use-contacts";
+import {
+  useContacts,
+  useExportContacts,
+  useStages,
+} from "../hooks/use-contacts";
 import { ContactRow } from "./ContactRow";
 import { CSVImportDialog } from "./CSVImportDialog";
 import { CreateContactDialog } from "./CreateContactDialog";
-
-const STAGES = [
-  { value: "", label: "All Stages" },
-  { value: "new_lead", label: "New Lead" },
-  { value: "prospecting", label: "Prospecting" },
-  { value: "appointment", label: "Appointment" },
-  { value: "payment", label: "Payment" },
-  { value: "not_a_fit", label: "Not a Fit" },
-  { value: "lost", label: "Lost" },
-];
+import { MergeDuplicatesDialog } from "./MergeDuplicatesDialog";
+import { StageManagerDialog } from "./StageManagerDialog";
+import { StageBadge } from "./StageBadge";
 
 export function ContactsList({
   workspaceId,
@@ -35,7 +32,7 @@ export function ContactsList({
   workspaces?: { id: string; name: string }[];
 }) {
   const [search, setSearch] = useState("");
-  const [stage, setStage] = useState("");
+  const [stage, setStage] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
 
@@ -54,6 +51,8 @@ export function ContactsList({
     stage: stage || undefined,
     enabled: false,
   });
+
+  const { data: stages } = useStages();
 
   const basePath = workspaceId
     ? `/workspaces/${workspaceId}/contacts`
@@ -147,6 +146,7 @@ export function ContactsList({
           </div>
 
           <div className="flex items-center gap-2">
+            <MergeDuplicatesDialog workspaceId={workspaceId} />
             <Button
               variant="outline"
               size="sm"
@@ -172,24 +172,39 @@ export function ContactsList({
         </div>
 
         {/* Stage filter pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          {STAGES.map((s) => (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              setStage(undefined);
+              setPage(1);
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+              !stage
+                ? "bg-foreground/10 text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            All Stages
+          </button>
+
+          {(stages || []).map((s: any) => (
             <button
-              key={s.value}
+              key={s.slug}
               type="button"
               onClick={() => {
-                setStage(s.value);
+                setStage(s.slug === stage ? undefined : s.slug);
                 setPage(1);
               }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
-                stage === s.value
-                  ? "bg-foreground/10 text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              className={`transition-opacity ${
+                stage === s.slug ? "opacity-100" : "opacity-60 hover:opacity-100"
               }`}
             >
-              {s.label}
+              <StageBadge stage={s.slug} name={s.name} color={s.color} />
             </button>
           ))}
+
+          {!workspaceId && <StageManagerDialog />}
         </div>
       </div>
 

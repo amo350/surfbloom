@@ -127,6 +127,70 @@ export const useDeleteCategory = () => {
   );
 };
 
+export const useStages = () => {
+  const trpc = useTRPC();
+  return useQuery(trpc.contacts.getStages.queryOptions());
+};
+
+export const useCreateStage = () => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return useMutation(
+    trpc.contacts.createStage.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.contacts.getStages.queryKey(),
+        });
+      },
+    }),
+  );
+};
+
+export const useUpdateStage = () => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return useMutation(
+    trpc.contacts.updateStage.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.contacts.getStages.queryKey(),
+        });
+      },
+    }),
+  );
+};
+
+export const useDeleteStage = () => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return useMutation(
+    trpc.contacts.deleteStage.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.contacts.getStages.queryKey(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: trpc.contacts.getContacts.queryKey(),
+        });
+      },
+    }),
+  );
+};
+
+export const useReorderStages = () => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return useMutation(
+    trpc.contacts.reorderStages.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.contacts.getStages.queryKey(),
+        });
+      },
+    }),
+  );
+};
+
 export const useAddCategoryToContact = () => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -184,6 +248,9 @@ export const usePromoteToContact = () => {
         queryClient.invalidateQueries({
           queryKey: trpc.contacts.getContacts.queryKey(),
         });
+        queryClient.invalidateQueries({
+          queryKey: trpc.chatbot.getRoom.queryKey(),
+        });
       },
     }),
   );
@@ -206,4 +273,28 @@ export const useExportContacts = (filters: {
     }),
     enabled: filters.enabled ?? false,
   });
+};
+
+export const useDuplicates = (workspaceId?: string) => {
+  const trpc = useTRPC();
+  return useQuery({
+    ...trpc.contacts.getDuplicates.queryOptions({ workspaceId }),
+  });
+};
+
+export const useMergeContacts = () => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return useMutation(
+    trpc.contacts.mergeContacts.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.contacts.getContacts.queryKey(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: trpc.contacts.getDuplicates.queryKey(),
+        });
+      },
+    }),
+  );
 };

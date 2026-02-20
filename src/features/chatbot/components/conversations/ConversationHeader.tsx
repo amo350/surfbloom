@@ -65,7 +65,7 @@ export function ConversationHeader({
   return (
     <div className="flex items-center gap-3 px-4 h-12 border-b shrink-0">
       {/* Contact info — clickable */}
-      {isKnownContact && contact ? (
+      {contact && contact.isContact ? (
         <button
           type="button"
           onClick={() => onContactClick?.(contact.id)}
@@ -98,10 +98,10 @@ export function ConversationHeader({
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-muted-foreground truncate leading-tight">
-              Unknown Visitor
+              {contact?.phone || contact?.email || "Unknown Visitor"}
             </p>
             <p className="text-[11px] text-teal-600 truncate leading-tight">
-              Click to create contact
+              Save as contact
             </p>
           </div>
         </button>

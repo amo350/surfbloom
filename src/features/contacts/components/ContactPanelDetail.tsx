@@ -12,16 +12,8 @@ import {
   useAddCategoryToContact,
   useRemoveCategoryFromContact,
   useCreateCategory,
+  useStages,
 } from "../hooks/use-contacts";
-
-const STAGES = [
-  "new_lead",
-  "prospecting",
-  "appointment",
-  "payment",
-  "not_a_fit",
-  "lost",
-] as const;
 
 export function ContactPanelDetails({ contact }: { contact: any }) {
   const [editing, setEditing] = useState(false);
@@ -38,7 +30,13 @@ export function ContactPanelDetails({ contact }: { contact: any }) {
     setEmail(contact.email || "");
     setPhone(contact.phone || "");
     setNotes(contact.notes || "");
-  }, [contact.id, contact.updatedAt]);
+  }, [
+    contact.firstName,
+    contact.lastName,
+    contact.email,
+    contact.phone,
+    contact.notes,
+  ]);
 
   const updateContact = useUpdateContact();
   const addCategory = useAddCategoryToContact();
@@ -49,6 +47,8 @@ export function ContactPanelDetails({ contact }: { contact: any }) {
     contact.workspaceId,
     catSearch || undefined,
   );
+
+  const { data: stages } = useStages();
 
   const contactCategoryIds = new Set(
     contact.categories?.map((cc: any) => cc.category.id) || [],
@@ -101,18 +101,18 @@ export function ContactPanelDetails({ contact }: { contact: any }) {
           Stage
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {STAGES.map((s) => (
+          {(stages || []).map((s: any) => (
             <button
-              key={s}
+              key={s.slug}
               type="button"
-              onClick={() => handleStageChange(s)}
+              onClick={() => handleStageChange(s.slug)}
               className={`transition-opacity ${
-                contact.stage === s
+                contact.stage === s.slug
                   ? "opacity-100"
                   : "opacity-40 hover:opacity-70"
               }`}
             >
-              <StageBadge stage={s} />
+              <StageBadge stage={s.slug} name={s.name} color={s.color} />
             </button>
           ))}
         </div>

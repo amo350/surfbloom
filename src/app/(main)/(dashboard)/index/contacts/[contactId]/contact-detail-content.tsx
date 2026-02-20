@@ -173,10 +173,42 @@ export function ContactDetailContent({
 
               {/* Actions */}
               <div className="flex items-center gap-1.5 shrink-0">
-                <ActionButton icon={MessageSquare} label="Text" />
-                <ActionButton icon={Phone} label="Call" />
-                <ActionButton icon={Mail} label="Email" />
-                <ActionButton icon={Calendar} label="Book" />
+                <ActionButton
+                  icon={MessageSquare}
+                  label="Text"
+                  onClick={() => {
+                    if (contact.phone) {
+                      window.open(`sms:${contact.phone}`, "_self");
+                    } else {
+                      toast.error("No phone number");
+                    }
+                  }}
+                />
+                <ActionButton
+                  icon={Phone}
+                  label="Call"
+                  href={contact.phone ? `tel:${contact.phone}` : undefined}
+                  onClick={
+                    !contact.phone
+                      ? () => toast.error("No phone number")
+                      : undefined
+                  }
+                />
+                <ActionButton
+                  icon={Mail}
+                  label="Email"
+                  href={contact.email ? `mailto:${contact.email}` : undefined}
+                  onClick={
+                    !contact.email
+                      ? () => toast.error("No email address")
+                      : undefined
+                  }
+                />
+                <ActionButton
+                  icon={Calendar}
+                  label="Book"
+                  onClick={() => toast("Booking coming soon")}
+                />
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -276,12 +308,28 @@ export function ContactDetailContent({
 function ActionButton({
   icon: Icon,
   label,
+  href,
   onClick,
 }: {
   icon: any;
   label: string;
+  href?: string;
   onClick?: () => void;
 }) {
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={label}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+      >
+        <Icon className="h-4 w-4" />
+      </a>
+    );
+  }
+
   return (
     <Button
       variant="ghost"
