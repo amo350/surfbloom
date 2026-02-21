@@ -1,57 +1,31 @@
 "use client";
 
 import {
-  Loader2,
+  ArrowDownRight,
+  ArrowUpRight,
   BarChart3,
-  Send,
   CheckCircle,
+  Link2,
+  Loader2,
+  MapPin,
   MessageSquare,
-  AlertTriangle,
-  Library,
+  Send,
+  Sparkles,
   TrendingUp,
   Trophy,
 } from "lucide-react";
 import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
-import { useTemplateStats } from "../hooks/use-templates";
-import { useCampaigns } from "../hooks/use-campaigns";
-import { TemplateCategoryBadge } from "./TemplateCategoryBadge";
+import { useCrossLocationStats } from "../hooks/use-campaigns";
 
 function pct(n: number): string {
   return `${(n * 100).toFixed(1)}%`;
 }
 
 export function CampaignReporting() {
-  const { data: templateStats, isLoading: statsLoading } = useTemplateStats();
-  const { data: campaignsData, isLoading: campaignsLoading } = useCampaigns({});
+  const { data, isLoading } = useCrossLocationStats();
 
-  const isLoading = statsLoading || campaignsLoading;
-
-  // Aggregate totals across all campaigns
-  const campaigns = campaignsData?.items || [];
-  const totals = campaigns.reduce(
-    (acc, c: any) => {
-      if (c.type === "group") return acc;
-      acc.total++;
-      acc.sent += c.sentCount || 0;
-      acc.delivered += c.deliveredCount || 0;
-      acc.failed += c.failedCount || 0;
-      acc.replied += c.repliedCount || 0;
-      acc.recipients += c.totalRecipients || 0;
-      if (c.status === "completed") acc.completed++;
-      if (c.status === "sending") acc.active++;
-      return acc;
-    },
-    {
-      total: 0,
-      completed: 0,
-      active: 0,
-      recipients: 0,
-      sent: 0,
-      delivered: 0,
-      failed: 0,
-      replied: 0,
-    },
-  );
+  const locations = data?.locations || [];
+  const totals = data?.totals;
 
   return (
     <div className="h-full flex flex-col">
@@ -66,23 +40,26 @@ export function CampaignReporting() {
           </div>
         )}
 
-        {!isLoading && (
+        {!isLoading && totals && (
           <>
-            {/* Overview stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Global overview */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <OverviewCard
+                icon={MapPin}
+                label="Locations"
+                value={totals.locations.toString()}
+              />
               <OverviewCard
                 icon={Send}
                 label="Total Sent"
                 value={totals.sent.toLocaleString()}
-                sub={`${totals.total} campaigns`}
+                sub={`${totals.campaigns} campaigns`}
               />
               <OverviewCard
                 icon={CheckCircle}
                 label="Delivered"
                 value={totals.delivered.toLocaleString()}
-                sub={
-                  totals.sent > 0 ? pct(totals.delivered / totals.sent) : "—"
-                }
+                sub={totals.sent > 0 ? pct(totals.delivered / totals.sent) : "—"}
                 subColor="text-emerald-600"
               />
               <OverviewCard
@@ -93,126 +70,67 @@ export function CampaignReporting() {
                 subColor="text-teal-600"
               />
               <OverviewCard
-                icon={AlertTriangle}
-                label="Failed"
-                value={totals.failed.toLocaleString()}
-                sub={totals.sent > 0 ? pct(totals.failed / totals.sent) : "—"}
-                subColor="text-red-500"
+                icon={Sparkles}
+                label="AI Replies"
+                value={totals.aiReplies.toLocaleString()}
+                sub="Auto-responded"
+                subColor="text-violet-600"
               />
+              {totals.linkClicks > 0 && (
+                <OverviewCard
+                  icon={Link2}
+                  label="Link Clicks"
+                  value={totals.linkClicks.toLocaleString()}
+                  sub={totals.sent > 0 ? pct(totals.linkClicks / totals.sent) : "—"}
+                  subColor="text-blue-600"
+                />
+              )}
             </div>
 
-            {/* Template performance table */}
-            {templateStats && templateStats.length > 0 && (
-              <div className="border rounded-lg overflow-hidden">
-                <div className="px-4 py-3 border-b bg-muted/10 flex items-center gap-2">
+            {/* Location cards */}
+            {locations.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Performance by Template
+                    Performance by Location
                   </p>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b bg-muted/5">
-                        <th className="text-left text-[11px] font-medium text-muted-foreground px-4 py-2.5">
-                          Template
-                        </th>
-                        <th className="text-right text-[11px] font-medium text-muted-foreground px-3 py-2.5">
-                          Campaigns
-                        </th>
-                        <th className="text-right text-[11px] font-medium text-muted-foreground px-3 py-2.5">
-                          Sent
-                        </th>
-                        <th className="text-right text-[11px] font-medium text-muted-foreground px-3 py-2.5">
-                          Delivered
-                        </th>
-                        <th className="text-right text-[11px] font-medium text-muted-foreground px-3 py-2.5">
-                          Replied
-                        </th>
-                        <th className="text-right text-[11px] font-medium text-muted-foreground px-3 py-2.5">
-                          Delivery %
-                        </th>
-                        <th className="text-right text-[11px] font-medium text-muted-foreground px-4 py-2.5">
-                          Reply %
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {templateStats.map((t: any, i: number) => (
-                        <tr
-                          key={t.id}
-                          className="border-b last:border-0 hover:bg-muted/10"
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              {i === 0 && templateStats.length > 1 && (
-                                <Trophy className="h-3 w-3 text-amber-500 shrink-0" />
-                              )}
-                              <span className="text-sm font-medium truncate max-w-[200px]">
-                                {t.name}
-                              </span>
-                              {t.isLibrary && (
-                                <Library className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-                              )}
-                              <TemplateCategoryBadge category={t.category} />
-                            </div>
-                            {t.abTestCount > 0 && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5">
-                                {t.abTestCount} A/B test
-                                {t.abTestCount !== 1 ? "s" : ""} · A won{" "}
-                                {t.variantAWins}x · B won {t.variantBWins}x
-                              </p>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-right text-sm">
-                            {t.campaignCount}
-                          </td>
-                          <td className="px-3 py-3 text-right text-sm">
-                            {t.totalSent.toLocaleString()}
-                          </td>
-                          <td className="px-3 py-3 text-right text-sm">
-                            {t.totalDelivered.toLocaleString()}
-                          </td>
-                          <td className="px-3 py-3 text-right text-sm">
-                            {t.totalReplied.toLocaleString()}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <RateCell rate={t.deliveryRate} color="emerald" />
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <RateCell rate={t.replyRate} color="teal" />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {locations.map((loc: any, i: number) => (
+                    <LocationCard
+                      key={loc.workspaceId}
+                      location={loc}
+                      rank={i + 1}
+                      isTop={i === 0 && locations.length > 1}
+                      isBottom={i === locations.length - 1 && locations.length > 1}
+                    />
+                  ))}
                 </div>
               </div>
             )}
-
-            {/* Empty state */}
-            {!isLoading &&
-              (!templateStats || templateStats.length === 0) &&
-              totals.total === 0 && (
-                <div className="flex flex-col items-center py-16 text-center">
-                  <BarChart3 className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                  <p className="text-sm font-medium text-muted-foreground">
-                    No campaign data yet
-                  </p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">
-                    Send your first campaign to see performance metrics
-                  </p>
-                </div>
-              )}
           </>
+        )}
+
+        {/* Empty */}
+        {!isLoading && (!totals || totals.sent === 0) && (
+          <div className="flex flex-col items-center py-16 text-center">
+            <BarChart3 className="h-10 w-10 text-muted-foreground/30 mb-3" />
+            <p className="text-sm font-medium text-muted-foreground">
+              No campaign data yet
+            </p>
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              Send your first campaign to see performance across locations
+            </p>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-// ─── Sub-components ─────────────────────────────────
+// ─── Sub-components ─────────────────────────────────────
 
 function OverviewCard({
   icon: Icon,
@@ -224,7 +142,7 @@ function OverviewCard({
   icon: any;
   label: string;
   value: string;
-  sub: string;
+  sub?: string;
   subColor?: string;
 }) {
   return (
@@ -234,36 +152,191 @@ function OverviewCard({
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
       </div>
       <p className="text-2xl font-semibold">{value}</p>
-      <p className={`text-xs mt-0.5 ${subColor || "text-muted-foreground"}`}>
-        {sub}
-      </p>
+      {sub && (
+        <p className={`text-xs mt-0.5 ${subColor || "text-muted-foreground"}`}>
+          {sub}
+        </p>
+      )}
     </div>
   );
 }
 
-function RateCell({
-  rate,
-  color,
+function LocationCard({
+  location,
+  rank,
+  isTop,
+  isBottom,
 }: {
-  rate: number;
-  color: "emerald" | "teal";
+  location: any;
+  rank: number;
+  isTop: boolean;
+  isBottom: boolean;
 }) {
-  const barColor = color === "emerald" ? "bg-emerald-500" : "bg-teal-500";
-  const textColor = color === "emerald" ? "text-emerald-700" : "text-teal-700";
+  // Trend: compare this week vs last week reply rate
+  const thisWeek = location.weeklyTrend.find((w: any) => w.week === 0);
+  const lastWeek = location.weeklyTrend.find((w: any) => w.week === 1);
+  const thisWeekRate = thisWeek?.sent > 0 ? thisWeek.replied / thisWeek.sent : 0;
+  const lastWeekRate = lastWeek?.sent > 0 ? lastWeek.replied / lastWeek.sent : 0;
+  const trendUp = thisWeekRate >= lastWeekRate;
 
   return (
-    <div className="flex items-center justify-end gap-2">
-      <div className="w-16 h-1.5 rounded-full bg-muted/30 overflow-hidden">
-        <div
-          className={`h-full rounded-full ${barColor}`}
-          style={{ width: `${Math.min(rate * 100, 100)}%` }}
-        />
+    <div
+      className={`border rounded-lg p-4 transition-colors ${
+        isTop
+          ? "border-teal-200 bg-teal-50/20"
+          : isBottom
+            ? "border-amber-200 bg-amber-50/20"
+            : ""
+      }`}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            {isTop && <Trophy className="h-3.5 w-3.5 text-amber-500" />}
+            <p className="text-sm font-semibold">{location.name}</p>
+          </div>
+          {location.phone && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {location.phone}
+            </p>
+          )}
+        </div>
+        <span className="text-[10px] font-medium text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+          #{rank}
+        </span>
       </div>
-      <span
-        className={`text-sm font-medium ${textColor} min-w-[45px] text-right`}
-      >
-        {pct(rate)}
-      </span>
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        <MiniStat label="Sent" value={location.sent.toLocaleString()} />
+        <MiniStat
+          label="Delivered"
+          value={pct(location.deliveryRate)}
+          color="text-emerald-600"
+        />
+        <MiniStat
+          label="Reply Rate"
+          value={pct(location.replyRate)}
+          color="text-teal-600"
+        />
+        <MiniStat
+          label="Failed"
+          value={location.failed.toLocaleString()}
+          color={location.failed > 0 ? "text-red-500" : undefined}
+        />
+        {location.linkClicks > 0 && (
+          <MiniStat
+            label="Clicks"
+            value={location.linkClicks.toLocaleString()}
+            color="text-blue-600"
+          />
+        )}
+      </div>
+
+      {/* Sparkline — 4 week trend */}
+      <div className="mb-3">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <p className="text-[10px] text-muted-foreground">4-week trend</p>
+          {thisWeek?.sent > 0 && (
+            <div
+              className={`flex items-center gap-0.5 ${
+                trendUp ? "text-emerald-600" : "text-red-500"
+              }`}
+            >
+              {trendUp ? (
+                <ArrowUpRight className="h-2.5 w-2.5" />
+              ) : (
+                <ArrowDownRight className="h-2.5 w-2.5" />
+              )}
+              <span className="text-[10px] font-medium">
+                {pct(Math.abs(thisWeekRate - lastWeekRate))}
+              </span>
+            </div>
+          )}
+        </div>
+        <SparkBars data={location.weeklyTrend} />
+      </div>
+
+      {/* Bottom row */}
+      <div className="flex items-center justify-between pt-2 border-t">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-muted-foreground">
+            {location.campaignCount} campaign
+            {location.campaignCount !== 1 ? "s" : ""}
+          </span>
+          {location.aiReplies > 0 && (
+            <span className="text-[10px] text-violet-600">
+              {location.aiReplies} AI repl
+              {location.aiReplies !== 1 ? "ies" : "y"}
+            </span>
+          )}
+          {location.keywordSignups > 0 && (
+            <span className="text-[10px] text-teal-600">
+              {location.keywordSignups} text-to-join signup
+              {location.keywordSignups !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+        {location.topTemplate && (
+          <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+            Top: {location.topTemplate.name}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+}) {
+  return (
+    <div>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      <p className={`text-sm font-semibold ${color || ""}`}>{value}</p>
+    </div>
+  );
+}
+
+function SparkBars({ data }: { data: any[] }) {
+  // Reverse so oldest is left, newest is right
+  const reversed = [...data].reverse();
+  const maxSent = Math.max(...reversed.map((d) => d.sent), 1);
+  const labels = ["4w ago", "3w ago", "2w ago", "This wk"];
+
+  return (
+    <div className="flex items-end gap-1 h-8">
+      {reversed.map((d: any, i: number) => {
+        const height = d.sent > 0 ? Math.max((d.sent / maxSent) * 100, 8) : 4;
+        const replyPct = d.sent > 0 ? (d.replied / d.sent) * 100 : 0;
+
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+            <div className="w-full flex items-end justify-center h-8">
+              <div
+                className="w-full max-w-[24px] rounded-t-sm relative overflow-hidden bg-slate-200"
+                style={{ height: `${height}%` }}
+              >
+                {/* Reply portion */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 bg-teal-400"
+                  style={{ height: `${replyPct}%` }}
+                />
+              </div>
+            </div>
+            <span className="text-[8px] text-muted-foreground/60">
+              {labels[i]}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

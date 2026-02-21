@@ -18,6 +18,8 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  Copy,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,11 +43,15 @@ import {
   useResumeCampaign,
   useCancelCampaign,
   useDeleteCampaign,
+  useCloneCampaign,
 } from "../hooks/use-campaigns";
+import { useCampaignLinks } from "../hooks/use-campaign-links";
 import { CampaignStatusBadge } from "./CampaignStatusBadge";
 import { previewTemplate } from "../lib/tokens";
 import { StageBadge } from "@/features/contacts/components/StageBadge";
 import { ABComparisonCard } from "./ABComparisonCard";
+import { AutoReplyLogsCard } from "./AutoReplyLogsCard";
+import { LinkStatsCard } from "./LinkStatsCard";
 
 const RECIPIENT_STATUS_CONFIG: Record<string, { label: string; color: string }> =
   {
@@ -108,6 +114,9 @@ export function CampaignDetail({
 }) {
   const router = useRouter();
   const { data: campaign, isLoading } = useCampaign(campaignId);
+  const { data: campaignLinks } = useCampaignLinks(campaign?.id || null);
+  const totalClicks =
+    campaignLinks?.reduce((sum, l) => sum + l.clickCount, 0) || 0;
 
   const [recipientStatus, setRecipientStatus] = useState<string | undefined>(
     undefined,
@@ -125,6 +134,7 @@ export function CampaignDetail({
   const resume = useResumeCampaign();
   const cancel = useCancelCampaign();
   const deleteCampaign = useDeleteCampaign();
+  const cloneCampaign = useCloneCampaign();
 
   const basePath = workspaceId
     ? `/workspaces/${workspaceId}/campaigns`
@@ -158,6 +168,21 @@ export function CampaignDetail({
     campaign.sentCount > 0
       ? Math.round((campaign.failedCount / campaign.sentCount) * 100)
       : 0;
+  const hasClickStat = totalClicks > 0;
+  const hasAiRepliesStat = (campaign.autoReplyStats?._count || 0) > 0;
+  const statsGridClass =
+    hasClickStat && hasAiRepliesStat
+      ? "grid-cols-7"
+      : hasClickStat || hasAiRepliesStat
+        ? "grid-cols-6"
+        : "grid-cols-5";
+  const recipientGridClass = campaign.variantB
+    ? campaign.autoReply?.enabled
+      ? "grid-cols-[1fr_120px_120px_100px_80px_80px_140px]"
+      : "grid-cols-[1fr_120px_120px_100px_80px_140px]"
+    : campaign.autoReply?.enabled
+      ? "grid-cols-[1fr_120px_120px_100px_80px_140px]"
+      : "grid-cols-[1fr_120px_120px_100px_140px]";
 
   const canLaunch = ["draft", "scheduled"].includes(campaign.status);
   const canPause = campaign.status === "sending";
@@ -282,6 +307,34 @@ export function CampaignDetail({
             )}
 
             {canDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  cloneCampaign.mutate(
+                    { id: campaign.id },
+                    {
+                      onSuccess: (clone) => {
+                        toast.success("Campaign duplicated");
+                        router.push(
+                          basePath
+                            ? `${basePath}/${clone.id}`
+                            : `/index/campaigns/${clone.id}`,
+                        );
+                      },
+                      onError: (err) =>
+                        toast.error(err?.message || "Failed to duplicate"),
+                    },
+                  );
+                }}
+                disabled={cloneCampaign.isPending}
+              >
+                <Copy className="h-4 w-4 mr-1.5" />
+                Duplicate
+              </Button>
+            )}
+
+            {canDelete && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" variant="ghost" className="text-destructive">
@@ -314,7 +367,7 @@ export function CampaignDetail({
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Stats row */}
-        <div className="grid grid-cols-5 gap-3">
+        <div className={`grid gap-3 ${statsGridClass}`}>
           <StatCard
             label="Recipients"
             value={campaign.totalRecipients}
@@ -348,10 +401,61 @@ export function CampaignDetail({
             color="text-violet-500"
             percentage={replyRate}
           />
+          {hasClickStat && (
+            <div className="text-center rounded-lg border p-4">
+              <p className="text-2xl font-semibold">
+                {totalClicks.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground">Clicked</p>
+            </div>
+          )}
+          {hasAiRepliesStat && (
+            <div className="text-center rounded-lg border p-4">
+              <p className="text-2xl font-semibold text-violet-600">
+                {campaign.autoReplyStats._count.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground">AI Replies</p>
+            </div>
+          )}
         </div>
 
         {/* A/B Comparison */}
         {campaign.variantB && <ABComparisonCard campaign={campaign} />}
+
+        {/* Link tracking stats */}
+        <LinkStatsCard campaignId={campaign.id} />
+
+        {/* AI Auto-Reply logs */}
+        <AutoReplyLogsCard
+          autoReply={campaign.autoReply}
+          autoReplyStats={campaign.autoReplyStats}
+          recentAutoReplies={campaign.recentAutoReplies || []}
+        />
+
+        {campaign.autoReply?.enabled && (
+          <div className="rounded-lg border p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-4 w-4 text-violet-500" />
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                AI Auto-Responder
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium capitalize">
+                {campaign.autoReply.tone} tone
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Max {campaign.autoReply.maxReplies} AI repl
+                {campaign.autoReply.maxReplies === 1 ? "y" : "ies"} per contact
+              </p>
+              {campaign.autoReply.context && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
+                  {campaign.autoReply.context}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Campaign info */}
         <div className="grid grid-cols-2 gap-4">
@@ -417,6 +521,23 @@ export function CampaignDetail({
                   <span className="text-muted-foreground">Send Window</span>
                   <span className="font-medium">
                     {campaign.sendWindowStart} - {campaign.sendWindowEnd}
+                  </span>
+                </div>
+              )}
+
+              {campaign.unsubscribeLink && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Unsubscribe</span>
+                  <span className="font-medium text-emerald-600">Enabled</span>
+                </div>
+              )}
+              {campaignLinks && campaignLinks.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Tracked Links</span>
+                  <span className="font-medium">
+                    {campaignLinks.length} link
+                    {campaignLinks.length !== 1 ? "s" : ""} · {totalClicks} click
+                    {totalClicks !== 1 ? "s" : ""}
                   </span>
                 </div>
               )}
@@ -577,17 +698,16 @@ export function CampaignDetail({
           <div className="border rounded-lg overflow-hidden">
             {/* Header */}
             <div
-              className={`grid px-4 py-2 bg-muted/30 text-[11px] font-medium text-muted-foreground uppercase tracking-wider ${
-                campaign.variantB
-                  ? "grid-cols-[1fr_120px_120px_100px_80px_140px]"
-                  : "grid-cols-[1fr_120px_120px_100px_140px]"
-              }`}
+              className={`grid px-4 py-2 bg-muted/30 text-[11px] font-medium text-muted-foreground uppercase tracking-wider ${recipientGridClass}`}
             >
               <span>Contact</span>
               <span>Phone</span>
               <span>Stage</span>
               <span>Status</span>
               {campaign.variantB && <span>Variant</span>}
+              {campaign.autoReply?.enabled && (
+                <span className="text-right">AI Replies</span>
+              )}
               <span className="text-right">Timestamp</span>
             </div>
 
@@ -614,11 +734,7 @@ export function CampaignDetail({
               return (
                 <div
                   key={r.id}
-                  className={`grid px-4 py-2.5 border-t items-center ${
-                    campaign.variantB
-                      ? "grid-cols-[1fr_120px_120px_100px_80px_140px]"
-                      : "grid-cols-[1fr_120px_120px_100px_140px]"
-                  }`}
+                  className={`grid px-4 py-2.5 border-t items-center ${recipientGridClass}`}
                 >
                   {/* Contact */}
                   <div className="flex items-center gap-2 min-w-0">
@@ -678,6 +794,18 @@ export function CampaignDetail({
                         >
                           {r.variant}
                         </span>
+                      )}
+                    </div>
+                  )}
+                  {campaign.autoReply?.enabled && (
+                    <div className="text-right">
+                      {r.aiRepliesSent > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-xs">
+                          <Sparkles className="h-2.5 w-2.5 text-violet-500" />
+                          <span className="font-medium">{r.aiRepliesSent}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">—</span>
                       )}
                     </div>
                   )}

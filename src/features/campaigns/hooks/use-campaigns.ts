@@ -205,3 +205,22 @@ export const useCancelCampaign = () => {
     }),
   );
 };
+
+export const useCloneCampaign = () => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return useMutation(
+    trpc.campaigns.cloneCampaign.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.campaigns.getCampaigns.queryKey(),
+        });
+      },
+    }),
+  );
+};
+
+export const useCrossLocationStats = () => {
+  const trpc = useTRPC();
+  return useQuery(trpc.campaigns.getCrossLocationStats.queryOptions());
+};
