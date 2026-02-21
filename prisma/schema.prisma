@@ -606,8 +606,8 @@ model ChatContact {
   campaignRecipients CampaignRecipient[]
 
   @@index([workspaceId])
+  @@unique([workspaceId, phone])
   @@index([workspaceId, email])
-  @@index([workspaceId, phone])
   @@index([workspaceId, stage])
   @@index([assignedToId])
   @@map("chat_contact")
@@ -724,7 +724,6 @@ model CampaignLink {
   createdAt   DateTime @default(now())
 
   @@index([campaignId])
-  @@index([shortCode])
   @@map("campaign_link")
 }
 
