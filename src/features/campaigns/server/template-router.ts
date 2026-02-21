@@ -4,8 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
 import { LIBRARY_TEMPLATES, TEMPLATE_CATEGORIES } from "./library-templates";
 
-const VALID_CATEGORIES = TEMPLATE_CATEGORIES.map((c) => c.value);
-
 export const templateRouter = createTRPCRouter({
   // ─── LIST ─────────────────────────────────────────────
   getTemplates: protectedProcedure
@@ -97,7 +95,9 @@ export const templateRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().trim().min(1).max(100),
-        category: z.string().default("custom"),
+        category: z
+          .enum(TEMPLATE_CATEGORIES.map((c) => c.value) as [string, ...string[]])
+          .default("custom"),
         channel: z.string().default("sms"),
         subject: z.string().trim().max(200).optional(),
         body: z.string().trim().min(1).max(1600),
@@ -123,7 +123,9 @@ export const templateRouter = createTRPCRouter({
       z.object({
         id: z.string(),
         name: z.string().trim().min(1).max(100).optional(),
-        category: z.string().optional(),
+        category: z
+          .enum(TEMPLATE_CATEGORIES.map((c) => c.value) as [string, ...string[]])
+          .optional(),
         channel: z.string().optional(),
         subject: z.string().trim().max(200).nullable().optional(),
         body: z.string().trim().min(1).max(1600).optional(),

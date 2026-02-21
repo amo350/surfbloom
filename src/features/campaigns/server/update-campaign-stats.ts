@@ -6,6 +6,8 @@ export async function updateCampaignStats(campaignId: string) {
     select: { variantB: true },
   });
 
+  if (!campaign) return;
+
   // Overall stats
   const stats = await prisma.campaignRecipient.groupBy({
     by: ["status"],

@@ -290,12 +290,7 @@ export const campaignsRouter = createTRPCRouter({
       // If this is a recurring campaign, fetch its child executions
       const childCampaigns = campaign.recurringType
         ? await prisma.campaign.findMany({
-            where: {
-              name: { startsWith: campaign.name + " — " },
-              workspaceId: campaign.workspaceId,
-              createdById: campaign.createdById,
-              recurringType: null,
-            },
+            where: { parentCampaignId: campaign.id },
             orderBy: { createdAt: "desc" },
             take: 10,
             select: {
@@ -338,7 +333,19 @@ export const campaignsRouter = createTRPCRouter({
         audienceInactiveDays: z.number().int().min(1).optional(),
         frequencyCapDays: z.number().int().min(1).optional(),
         scheduledAt: z.string().datetime().optional(),
-      }),
+      })
+      .refine(
+        (data) => {
+          if (!data.recurringType || data.recurringDay === undefined)
+            return true;
+          if (data.recurringType === "weekly")
+            return data.recurringDay >= 0 && data.recurringDay <= 6;
+          if (data.recurringType === "monthly")
+            return data.recurringDay >= 1 && data.recurringDay <= 28;
+          return true;
+        },
+        { message: "Invalid recurringDay for the selected frequency" },
+      ),
     )
     .mutation(async ({ ctx, input }) => {
       // Verify membership
@@ -421,7 +428,19 @@ export const campaignsRouter = createTRPCRouter({
         audienceInactiveDays: z.number().int().min(1).optional(),
         frequencyCapDays: z.number().int().min(1).optional(),
         scheduledAt: z.string().datetime().optional(),
-      }),
+      })
+      .refine(
+        (data) => {
+          if (!data.recurringType || data.recurringDay === undefined)
+            return true;
+          if (data.recurringType === "weekly")
+            return data.recurringDay >= 0 && data.recurringDay <= 6;
+          if (data.recurringType === "monthly")
+            return data.recurringDay >= 1 && data.recurringDay <= 28;
+          return true;
+        },
+        { message: "Invalid recurringDay for the selected frequency" },
+      ),
     )
     .mutation(async ({ ctx, input }) => {
       const workspaceIds = [...new Set(input.workspaceIds)];
