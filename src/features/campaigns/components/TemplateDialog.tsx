@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { AIDraftDialog } from "./AIDraftDialog";
 import { TEMPLATE_CATEGORIES } from "../server/library-templates";
 import { TOKENS, previewTemplate } from "../lib/tokens";
 import { useCreateTemplate, useUpdateTemplate } from "../hooks/use-templates";
@@ -173,9 +174,15 @@ export function TemplateDialog({
 
           {/* Body */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              Message Body
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground">
+                Message Body
+              </label>
+              <AIDraftDialog
+                onAccept={(msg) => setBody(msg)}
+                currentMessage={body}
+              />
+            </div>
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}

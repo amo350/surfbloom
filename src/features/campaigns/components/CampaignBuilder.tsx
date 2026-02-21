@@ -44,6 +44,7 @@ import {
 import { previewTemplate, TOKENS } from "../lib/tokens";
 import { SaveSegmentDialog } from "./SaveSegmentDialog";
 import { SegmentPicker } from "./SegmentPicker";
+import { AIDraftDialog } from "./AIDraftDialog";
 import { TemplatePicker } from "./TemplatePicker";
 
 type Step = 1 | 2 | 3 | 4;
@@ -70,6 +71,17 @@ const AUDIENCE_TYPES = [
     description: "Contacts not messaged in X days",
   },
 ];
+
+function FlowStep({ num, text }: { num: number; text: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="shrink-0 h-4 w-4 rounded-full bg-violet-100 text-violet-600 text-[10px] font-bold flex items-center justify-center mt-0.5">
+        {num}
+      </span>
+      <p className="text-[11px] text-muted-foreground">{text}</p>
+    </div>
+  );
+}
 
 export function CampaignBuilder({
   workspaceId: workspaceIdProp,
@@ -133,6 +145,12 @@ export function CampaignBuilder({
   const [enableSendWindow, setEnableSendWindow] = useState(false);
   const [sendWindowStart, setSendWindowStart] = useState("09:00");
   const [sendWindowEnd, setSendWindowEnd] = useState("19:00");
+  const [unsubscribeLink, setUnsubscribeLink] = useState(false);
+  // AI Auto-Responder
+  const [enableAutoReply, setEnableAutoReply] = useState(false);
+  const [autoReplyTone, setAutoReplyTone] = useState("friendly");
+  const [autoReplyContext, setAutoReplyContext] = useState("");
+  const [autoReplyMaxReplies, setAutoReplyMaxReplies] = useState(1);
 
   // Data
   const { data: stages } = useStages();
@@ -217,6 +235,11 @@ export function CampaignBuilder({
           : undefined,
       sendWindowStart: enableSendWindow ? sendWindowStart : undefined,
       sendWindowEnd: enableSendWindow ? sendWindowEnd : undefined,
+      unsubscribeLink,
+      autoReplyEnabled: enableAutoReply,
+      autoReplyTone: enableAutoReply ? autoReplyTone : undefined,
+      autoReplyContext: enableAutoReply ? autoReplyContext.trim() : undefined,
+      autoReplyMaxReplies: enableAutoReply ? autoReplyMaxReplies : undefined,
       scheduledAt,
     };
 
@@ -583,6 +606,12 @@ export function CampaignBuilder({
                   Message{enableAB ? " — Variant A" : ""}
                 </label>
                 <div className="flex items-center gap-2">
+                  <AIDraftDialog
+                    onAccept={(msg) => setMessageTemplate(msg)}
+                    businessName={workspaceDetail?.name}
+                    businessType={workspaceDetail?.primaryCategory || undefined}
+                    currentMessage={messageTemplate}
+                  />
                   <TemplatePicker
                     selectedId={templateId}
                     onSelect={(template) => {
@@ -674,8 +703,16 @@ export function CampaignBuilder({
               {/* Variant B */}
               {enableAB && (
                 <div className="space-y-4 border rounded-lg p-4 bg-muted/5">
-                  <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
                     <label className="text-sm font-medium">Variant B</label>
+                    <AIDraftDialog
+                      onAccept={(msg) => setVariantB(msg)}
+                      businessName={workspaceDetail?.name}
+                      businessType={workspaceDetail?.primaryCategory || undefined}
+                      currentMessage={variantB}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
                     <Textarea
                       value={variantB}
                       onChange={(e) => setVariantB(e.target.value)}
@@ -868,6 +905,23 @@ export function CampaignBuilder({
                         {new Date(
                           recurringEndAt + "T00:00:00",
                         ).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {enableAutoReply && (
+                  <div className="rounded-lg border p-4">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      AI Auto-Responder
+                    </p>
+                    <p className="text-sm font-medium mt-1 capitalize">
+                      {autoReplyTone} tone · {autoReplyMaxReplies} max repl
+                      {autoReplyMaxReplies === 1 ? "y" : "ies"}
+                    </p>
+                    {autoReplyContext && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {autoReplyContext}
                       </p>
                     )}
                   </div>
@@ -1255,6 +1309,198 @@ export function CampaignBuilder({
                         </p>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Unsubscribe link toggle */}
+                <div className="border-t pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setUnsubscribeLink(!unsubscribeLink)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors w-full text-left ${
+                      unsubscribeLink
+                        ? "border-teal-300 bg-teal-50/50"
+                        : "border-border hover:bg-muted/30"
+                    }`}
+                  >
+                    <div
+                      className={`h-4 w-8 rounded-full transition-colors relative ${
+                        unsubscribeLink ? "bg-teal-500" : "bg-muted-foreground/20"
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${
+                          unsubscribeLink ? "translate-x-4" : "translate-x-0.5"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Unsubscribe Link</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Append an opt-out link to comply with messaging
+                        regulations
+                      </p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* AI Auto-Responder toggle */}
+                <div className="border-t pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setEnableAutoReply(!enableAutoReply)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors w-full text-left ${
+                      enableAutoReply
+                        ? "border-violet-300 bg-violet-50/50"
+                        : "border-border hover:bg-muted/30"
+                    }`}
+                  >
+                    <div
+                      className={`h-4 w-8 rounded-full transition-colors relative ${
+                        enableAutoReply
+                          ? "bg-violet-500"
+                          : "bg-muted-foreground/20"
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${
+                          enableAutoReply ? "translate-x-4" : "translate-x-0.5"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">AI Auto-Responder</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Automatically reply to campaign responses with AI
+                      </p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Auto-responder config */}
+                {enableAutoReply && (
+                  <div className="space-y-4 border border-violet-200 rounded-lg p-4 bg-violet-50/20">
+                    {/* Tone */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Tone
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          {
+                            value: "friendly",
+                            label: "Friendly",
+                            desc: "Warm and casual",
+                          },
+                          {
+                            value: "professional",
+                            label: "Professional",
+                            desc: "Polished and clear",
+                          },
+                          {
+                            value: "casual",
+                            label: "Casual",
+                            desc: "Like a text from a friend",
+                          },
+                        ].map((t) => (
+                          <button
+                            key={t.value}
+                            type="button"
+                            onClick={() => setAutoReplyTone(t.value)}
+                            className={`px-3 py-2 rounded-lg border text-left transition-colors ${
+                              autoReplyTone === t.value
+                                ? "border-violet-300 bg-violet-50 text-violet-700"
+                                : "border-border text-muted-foreground hover:bg-muted/30"
+                            }`}
+                          >
+                            <p className="text-xs font-medium">{t.label}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {t.desc}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Business context */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Business Context{" "}
+                        <span className="text-muted-foreground/50">
+                          (optional)
+                        </span>
+                      </label>
+                      <Textarea
+                        value={autoReplyContext}
+                        onChange={(e) => setAutoReplyContext(e.target.value)}
+                        placeholder="e.g. We're a family dental practice. Push customers to book an appointment at 555-123-4567. Our hours are Mon-Fri 9am-5pm. We offer free teeth whitening for new patients."
+                        rows={3}
+                        className="resize-none text-sm"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        {autoReplyContext.length}/500 · Give the AI context
+                        about your business so it can respond accurately
+                      </p>
+                    </div>
+
+                    {/* Max replies */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Max AI Replies Per Contact
+                      </label>
+                      <div className="flex items-center gap-2">
+                        {[1, 2, 3, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setAutoReplyMaxReplies(n)}
+                            className={`h-9 w-12 rounded-lg border text-sm font-medium transition-colors ${
+                              autoReplyMaxReplies === n
+                                ? "border-violet-300 bg-violet-50 text-violet-700"
+                                : "border-border text-muted-foreground hover:bg-muted/30"
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        After {autoReplyMaxReplies} AI repl
+                        {autoReplyMaxReplies === 1 ? "y" : "ies"}, the
+                        conversation routes to your inbox for human follow-up
+                      </p>
+                    </div>
+
+                    {/* How it works */}
+                    <div className="rounded-lg border border-violet-200 bg-white px-3 py-2.5 space-y-2">
+                      <p className="text-[10px] font-semibold text-violet-600 uppercase tracking-wider">
+                        How it works
+                      </p>
+                      <div className="space-y-1.5">
+                        <FlowStep
+                          num={1}
+                          text="Customer receives your campaign message"
+                        />
+                        <FlowStep
+                          num={2}
+                          text='Customer replies (e.g. "Interested!" or "What time?")'
+                        />
+                        <FlowStep
+                          num={3}
+                          text="AI reads their reply + your business context"
+                        />
+                        <FlowStep
+                          num={4}
+                          text="AI sends a contextual follow-up within seconds"
+                        />
+                        <FlowStep
+                          num={5}
+                          text={`After ${autoReplyMaxReplies} AI repl${
+                            autoReplyMaxReplies === 1 ? "y" : "ies"
+                          }, conversation appears in your inbox`}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

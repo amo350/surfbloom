@@ -1,5 +1,7 @@
 // src/app/api/twilio/inbound/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { handleCampaignAutoReply } from "@/features/campaigns/server/handle-auto-reply";
+import { handleKeywordMatch } from "@/features/campaigns/server/handle-keyword";
 import { updateCampaignStats } from "@/features/campaigns/server/update-campaign-stats";
 import { logActivity } from "@/features/contacts/server/log-activity";
 import { prisma } from "@/lib/prisma";
@@ -34,8 +36,14 @@ export async function POST(req: NextRequest) {
         workspaceId: true,
         workspace: {
           select: {
+            id: true,
+            name: true,
             domains: {
               select: { id: true },
+              take: 1,
+            },
+            members: {
+              select: { userId: true },
               take: 1,
             },
           },
@@ -52,6 +60,25 @@ export async function POST(req: NextRequest) {
 
     const workspaceId = phoneRecord.workspaceId;
     const workspaceDomainId = phoneRecord.workspace.domains[0]?.id ?? null;
+    const workspace = phoneRecord.workspace;
+
+    // ─── Text-to-join keyword check ─────────────────────
+    // Must run before normal message processing — single-word keywords
+    // shouldn't create chat rooms or trigger campaign reply logic
+    const workspaceUserId = workspace.members?.[0]?.userId || "system";
+
+    const wasKeyword = await handleKeywordMatch(
+      workspace.id,
+      from,
+      body || "",
+      workspaceUserId,
+    );
+
+    if (wasKeyword) {
+      return NextResponse.json({ handled: true });
+    }
+
+    // ─── Normal message processing continues below ──────
 
     const roomId = await prisma.$transaction(async (tx) => {
       const contact = await tx.chatContact.upsert({
@@ -182,19 +209,29 @@ export async function POST(req: NextRequest) {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-        const recentRecipient = await prisma.campaignRecipient.findFirst({
+        const campaignRecipient = await prisma.campaignRecipient.findFirst({
           where: {
             contactId,
             status: { in: ["sent", "delivered"] },
             sentAt: { gte: sevenDaysAgo },
           },
           orderBy: { sentAt: "desc" },
-          select: { id: true, campaignId: true },
+          select: {
+            id: true,
+            campaignId: true,
+            contactId: true,
+            contact: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
         });
 
-        if (recentRecipient) {
+        if (campaignRecipient) {
           await prisma.campaignRecipient.update({
-            where: { id: recentRecipient.id },
+            where: { id: campaignRecipient.id },
             data: {
               status: "replied",
               repliedAt: new Date(),
@@ -204,7 +241,7 @@ export async function POST(req: NextRequest) {
           // Log reply on contact timeline
           try {
             const campaignDetail = await prisma.campaign.findUnique({
-              where: { id: recentRecipient.campaignId },
+              where: { id: campaignRecipient.campaignId },
               select: { name: true, workspaceId: true },
             });
 
@@ -222,7 +259,35 @@ export async function POST(req: NextRequest) {
             // best-effort
           }
 
-          await updateCampaignStats(recentRecipient.campaignId);
+          await updateCampaignStats(campaignRecipient.campaignId);
+
+          // ─── AI Auto-Reply ──────────────────────────────────
+          const contactName = [
+            campaignRecipient.contact.firstName,
+            campaignRecipient.contact.lastName,
+          ]
+            .filter(Boolean)
+            .join(" ");
+
+          const aiHandled = await handleCampaignAutoReply(
+            campaignRecipient.campaignId,
+            campaignRecipient.id,
+            campaignRecipient.contactId,
+            from,
+            contactName,
+            body || "",
+            workspaceUserId,
+            workspace.name,
+          );
+
+          // If AI handled it and max not reached, skip creating a chat room
+          // notification — the AI is managing this conversation
+          if (aiHandled) {
+            return NextResponse.json({ handled: true, aiReplied: true });
+          }
+
+          // If AI didn't handle (disabled, max reached, error),
+          // fall through to normal chat room processing
         }
       }
     } catch {

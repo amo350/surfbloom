@@ -158,6 +158,7 @@ model Workspace {
   categories   Category[]
   activities   Activity[]
   campaigns    Campaign[]
+  textToJoinKeywords TextToJoinKeyword[]
 
   twilioPhoneNumber TwilioPhoneNumber?
   smsMessages       SmsMessage[]
@@ -669,6 +670,10 @@ model Campaign {
   parentCampaignId    String?
   parentCampaign      Campaign?  @relation("RecurringChildren", fields: [parentCampaignId], references: [id], onDelete: SetNull)
   childCampaigns      Campaign[] @relation("RecurringChildren")
+  autoReply           CampaignAutoReply?
+  autoReplyLogs       CampaignAutoReplyLog[]
+  links               CampaignLink[]
+  unsubscribeLink     Boolean    @default(false)
 
   // V2: Business hours
   sendWindowStart     String?
@@ -687,6 +692,75 @@ model Campaign {
   @@index([parentCampaignId])
   @@index([status])
   @@map("campaign")
+}
+
+model CampaignAutoReply {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  enabled     Boolean  @default(false)
+  tone        String   @default("friendly")
+  context     String?  @db.Text
+  maxReplies  Int      @default(1)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([campaignId])
+  @@map("campaign_auto_reply")
+}
+
+model CampaignLink {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  originalUrl String
+  shortCode   String   @unique
+  clickCount  Int      @default(0)
+
+  clicks      CampaignLinkClick[]
+  createdAt   DateTime @default(now())
+
+  @@index([campaignId])
+  @@index([shortCode])
+  @@map("campaign_link")
+}
+
+model CampaignLinkClick {
+  id          String             @id @default(cuid())
+  linkId      String
+  link        CampaignLink       @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  recipientId String?
+  recipient   CampaignRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([linkId])
+  @@index([recipientId])
+  @@map("campaign_link_click")
+}
+
+model CampaignAutoReplyLog {
+  id             String            @id @default(cuid())
+  recipientId    String
+  recipient      CampaignRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  campaignId     String
+  campaign       Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId      String
+
+  inboundMessage String            @db.Text
+  aiResponse     String            @db.Text
+  tone           String
+
+  createdAt      DateTime          @default(now())
+
+  @@index([recipientId])
+  @@index([campaignId])
+  @@map("campaign_auto_reply_log")
 }
 
 model CampaignGroup {
@@ -759,6 +833,9 @@ model CampaignRecipient {
   errorMessage String?
   smsMessageId String?
   variant      String?
+  aiRepliesSent Int       @default(0)
+  linkClicks    CampaignLinkClick[]
+  autoReplyLogs CampaignAutoReplyLog[]
 
   createdAt    DateTime  @default(now())
 
@@ -766,6 +843,28 @@ model CampaignRecipient {
   @@index([campaignId, status])
   @@index([contactId])
   @@map("campaign_recipient")
+}
+
+model TextToJoinKeyword {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  keyword      String
+  autoReply    String    @db.Text
+  stage        String    @default("new_lead")
+  categoryId   String?
+  source       String    @default("text_to_join")
+
+  contactCount Int       @default(0)
+  active       Boolean   @default(true)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([workspaceId, keyword])
+  @@index([workspaceId])
+  @@map("text_to_join_keyword")
 }
 
 model Category {

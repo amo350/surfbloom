@@ -1,4 +1,7 @@
 import { NonRetriableError } from "inngest";
+import { replaceUrls } from "@/features/campaigns/lib/link-utils";
+import { generateUnsubscribeToken } from "@/features/campaigns/lib/unsubscribe";
+import { createCampaignLinks } from "@/features/campaigns/server/create-campaign-links";
 import { updateCampaignStats } from "@/features/campaigns/server/update-campaign-stats";
 import { prisma } from "@/lib/prisma";
 import { inngest } from "./client";
@@ -117,6 +120,7 @@ export const sendCampaign = inngest.createFunction(
           frequencyCapDays: true,
           sendWindowStart: true,
           sendWindowEnd: true,
+          unsubscribeLink: true,
           workspace: {
             select: {
               id: true,
@@ -156,6 +160,7 @@ export const sendCampaign = inngest.createFunction(
         frequencyCapDays: c.frequencyCapDays,
         sendWindowStart: c.sendWindowStart,
         sendWindowEnd: c.sendWindowEnd,
+        unsubscribeLink: c.unsubscribeLink,
         workspaceName: c.workspace.name,
         twilioPhone: c.workspace.twilioPhoneNumber.phoneNumber,
         workspaceUserId: c.workspace.userId,
@@ -307,6 +312,22 @@ export const sendCampaign = inngest.createFunction(
       return { campaignId, status: "completed", sent: 0 };
     }
 
+    // ─── Step 2.3: Create short links for URL tracking ──
+    const linkReplacements = await step.run("create-links", async () => {
+      const replacements = await createCampaignLinks(
+        campaign.id,
+        campaign.messageTemplate,
+        campaign.variantB,
+      );
+
+      // Convert Map to plain object for Inngest serialization
+      const obj: Record<string, string> = {};
+      for (const [key, val] of replacements) {
+        obj[key] = val;
+      }
+      return obj;
+    });
+
     // ─── Step 3: Send in batches ────────────────────────
     let totalSent = 0;
     let batchIndex = 0;
@@ -394,7 +415,7 @@ export const sendCampaign = inngest.createFunction(
                   ? campaign.variantB
                   : campaign.messageTemplate;
 
-              const message = resolveTemplate(
+              let message = resolveTemplate(
                 template,
                 recipient.contact,
                 {
@@ -402,6 +423,23 @@ export const sendCampaign = inngest.createFunction(
                   twilioPhone: campaign.twilioPhone,
                 },
               );
+
+              // Replace URLs with tracked short links
+              if (Object.keys(linkReplacements).length > 0) {
+                const replacementMap = new Map(Object.entries(linkReplacements));
+                message = replaceUrls(message, replacementMap);
+              }
+
+              // Append unsubscribe link if enabled
+              if (campaign.unsubscribeLink) {
+                const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+                const isLocal = /localhost|127\.0\.0\.1/i.test(appUrl);
+
+                if (!isLocal) {
+                  const unsubToken = generateUnsubscribeToken(recipient.contact.id);
+                  message += `\n\nReply STOP or visit ${appUrl}/u/${unsubToken} to unsubscribe`;
+                }
+              }
 
               const result = await sendSms({
                 userId: campaign.workspaceUserId,

@@ -7,17 +7,22 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronRight as ChevronRightSmall,
+  Copy,
   FileText,
+  Link2,
   Megaphone,
   MessageSquare,
+  MessageSquareText,
   Plus,
   Send,
+  Sparkles,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useCampaigns } from "../hooks/use-campaigns";
+import { useCampaigns, useCloneCampaign } from "../hooks/use-campaigns";
 import { CampaignStatusBadge } from "./CampaignStatusBadge";
 
 function formatDate(date: string | Date) {
@@ -41,6 +46,7 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
     page,
     pageSize: 20,
   });
+  const cloneCampaign = useCloneCampaign();
 
   const basePath = workspaceId
     ? `/workspaces/${workspaceId}`
@@ -90,6 +96,12 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
             <Link href={`${basePath}/campaigns/reporting`}>
               <BarChart3 className="h-4 w-4 mr-1.5" />
               Reporting
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${basePath}/campaigns/keywords`}>
+              <MessageSquareText className="h-4 w-4 mr-1.5" />
+              Keywords
             </Link>
           </Button>
           <Button size="sm" asChild>
@@ -158,81 +170,128 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
 
           return (
             <div key={item.id} className="border-t">
-              <Link
-                href={href}
-                className="grid grid-cols-[1fr_120px_100px_80px_80px_80px_80px_100px] px-4 py-3 hover:bg-muted/20 transition-colors items-center"
-              >
-                {/* Name + preview */}
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate flex items-center gap-1.5">
-                    {isGroup && (
-                      <Megaphone className="h-3.5 w-3.5 text-teal-600" />
+              <div className="relative">
+                <Link
+                  href={href}
+                  className={`grid grid-cols-[1fr_120px_100px_80px_80px_80px_80px_100px] px-4 py-3 hover:bg-muted/20 transition-colors items-center ${
+                    !isGroup ? "pr-14" : ""
+                  }`}
+                >
+                  {/* Name + preview */}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                      {isGroup && (
+                        <Megaphone className="h-3.5 w-3.5 text-teal-600" />
+                      )}
+                      {item.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {isGroup
+                        ? `${item.campaignCount} location campaign${item.campaignCount !== 1 ? "s" : ""}`
+                        : `${(item.messageTemplate ?? "").slice(0, 60)}${(item.messageTemplate ?? "").length > 60 ? "..." : ""}`}
+                    </p>
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <CampaignStatusBadge
+                      status={item.status}
+                      recurring={!!item.recurringType}
+                    />
+                    {!isGroup && (
+                      <div className="flex items-center gap-1 mt-1">
+                        {item.unsubscribeLink && (
+                          <span className="text-[9px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-1 py-0.5 rounded">
+                            Unsub
+                          </span>
+                        )}
+                        {item.autoReply?.enabled && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-violet-600 bg-violet-50 border border-violet-200 px-1 py-0.5 rounded">
+                            <Sparkles className="h-2 w-2" />
+                            AI
+                          </span>
+                        )}
+                        {(item._count?.links || 0) > 0 && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-blue-600 bg-blue-50 border border-blue-200 px-1 py-0.5 rounded">
+                            <Link2 className="h-2 w-2" />
+                            {item._count.links}
+                          </span>
+                        )}
+                      </div>
                     )}
-                    {item.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {isGroup
-                      ? `${item.campaignCount} location campaign${item.campaignCount !== 1 ? "s" : ""}`
-                      : `${(item.messageTemplate ?? "").slice(0, 60)}${(item.messageTemplate ?? "").length > 60 ? "..." : ""}`}
-                  </p>
-                </div>
+                  </div>
 
-                {/* Status */}
-                <div>
-                  <CampaignStatusBadge
-                    status={item.status}
-                    recurring={!!item.recurringType}
-                  />
-                </div>
-
-                {/* Location */}
-                <span className="text-xs text-muted-foreground truncate">
-                  {isGroup ? "Multiple" : item.workspace?.name || "—"}
-                </span>
-
-                {/* Recipients */}
-                <div className="flex items-center justify-center gap-1">
-                  <Users className="h-3 w-3 text-muted-foreground/50" />
-                  <span className="text-xs">{item.totalRecipients}</span>
-                </div>
-
-                {/* Sent */}
-                <div className="flex items-center justify-center gap-1">
-                  <Send className="h-3 w-3 text-muted-foreground/50" />
-                  <span className="text-xs">{item.sentCount}</span>
-                </div>
-
-                {/* Delivered */}
-                <div className="flex items-center justify-center gap-1">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500/50" />
-                  <span className="text-xs">
-                    {item.deliveredCount}
-                    {deliveryRate > 0 && (
-                      <span className="text-muted-foreground/50 ml-0.5">
-                        {deliveryRate}%
-                      </span>
-                    )}
+                  {/* Location */}
+                  <span className="text-xs text-muted-foreground truncate">
+                    {isGroup ? "Multiple" : item.workspace?.name || "—"}
                   </span>
-                </div>
 
-                {/* Replied */}
-                <div className="flex items-center justify-center gap-1">
-                  <MessageSquare className="h-3 w-3 text-blue-500/50" />
-                  <span className="text-xs">
-                    {item.repliedCount}
-                    {replyRate > 0 && (
-                      <span className="text-muted-foreground/50 ml-0.5">
-                        {replyRate}%
-                      </span>
-                    )}
+                  {/* Recipients */}
+                  <div className="flex items-center justify-center gap-1">
+                    <Users className="h-3 w-3 text-muted-foreground/50" />
+                    <span className="text-xs">{item.totalRecipients}</span>
+                  </div>
+
+                  {/* Sent */}
+                  <div className="flex items-center justify-center gap-1">
+                    <Send className="h-3 w-3 text-muted-foreground/50" />
+                    <span className="text-xs">{item.sentCount}</span>
+                  </div>
+
+                  {/* Delivered */}
+                  <div className="flex items-center justify-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500/50" />
+                    <span className="text-xs">
+                      {item.deliveredCount}
+                      {deliveryRate > 0 && (
+                        <span className="text-muted-foreground/50 ml-0.5">
+                          {deliveryRate}%
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Replied */}
+                  <div className="flex items-center justify-center gap-1">
+                    <MessageSquare className="h-3 w-3 text-blue-500/50" />
+                    <span className="text-xs">
+                      {item.repliedCount}
+                      {replyRate > 0 && (
+                        <span className="text-muted-foreground/50 ml-0.5">
+                          {replyRate}%
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Created */}
+                  <span className="text-xs text-muted-foreground text-right">
+                    {formatDate(item.createdAt)}
                   </span>
-                </div>
-
-                {/* Created */}
-                <span className="text-xs text-muted-foreground text-right">
-                  {formatDate(item.createdAt)}
-                </span>
-              </Link>
+                </Link>
+                {!isGroup && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        cloneCampaign.mutate(
+                          { id: item.id },
+                          {
+                            onSuccess: () => toast.success("Campaign duplicated"),
+                            onError: (err) =>
+                              toast.error(err?.message || "Failed"),
+                          },
+                        );
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
               {isGroup && item.campaigns?.length > 0 && (
                 <div className="px-4 pb-3">
                   <button

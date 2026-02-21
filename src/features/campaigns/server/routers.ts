@@ -129,6 +129,8 @@ export const campaignsRouter = createTRPCRouter({
             include: {
               workspace: { select: { id: true, name: true } },
               createdBy: { select: { id: true, name: true } },
+              autoReply: { select: { enabled: true } },
+              _count: { select: { links: true } },
             },
           }),
           prisma.campaign.count({ where }),
@@ -169,6 +171,8 @@ export const campaignsRouter = createTRPCRouter({
           include: {
             workspace: { select: { id: true, name: true } },
             createdBy: { select: { id: true, name: true } },
+            autoReply: { select: { enabled: true } },
+            _count: { select: { links: true } },
           },
         }),
         prisma.campaignGroup.findMany({
@@ -182,6 +186,8 @@ export const campaignsRouter = createTRPCRouter({
               include: {
                 workspace: { select: { id: true, name: true } },
                 createdBy: { select: { id: true, name: true } },
+                autoReply: { select: { enabled: true } },
+                _count: { select: { links: true } },
               },
               orderBy: { createdAt: "desc" },
             },
@@ -269,6 +275,14 @@ export const campaignsRouter = createTRPCRouter({
               twilioPhoneNumber: { select: { phoneNumber: true } },
             },
           },
+          autoReply: {
+            select: {
+              enabled: true,
+              tone: true,
+              context: true,
+              maxReplies: true,
+            },
+          },
           createdBy: { select: { id: true, name: true } },
           _count: {
             select: { recipients: true },
@@ -307,45 +321,101 @@ export const campaignsRouter = createTRPCRouter({
           })
         : [];
 
-      return { ...campaign, childCampaigns };
+      // Fetch auto-reply log count and recent logs
+      const autoReplyStats = campaign.autoReply?.enabled
+        ? await prisma.campaignAutoReplyLog.aggregate({
+            where: { campaignId: campaign.id },
+            _count: true,
+          })
+        : null;
+
+      const recentAutoReplies = campaign.autoReply?.enabled
+        ? await prisma.campaignAutoReplyLog.findMany({
+            where: { campaignId: campaign.id },
+            orderBy: { createdAt: "desc" },
+            take: 5,
+            select: {
+              id: true,
+              inboundMessage: true,
+              aiResponse: true,
+              tone: true,
+              createdAt: true,
+              recipient: {
+                select: {
+                  contact: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                      phone: true,
+                    },
+                  },
+                },
+              },
+            },
+          })
+        : [];
+
+      return {
+        ...campaign,
+        childCampaigns,
+        autoReplyStats,
+        recentAutoReplies,
+      };
     }),
 
   // ─── CREATE ───────────────────────────────────────────
   createCampaign: protectedProcedure
     .input(
-      z.object({
-        workspaceId: z.string(),
-        name: z.string().trim().min(1).max(100),
-        messageTemplate: z.string().trim().min(1).max(1600),
-        templateId: z.string().optional(),
-        segmentId: z.string().optional(),
-        variantB: z.string().max(1600).optional(),
-        variantSplit: z.number().int().min(10).max(90).optional(),
-        recurringType: z.enum(["weekly", "monthly"]).optional(),
-        recurringDay: z.number().int().min(0).max(28).optional(),
-        recurringTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-        recurringEndAt: z.date().optional(),
-        sendWindowStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-        sendWindowEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-        audienceType: z.enum(AUDIENCE_TYPES).default("all"),
-        audienceStage: z.string().optional(),
-        audienceCategoryId: z.string().optional(),
-        audienceInactiveDays: z.number().int().min(1).optional(),
-        frequencyCapDays: z.number().int().min(1).optional(),
-        scheduledAt: z.string().datetime().optional(),
-      })
-      .refine(
-        (data) => {
-          if (!data.recurringType || data.recurringDay === undefined)
+      z
+        .object({
+          workspaceId: z.string(),
+          name: z.string().trim().min(1).max(100),
+          messageTemplate: z.string().trim().min(1).max(1600),
+          templateId: z.string().optional(),
+          segmentId: z.string().optional(),
+          variantB: z.string().max(1600).optional(),
+          variantSplit: z.number().int().min(10).max(90).optional(),
+          recurringType: z.enum(["weekly", "monthly"]).optional(),
+          recurringDay: z.number().int().min(0).max(28).optional(),
+          recurringTime: z
+            .string()
+            .regex(/^\d{2}:\d{2}$/)
+            .optional(),
+          recurringEndAt: z.date().optional(),
+          sendWindowStart: z
+            .string()
+            .regex(/^\d{2}:\d{2}$/)
+            .optional(),
+          sendWindowEnd: z
+            .string()
+            .regex(/^\d{2}:\d{2}$/)
+            .optional(),
+          audienceType: z.enum(AUDIENCE_TYPES).default("all"),
+          audienceStage: z.string().optional(),
+          audienceCategoryId: z.string().optional(),
+          audienceInactiveDays: z.number().int().min(1).optional(),
+          frequencyCapDays: z.number().int().min(1).optional(),
+          unsubscribeLink: z.boolean().default(false),
+          autoReplyEnabled: z.boolean().default(false),
+          autoReplyTone: z
+            .enum(["friendly", "professional", "casual"])
+            .optional(),
+          autoReplyContext: z.string().max(500).optional(),
+          autoReplyMaxReplies: z.number().int().min(1).max(10).optional(),
+          scheduledAt: z.string().datetime().optional(),
+        })
+        .refine(
+          (data) => {
+            if (!data.recurringType || data.recurringDay === undefined)
+              return true;
+            if (data.recurringType === "weekly")
+              return data.recurringDay >= 0 && data.recurringDay <= 6;
+            if (data.recurringType === "monthly")
+              return data.recurringDay >= 1 && data.recurringDay <= 28;
             return true;
-          if (data.recurringType === "weekly")
-            return data.recurringDay >= 0 && data.recurringDay <= 6;
-          if (data.recurringType === "monthly")
-            return data.recurringDay >= 1 && data.recurringDay <= 28;
-          return true;
-        },
-        { message: "Invalid recurringDay for the selected frequency" },
-      ),
+          },
+          { message: "Invalid recurringDay for the selected frequency" },
+        ),
     )
     .mutation(async ({ ctx, input }) => {
       // Verify membership
@@ -377,7 +447,7 @@ export const campaignsRouter = createTRPCRouter({
           ? "scheduled"
           : "draft";
 
-      return prisma.campaign.create({
+      const campaign = await prisma.campaign.create({
         data: {
           workspaceId: input.workspaceId,
           createdById: ctx.auth.user.id,
@@ -400,47 +470,79 @@ export const campaignsRouter = createTRPCRouter({
           audienceCategoryId: input.audienceCategoryId || null,
           audienceInactiveDays: input.audienceInactiveDays || null,
           frequencyCapDays: input.frequencyCapDays || null,
+          unsubscribeLink: input.unsubscribeLink,
           scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
           status,
         },
       });
+
+      if (input.autoReplyEnabled) {
+        await prisma.campaignAutoReply.create({
+          data: {
+            campaignId: campaign.id,
+            enabled: true,
+            tone: input.autoReplyTone || "friendly",
+            context: input.autoReplyContext || null,
+            maxReplies: input.autoReplyMaxReplies || 1,
+          },
+        });
+      }
+
+      return campaign;
     }),
 
   createCampaignGroup: protectedProcedure
     .input(
-      z.object({
-        name: z.string().trim().min(1).max(100),
-        workspaceIds: z.array(z.string()).min(2),
-        messageTemplate: z.string().trim().min(1).max(1600),
-        templateId: z.string().optional(),
-        segmentId: z.string().optional(),
-        variantB: z.string().max(1600).optional(),
-        variantSplit: z.number().int().min(10).max(90).optional(),
-        recurringType: z.enum(["weekly", "monthly"]).optional(),
-        recurringDay: z.number().int().min(0).max(28).optional(),
-        recurringTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-        recurringEndAt: z.date().optional(),
-        sendWindowStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-        sendWindowEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-        audienceType: z.enum(AUDIENCE_TYPES).default("all"),
-        audienceStage: z.string().optional(),
-        audienceCategoryId: z.string().optional(),
-        audienceInactiveDays: z.number().int().min(1).optional(),
-        frequencyCapDays: z.number().int().min(1).optional(),
-        scheduledAt: z.string().datetime().optional(),
-      })
-      .refine(
-        (data) => {
-          if (!data.recurringType || data.recurringDay === undefined)
+      z
+        .object({
+          name: z.string().trim().min(1).max(100),
+          workspaceIds: z.array(z.string()).min(2),
+          messageTemplate: z.string().trim().min(1).max(1600),
+          templateId: z.string().optional(),
+          segmentId: z.string().optional(),
+          variantB: z.string().max(1600).optional(),
+          variantSplit: z.number().int().min(10).max(90).optional(),
+          recurringType: z.enum(["weekly", "monthly"]).optional(),
+          recurringDay: z.number().int().min(0).max(28).optional(),
+          recurringTime: z
+            .string()
+            .regex(/^\d{2}:\d{2}$/)
+            .optional(),
+          recurringEndAt: z.date().optional(),
+          sendWindowStart: z
+            .string()
+            .regex(/^\d{2}:\d{2}$/)
+            .optional(),
+          sendWindowEnd: z
+            .string()
+            .regex(/^\d{2}:\d{2}$/)
+            .optional(),
+          audienceType: z.enum(AUDIENCE_TYPES).default("all"),
+          audienceStage: z.string().optional(),
+          audienceCategoryId: z.string().optional(),
+          audienceInactiveDays: z.number().int().min(1).optional(),
+          frequencyCapDays: z.number().int().min(1).optional(),
+          unsubscribeLink: z.boolean().default(false),
+          autoReplyEnabled: z.boolean().default(false),
+          autoReplyTone: z
+            .enum(["friendly", "professional", "casual"])
+            .optional(),
+          autoReplyContext: z.string().max(500).optional(),
+          autoReplyMaxReplies: z.number().int().min(1).max(10).optional(),
+          scheduledAt: z.string().datetime().optional(),
+        })
+        .refine(
+          (data) => {
+            if (!data.recurringType || data.recurringDay === undefined)
+              return true;
+            if (data.recurringType === "weekly")
+              return data.recurringDay >= 0 && data.recurringDay <= 6;
+            if (data.recurringType === "monthly")
+              return data.recurringDay >= 1 && data.recurringDay <= 28;
             return true;
-          if (data.recurringType === "weekly")
-            return data.recurringDay >= 0 && data.recurringDay <= 6;
-          if (data.recurringType === "monthly")
-            return data.recurringDay >= 1 && data.recurringDay <= 28;
-          return true;
-        },
-        { message: "Invalid recurringDay for the selected frequency" },
-      ),
+          },
+          { message: "Invalid recurringDay for the selected frequency" },
+        ),
     )
     .mutation(async ({ ctx, input }) => {
       const workspaceIds = [...new Set(input.workspaceIds)];
@@ -496,34 +598,57 @@ export const campaignsRouter = createTRPCRouter({
           },
         });
 
-        await tx.campaign.createMany({
-          data: workspaceIds.map((workspaceId) => ({
-            groupId: group.id,
-            workspaceId,
-            createdById: ctx.auth.user.id,
-            name: input.name,
-            messageTemplate: input.messageTemplate,
-            templateId: input.templateId || null,
-            segmentId: input.segmentId || null,
-            variantB: input.variantB || null,
-            variantSplit: input.variantB ? (input.variantSplit ?? 50) : 50,
-            recurringType: input.recurringType || null,
-            recurringDay: input.recurringType ? (input.recurringDay ?? 1) : null,
-            recurringTime: input.recurringType
-              ? (input.recurringTime ?? "09:00")
-              : null,
-            recurringEndAt: input.recurringEndAt || null,
-            sendWindowStart: input.sendWindowStart || null,
-            sendWindowEnd: input.sendWindowEnd || null,
-            audienceType: input.audienceType,
-            audienceStage: input.audienceStage || null,
-            audienceCategoryId: input.audienceCategoryId || null,
-            audienceInactiveDays: input.audienceInactiveDays || null,
-            frequencyCapDays: input.frequencyCapDays || null,
-            scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
-            status,
-          })),
-        });
+        const createdCampaigns = await Promise.all(
+          workspaceIds.map((workspaceId) =>
+            tx.campaign.create({
+              data: {
+                groupId: group.id,
+                workspaceId,
+                createdById: ctx.auth.user.id,
+                name: input.name,
+                messageTemplate: input.messageTemplate,
+                templateId: input.templateId || null,
+                segmentId: input.segmentId || null,
+                variantB: input.variantB || null,
+                variantSplit: input.variantB ? (input.variantSplit ?? 50) : 50,
+                recurringType: input.recurringType || null,
+                recurringDay: input.recurringType
+                  ? (input.recurringDay ?? 1)
+                  : null,
+                recurringTime: input.recurringType
+                  ? (input.recurringTime ?? "09:00")
+                  : null,
+                recurringEndAt: input.recurringEndAt || null,
+                sendWindowStart: input.sendWindowStart || null,
+                sendWindowEnd: input.sendWindowEnd || null,
+                audienceType: input.audienceType,
+                audienceStage: input.audienceStage || null,
+                audienceCategoryId: input.audienceCategoryId || null,
+                audienceInactiveDays: input.audienceInactiveDays || null,
+                frequencyCapDays: input.frequencyCapDays || null,
+                unsubscribeLink: input.unsubscribeLink,
+                scheduledAt: input.scheduledAt
+                  ? new Date(input.scheduledAt)
+                  : null,
+                status,
+              },
+              select: { id: true },
+            }),
+          ),
+        );
+
+        if (input.autoReplyEnabled) {
+          const campaignIds = createdCampaigns.map((c) => c.id);
+          await tx.campaignAutoReply.createMany({
+            data: campaignIds.map((cId) => ({
+              campaignId: cId,
+              enabled: true,
+              tone: input.autoReplyTone || "friendly",
+              context: input.autoReplyContext || null,
+              maxReplies: input.autoReplyMaxReplies || 1,
+            })),
+          });
+        }
 
         return group;
       });
@@ -882,6 +1007,7 @@ export const campaignsRouter = createTRPCRouter({
             smsMessageId: true,
             createdAt: true,
             variant: true,
+            aiRepliesSent: true,
             contact: {
               select: {
                 id: true,
@@ -1003,4 +1129,350 @@ export const campaignsRouter = createTRPCRouter({
 
       return { success: true };
     }),
+  cloneCampaign: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const campaign = await prisma.campaign.findUnique({
+        where: { id: input.id },
+        select: {
+          workspaceId: true,
+          createdById: true,
+          name: true,
+          channel: true,
+          messageTemplate: true,
+          subject: true,
+          audienceType: true,
+          audienceStage: true,
+          audienceCategoryId: true,
+          audienceInactiveDays: true,
+          frequencyCapDays: true,
+          templateId: true,
+          segmentId: true,
+          variantB: true,
+          variantSplit: true,
+          sendWindowStart: true,
+          sendWindowEnd: true,
+          unsubscribeLink: true,
+          autoReply: {
+            select: {
+              enabled: true,
+              tone: true,
+              context: true,
+              maxReplies: true,
+            },
+          },
+          workspace: { select: { members: { select: { userId: true } } } },
+        },
+      });
+
+      if (!campaign) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const isMember = campaign.workspace.members.some(
+        (m) => m.userId === ctx.auth.user.id,
+      );
+      if (!isMember) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const clone = await prisma.campaign.create({
+        data: {
+          workspaceId: campaign.workspaceId,
+          createdById: ctx.auth.user.id,
+          name: `${campaign.name} (copy)`,
+          channel: campaign.channel,
+          messageTemplate: campaign.messageTemplate,
+          subject: campaign.subject,
+          audienceType: campaign.audienceType,
+          audienceStage: campaign.audienceStage,
+          audienceCategoryId: campaign.audienceCategoryId,
+          audienceInactiveDays: campaign.audienceInactiveDays,
+          frequencyCapDays: campaign.frequencyCapDays,
+          templateId: campaign.templateId,
+          segmentId: campaign.segmentId,
+          variantB: campaign.variantB,
+          variantSplit: campaign.variantSplit,
+          sendWindowStart: campaign.sendWindowStart,
+          sendWindowEnd: campaign.sendWindowEnd,
+          unsubscribeLink: campaign.unsubscribeLink,
+          status: "draft",
+        },
+      });
+
+      if (campaign.autoReply?.enabled) {
+        await prisma.campaignAutoReply.create({
+          data: {
+            campaignId: clone.id,
+            enabled: true,
+            tone: campaign.autoReply.tone,
+            context: campaign.autoReply.context,
+            maxReplies: campaign.autoReply.maxReplies,
+          },
+        });
+      }
+
+      return clone;
+    }),
+  // ─── CROSS-LOCATION REPORTING ─────────────────────────
+  getCrossLocationStats: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.auth.user.id;
+
+    const workspaces = await prisma.member.findMany({
+      where: { userId },
+      select: { workspaceId: true },
+    });
+
+    const workspaceIds = workspaces.map((w) => w.workspaceId);
+
+    if (workspaceIds.length === 0) return { locations: [], totals: null };
+
+    // Single query — aggregate per workspace
+    const locationStats = await prisma.campaign.groupBy({
+      by: ["workspaceId"],
+      where: {
+        workspaceId: { in: workspaceIds },
+        status: { in: ["completed", "sending"] },
+      },
+      _count: true,
+      _sum: {
+        totalRecipients: true,
+        sentCount: true,
+        deliveredCount: true,
+        failedCount: true,
+        repliedCount: true,
+      },
+    });
+
+    // Workspace names + phone numbers
+    const workspaceDetails = await prisma.workspace.findMany({
+      where: { id: { in: workspaceIds } },
+      select: {
+        id: true,
+        name: true,
+        twilioPhoneNumber: { select: { phoneNumber: true } },
+      },
+    });
+
+    const detailMap = new Map(workspaceDetails.map((w) => [w.id, w]));
+
+    // Top template per location
+    const topTemplates = await prisma.campaign.groupBy({
+      by: ["workspaceId", "templateId"],
+      where: {
+        workspaceId: { in: workspaceIds },
+        status: { in: ["completed", "sending"] },
+        templateId: { not: null },
+      },
+      _sum: { repliedCount: true },
+      orderBy: { _sum: { repliedCount: "desc" } },
+    });
+
+    // Get unique template IDs
+    const templateIds = [
+      ...new Set(
+        topTemplates
+          .filter((t) => t.templateId)
+          .map((t) => t.templateId as string),
+      ),
+    ];
+
+    const templateNames =
+      templateIds.length > 0
+        ? await prisma.campaignTemplate.findMany({
+            where: { id: { in: templateIds } },
+            select: { id: true, name: true },
+          })
+        : [];
+
+    const templateNameMap = new Map(templateNames.map((t) => [t.id, t.name]));
+
+    // Best template per workspace (first occurrence per workspaceId)
+    const bestTemplatePerWorkspace = new Map<
+      string,
+      { id: string; name: string; replies: number }
+    >();
+
+    for (const t of topTemplates) {
+      if (!bestTemplatePerWorkspace.has(t.workspaceId) && t.templateId) {
+        bestTemplatePerWorkspace.set(t.workspaceId, {
+          id: t.templateId,
+          name: templateNameMap.get(t.templateId) || "Unknown",
+          replies: t._sum.repliedCount || 0,
+        });
+      }
+    }
+
+    // Weekly trend per workspace (last 4 weeks)
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+
+    const weeklyRaw = await prisma.campaign.findMany({
+      where: {
+        workspaceId: { in: workspaceIds },
+        status: { in: ["completed", "sending"] },
+        createdAt: { gte: fourWeeksAgo },
+      },
+      select: {
+        workspaceId: true,
+        createdAt: true,
+        sentCount: true,
+        repliedCount: true,
+      },
+    });
+
+    // Bucket into weeks
+    const weeklyByWorkspace = new Map<
+      string,
+      { week: number; sent: number; replied: number }[]
+    >();
+
+    for (const c of weeklyRaw) {
+      const weeksAgo = Math.floor(
+        (Date.now() - c.createdAt.getTime()) / (7 * 24 * 60 * 60 * 1000),
+      );
+      const weekIdx = Math.min(weeksAgo, 3); // 0=this week, 3=oldest
+
+      if (!weeklyByWorkspace.has(c.workspaceId)) {
+        weeklyByWorkspace.set(
+          c.workspaceId,
+          [0, 1, 2, 3].map((w) => ({ week: w, sent: 0, replied: 0 })),
+        );
+      }
+
+      const weeks = weeklyByWorkspace.get(c.workspaceId)!;
+      weeks[weekIdx].sent += c.sentCount;
+      weeks[weekIdx].replied += c.repliedCount;
+    }
+
+    // Auto-reply stats per workspace
+    const autoReplyStats = await prisma.campaignAutoReplyLog.groupBy({
+      by: ["campaignId"],
+      where: {
+        campaign: { workspaceId: { in: workspaceIds } },
+      },
+      _count: true,
+    });
+
+    const autoReplyByCampaign = new Map(
+      autoReplyStats.map((s) => [s.campaignId, s._count]),
+    );
+
+    // Map campaigns to workspaces for auto-reply rollup
+    const campaignWorkspaceMap = await prisma.campaign.findMany({
+      where: {
+        id: { in: autoReplyStats.map((s) => s.campaignId) },
+      },
+      select: { id: true, workspaceId: true },
+    });
+
+    const aiRepliesByWorkspace = new Map<string, number>();
+    for (const cw of campaignWorkspaceMap) {
+      const count = autoReplyByCampaign.get(cw.id) || 0;
+      aiRepliesByWorkspace.set(
+        cw.workspaceId,
+        (aiRepliesByWorkspace.get(cw.workspaceId) || 0) + count,
+      );
+    }
+
+    // Link clicks per workspace
+    const linkClickStats = await prisma.campaignLink.groupBy({
+      by: ["campaignId"],
+      where: {
+        campaign: { workspaceId: { in: workspaceIds } },
+      },
+      _sum: { clickCount: true },
+    });
+
+    const clickCampaignIds = linkClickStats.map((s) => s.campaignId);
+    const clickCampaignWorkspaces =
+      clickCampaignIds.length > 0
+        ? await prisma.campaign.findMany({
+            where: { id: { in: clickCampaignIds } },
+            select: { id: true, workspaceId: true },
+          })
+        : [];
+
+    const clicksByWorkspace = new Map<string, number>();
+    const cwMap = new Map(clickCampaignWorkspaces.map((c) => [c.id, c.workspaceId]));
+
+    for (const s of linkClickStats) {
+      const wsId = cwMap.get(s.campaignId);
+      if (wsId) {
+        clicksByWorkspace.set(
+          wsId,
+          (clicksByWorkspace.get(wsId) || 0) + (s._sum.clickCount || 0),
+        );
+      }
+    }
+
+    // Text-to-join signups per workspace
+    const keywordStats = await prisma.textToJoinKeyword.groupBy({
+      by: ["workspaceId"],
+      where: { workspaceId: { in: workspaceIds } },
+      _sum: { contactCount: true },
+    });
+
+    const signupsByWorkspace = new Map(
+      keywordStats.map((k) => [k.workspaceId, k._sum.contactCount || 0]),
+    );
+
+    // Build response
+    const locations = locationStats
+      .map((ls) => {
+        const detail = detailMap.get(ls.workspaceId);
+        const sent = ls._sum.sentCount || 0;
+        const delivered = ls._sum.deliveredCount || 0;
+        const replied = ls._sum.repliedCount || 0;
+        const failed = ls._sum.failedCount || 0;
+
+        return {
+          workspaceId: ls.workspaceId,
+          name: detail?.name || "Unknown",
+          phone: detail?.twilioPhoneNumber?.phoneNumber || null,
+          campaignCount: ls._count,
+          totalRecipients: ls._sum.totalRecipients || 0,
+          sent,
+          delivered,
+          failed,
+          replied,
+          deliveryRate: sent > 0 ? delivered / sent : 0,
+          replyRate: sent > 0 ? replied / sent : 0,
+          topTemplate: bestTemplatePerWorkspace.get(ls.workspaceId) || null,
+          weeklyTrend:
+            weeklyByWorkspace.get(ls.workspaceId) ||
+            [0, 1, 2, 3].map((w) => ({ week: w, sent: 0, replied: 0 })),
+          aiReplies: aiRepliesByWorkspace.get(ls.workspaceId) || 0,
+          linkClicks: clicksByWorkspace.get(ls.workspaceId) || 0,
+          keywordSignups: signupsByWorkspace.get(ls.workspaceId) || 0,
+        };
+      })
+      .sort((a, b) => b.replyRate - a.replyRate);
+
+    // Totals
+    const totals = locations.reduce(
+      (acc, l) => {
+        acc.campaigns += l.campaignCount;
+        acc.recipients += l.totalRecipients;
+        acc.sent += l.sent;
+        acc.delivered += l.delivered;
+        acc.failed += l.failed;
+        acc.replied += l.replied;
+        acc.aiReplies += l.aiReplies;
+        acc.linkClicks += l.linkClicks;
+        acc.keywordSignups += l.keywordSignups;
+        return acc;
+      },
+      {
+        locations: locations.length,
+        campaigns: 0,
+        recipients: 0,
+        sent: 0,
+        delivered: 0,
+        failed: 0,
+        replied: 0,
+        aiReplies: 0,
+        linkClicks: 0,
+        keywordSignups: 0,
+      },
+    );
+
+    return { locations, totals };
+  }),
 });
