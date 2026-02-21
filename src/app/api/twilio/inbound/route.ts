@@ -61,11 +61,75 @@ export async function POST(req: NextRequest) {
     const workspaceId = phoneRecord.workspaceId;
     const workspaceDomainId = phoneRecord.workspace.domains[0]?.id ?? null;
     const workspace = phoneRecord.workspace;
-
-    // ─── Text-to-join keyword check ─────────────────────
-    // Must run before normal message processing — single-word keywords
-    // shouldn't create chat rooms or trigger campaign reply logic
     const workspaceUserId = workspace.members?.[0]?.userId || "system";
+    const normalizedBody = (body || "").trim().toUpperCase();
+    const OPT_OUT = ["STOP", "UNSUBSCRIBE", "CANCEL", "QUIT", "END"];
+    const OPT_IN = ["START", "UNSTOP", "SUBSCRIBE", "YES"];
+
+    // ─── Opt-out / Opt-in detection (MUST run first) ────
+    const existingContact = await prisma.chatContact.findFirst({
+      where: {
+        workspaceId,
+        phone: from,
+      },
+      select: { id: true },
+    });
+
+    if (OPT_OUT.includes(normalizedBody)) {
+      if (existingContact?.id) {
+        await prisma.chatContact.update({
+          where: { id: existingContact.id },
+          data: { optedOut: true },
+        });
+
+        await prisma.campaignRecipient.updateMany({
+          where: {
+            contactId: existingContact.id,
+            status: "pending",
+          },
+          data: {
+            status: "opted_out",
+            failedAt: new Date(),
+            errorMessage: "Contact opted out",
+          },
+        });
+
+        try {
+          await logActivity({
+            contactId: existingContact.id,
+            workspaceId,
+            type: "contact_updated",
+            description: "Opted out of messages (STOP)",
+          });
+        } catch {
+          // best-effort
+        }
+      }
+      return NextResponse.json({ handled: true, optedOut: true });
+    }
+
+    if (OPT_IN.includes(normalizedBody)) {
+      if (existingContact?.id) {
+        await prisma.chatContact.update({
+          where: { id: existingContact.id },
+          data: { optedOut: false },
+        });
+
+        try {
+          await logActivity({
+            contactId: existingContact.id,
+            workspaceId,
+            type: "contact_updated",
+            description: "Opted back in to messages (START)",
+          });
+        } catch {
+          // best-effort
+        }
+      }
+      return NextResponse.json({ handled: true, optedIn: true });
+    }
+
+    // ─── Text-to-join keyword check (after opt-out) ─────
 
     const wasKeyword = await handleKeywordMatch(
       workspace.id,
@@ -149,59 +213,6 @@ export async function POST(req: NextRequest) {
     });
 
     const { roomId: savedRoomId, contactId } = roomId;
-
-    // ─── Opt-out / opt-in keyword detection ─────────────
-    const OPT_OUT_KEYWORDS = ["stop", "unsubscribe", "cancel", "quit", "end"];
-    const OPT_IN_KEYWORDS = ["start", "unstop", "subscribe", "yes"];
-    const normalizedBody = (body || "").trim().toLowerCase();
-
-    if (contactId) {
-      if (OPT_OUT_KEYWORDS.includes(normalizedBody)) {
-        await prisma.chatContact.update({
-          where: { id: contactId },
-          data: { optedOut: true },
-        });
-
-        await prisma.campaignRecipient.updateMany({
-          where: {
-            contactId,
-            status: "pending",
-          },
-          data: {
-            status: "opted_out",
-            failedAt: new Date(),
-            errorMessage: "Contact opted out",
-          },
-        });
-
-        try {
-          await logActivity({
-            contactId,
-            workspaceId,
-            type: "contact_updated",
-            description: "Opted out of messages (STOP)",
-          });
-        } catch {
-          // best-effort
-        }
-      } else if (OPT_IN_KEYWORDS.includes(normalizedBody)) {
-        await prisma.chatContact.update({
-          where: { id: contactId },
-          data: { optedOut: false },
-        });
-
-        try {
-          await logActivity({
-            contactId,
-            workspaceId,
-            type: "contact_updated",
-            description: "Opted back in to messages (START)",
-          });
-        } catch {
-          // best-effort
-        }
-      }
-    }
 
     // ─── Campaign reply detection ───────────────────────
     try {

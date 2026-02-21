@@ -40,7 +40,7 @@ export function CampaignReporting() {
           </div>
         )}
 
-        {!isLoading && totals && (
+        {!isLoading && totals && totals.sent > 0 && (
           <>
             {/* Global overview */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

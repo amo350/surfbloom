@@ -1,10 +1,20 @@
 import { createHmac } from "crypto";
 
-const SECRET = process.env.UNSUBSCRIBE_SECRET || "surfbloom-unsub-default";
+function getSecret(): string {
+  const secret = process.env.UNSUBSCRIBE_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("UNSUBSCRIBE_SECRET is required in production");
+    }
+    // Dev-only fallback
+    return "surfbloom-dev-unsub-secret";
+  }
+  return secret;
+}
 
 // Generate a signed token: contactId.signature
 export function generateUnsubscribeToken(contactId: string): string {
-  const sig = createHmac("sha256", SECRET)
+  const sig = createHmac("sha256", getSecret())
     .update(contactId)
     .digest("hex")
     .slice(0, 12);
@@ -17,7 +27,7 @@ export function verifyUnsubscribeToken(token: string): string | null {
   if (parts.length !== 2) return null;
 
   const [contactId, sig] = parts;
-  const expected = createHmac("sha256", SECRET)
+  const expected = createHmac("sha256", getSecret())
     .update(contactId)
     .digest("hex")
     .slice(0, 12);

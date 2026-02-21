@@ -447,46 +447,50 @@ export const campaignsRouter = createTRPCRouter({
           ? "scheduled"
           : "draft";
 
-      const campaign = await prisma.campaign.create({
-        data: {
-          workspaceId: input.workspaceId,
-          createdById: ctx.auth.user.id,
-          name: input.name,
-          messageTemplate: input.messageTemplate,
-          templateId: input.templateId || null,
-          segmentId: input.segmentId || null,
-          variantB: input.variantB || null,
-          variantSplit: input.variantB ? (input.variantSplit ?? 50) : 50,
-          recurringType: input.recurringType || null,
-          recurringDay: input.recurringType ? (input.recurringDay ?? 1) : null,
-          recurringTime: input.recurringType
-            ? (input.recurringTime ?? "09:00")
-            : null,
-          recurringEndAt: input.recurringEndAt || null,
-          sendWindowStart: input.sendWindowStart || null,
-          sendWindowEnd: input.sendWindowEnd || null,
-          audienceType: input.audienceType,
-          audienceStage: input.audienceStage || null,
-          audienceCategoryId: input.audienceCategoryId || null,
-          audienceInactiveDays: input.audienceInactiveDays || null,
-          frequencyCapDays: input.frequencyCapDays || null,
-          unsubscribeLink: input.unsubscribeLink,
-          scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
-          status,
-        },
-      });
-
-      if (input.autoReplyEnabled) {
-        await prisma.campaignAutoReply.create({
+      const campaign = await prisma.$transaction(async (tx) => {
+        const createdCampaign = await tx.campaign.create({
           data: {
-            campaignId: campaign.id,
-            enabled: true,
-            tone: input.autoReplyTone || "friendly",
-            context: input.autoReplyContext || null,
-            maxReplies: input.autoReplyMaxReplies || 1,
+            workspaceId: input.workspaceId,
+            createdById: ctx.auth.user.id,
+            name: input.name,
+            messageTemplate: input.messageTemplate,
+            templateId: input.templateId || null,
+            segmentId: input.segmentId || null,
+            variantB: input.variantB || null,
+            variantSplit: input.variantB ? (input.variantSplit ?? 50) : 50,
+            recurringType: input.recurringType || null,
+            recurringDay: input.recurringType ? (input.recurringDay ?? 1) : null,
+            recurringTime: input.recurringType
+              ? (input.recurringTime ?? "09:00")
+              : null,
+            recurringEndAt: input.recurringEndAt || null,
+            sendWindowStart: input.sendWindowStart || null,
+            sendWindowEnd: input.sendWindowEnd || null,
+            audienceType: input.audienceType,
+            audienceStage: input.audienceStage || null,
+            audienceCategoryId: input.audienceCategoryId || null,
+            audienceInactiveDays: input.audienceInactiveDays || null,
+            frequencyCapDays: input.frequencyCapDays || null,
+            unsubscribeLink: input.unsubscribeLink,
+            scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+            status,
           },
         });
-      }
+
+        if (input.autoReplyEnabled) {
+          await tx.campaignAutoReply.create({
+            data: {
+              campaignId: createdCampaign.id,
+              enabled: true,
+              tone: input.autoReplyTone || "friendly",
+              context: input.autoReplyContext || null,
+              maxReplies: input.autoReplyMaxReplies || 1,
+            },
+          });
+        }
+
+        return createdCampaign;
+      });
 
       return campaign;
     }),
@@ -1172,41 +1176,45 @@ export const campaignsRouter = createTRPCRouter({
       );
       if (!isMember) throw new TRPCError({ code: "FORBIDDEN" });
 
-      const clone = await prisma.campaign.create({
-        data: {
-          workspaceId: campaign.workspaceId,
-          createdById: ctx.auth.user.id,
-          name: `${campaign.name} (copy)`,
-          channel: campaign.channel,
-          messageTemplate: campaign.messageTemplate,
-          subject: campaign.subject,
-          audienceType: campaign.audienceType,
-          audienceStage: campaign.audienceStage,
-          audienceCategoryId: campaign.audienceCategoryId,
-          audienceInactiveDays: campaign.audienceInactiveDays,
-          frequencyCapDays: campaign.frequencyCapDays,
-          templateId: campaign.templateId,
-          segmentId: campaign.segmentId,
-          variantB: campaign.variantB,
-          variantSplit: campaign.variantSplit,
-          sendWindowStart: campaign.sendWindowStart,
-          sendWindowEnd: campaign.sendWindowEnd,
-          unsubscribeLink: campaign.unsubscribeLink,
-          status: "draft",
-        },
-      });
-
-      if (campaign.autoReply?.enabled) {
-        await prisma.campaignAutoReply.create({
+      const clone = await prisma.$transaction(async (tx) => {
+        const createdCampaign = await tx.campaign.create({
           data: {
-            campaignId: clone.id,
-            enabled: true,
-            tone: campaign.autoReply.tone,
-            context: campaign.autoReply.context,
-            maxReplies: campaign.autoReply.maxReplies,
+            workspaceId: campaign.workspaceId,
+            createdById: ctx.auth.user.id,
+            name: `${campaign.name} (copy)`,
+            channel: campaign.channel,
+            messageTemplate: campaign.messageTemplate,
+            subject: campaign.subject,
+            audienceType: campaign.audienceType,
+            audienceStage: campaign.audienceStage,
+            audienceCategoryId: campaign.audienceCategoryId,
+            audienceInactiveDays: campaign.audienceInactiveDays,
+            frequencyCapDays: campaign.frequencyCapDays,
+            templateId: campaign.templateId,
+            segmentId: campaign.segmentId,
+            variantB: campaign.variantB,
+            variantSplit: campaign.variantSplit,
+            sendWindowStart: campaign.sendWindowStart,
+            sendWindowEnd: campaign.sendWindowEnd,
+            unsubscribeLink: campaign.unsubscribeLink,
+            status: "draft",
           },
         });
-      }
+
+        if (campaign.autoReply?.enabled) {
+          await tx.campaignAutoReply.create({
+            data: {
+              campaignId: createdCampaign.id,
+              enabled: true,
+              tone: campaign.autoReply.tone,
+              context: campaign.autoReply.context,
+              maxReplies: campaign.autoReply.maxReplies,
+            },
+          });
+        }
+
+        return createdCampaign;
+      });
 
       return clone;
     }),

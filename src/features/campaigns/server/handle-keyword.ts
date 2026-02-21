@@ -46,37 +46,27 @@ export async function handleKeywordMatch(
   const twilioPhone = match.workspace.twilioPhoneNumber?.phoneNumber;
   if (!twilioPhone) return false;
 
-  // Find or create contact
-  let contact = await prisma.chatContact.findFirst({
+  const contact = await prisma.chatContact.upsert({
     where: {
+      workspaceId_phone: {
+        workspaceId,
+        phone: fromPhone,
+      },
+    } as any,
+    update: {
+      optedOut: false,
+      stage: match.stage,
+      source: match.source,
+    },
+    create: {
       workspaceId,
       phone: fromPhone,
+      stage: match.stage,
+      source: match.source,
+      optedOut: false,
     },
     select: { id: true, optedOut: true },
   });
-
-  if (contact) {
-    // Re-opt in if previously opted out, update stage
-    await prisma.chatContact.update({
-      where: { id: contact.id },
-      data: {
-        optedOut: false,
-        stage: match.stage,
-        source: match.source,
-      },
-    });
-  } else {
-    contact = await prisma.chatContact.create({
-      data: {
-        workspaceId,
-        phone: fromPhone,
-        stage: match.stage,
-        source: match.source,
-        optedOut: false,
-      },
-      select: { id: true, optedOut: true },
-    });
-  }
 
   if (match.categoryId) {
     await prisma.contactCategory.upsert({

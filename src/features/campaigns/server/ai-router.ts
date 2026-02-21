@@ -62,6 +62,12 @@ export const aiRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       const presetInstruction = input.preset ? PRESETS[input.preset] || "" : "";
+      if (!presetInstruction && !input.prompt?.trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Provide a preset or custom prompt",
+        });
+      }
 
       const userPrompt = [
         presetInstruction,
@@ -88,11 +94,27 @@ export const aiRouter = createTRPCRouter({
         messages: [{ role: "user", content: userPrompt }],
       });
 
-      const text = response.content
+      let text = response.content
         .filter((b): b is Anthropic.TextBlock => b.type === "text")
         .map((b) => b.text)
         .join("")
         .trim();
+
+      if (!text) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "AI generated an empty message. Try a different prompt.",
+        });
+      }
+
+      if (text.length > 320) {
+        const truncated = text.slice(0, 317);
+        const lastSpace = truncated.lastIndexOf(" ");
+        text =
+          lastSpace > 200
+            ? `${truncated.slice(0, lastSpace)}...`
+            : `${truncated}...`;
+      }
 
       return { message: text, tokens: response.usage };
     }),
@@ -126,11 +148,27 @@ export const aiRouter = createTRPCRouter({
         ],
       });
 
-      const text = response.content
+      let text = response.content
         .filter((b): b is Anthropic.TextBlock => b.type === "text")
         .map((b) => b.text)
         .join("")
         .trim();
+
+      if (!text) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "AI generated an empty message. Try a different prompt.",
+        });
+      }
+
+      if (text.length > 320) {
+        const truncated = text.slice(0, 317);
+        const lastSpace = truncated.lastIndexOf(" ");
+        text =
+          lastSpace > 200
+            ? `${truncated.slice(0, lastSpace)}...`
+            : `${truncated}...`;
+      }
 
       return { message: text, tokens: response.usage };
     }),

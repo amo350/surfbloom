@@ -43,10 +43,15 @@ export async function handleCampaignAutoReply(
   // ─── Check recipient AI reply count ───────────────────
   const recipient = await prisma.campaignRecipient.findUnique({
     where: { id: recipientId },
-    select: { aiRepliesSent: true },
+    select: {
+      aiRepliesSent: true,
+      variant: true,
+      contact: { select: { optedOut: true } },
+    },
   });
 
   if (!recipient) return false;
+  if (recipient.contact.optedOut) return false;
 
   if (recipient.aiRepliesSent >= autoReply.maxReplies) {
     // Max reached — route to human inbox
@@ -88,6 +93,10 @@ export async function handleCampaignAutoReply(
   const conversationHistory = previousReplies
     .map((r) => `Customer: ${r.inboundMessage}\nYou: ${r.aiResponse}`)
     .join("\n\n");
+  const sentTemplate =
+    recipient.variant === "B" && campaign.variantB
+      ? campaign.variantB
+      : campaign.messageTemplate;
 
   const systemPrompt = `You are responding on behalf of ${workspaceName}, a local business. You're replying to a customer who received a marketing text and responded.
 
@@ -106,7 +115,7 @@ ${toneInstruction}
 ${autoReply.context ? `Business context: ${autoReply.context}` : ""}`;
 
   const userPrompt = `The business sent this campaign message:
-"${campaign.messageTemplate}"
+"${sentTemplate}"
 
 ${conversationHistory ? `Previous conversation:\n${conversationHistory}\n\n` : ""}The customer ${contactName ? `(${contactName}) ` : ""}just replied:
 "${inboundMessage}"

@@ -26,13 +26,27 @@ export const keywordRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const userWorkspaces = await prisma.member.findMany({
-        where: { userId: ctx.auth.user.id },
-        select: { workspaceId: true },
-      });
-      const workspaceIds = input.workspaceId
-        ? [input.workspaceId]
-        : userWorkspaces.map((m) => m.workspaceId);
+      let workspaceIds: string[];
+
+      if (input.workspaceId) {
+        // Verify membership
+        const membership = await prisma.member.findUnique({
+          where: {
+            userId_workspaceId: {
+              userId: ctx.auth.user.id,
+              workspaceId: input.workspaceId,
+            },
+          },
+        });
+        if (!membership) throw new TRPCError({ code: "FORBIDDEN" });
+        workspaceIds = [input.workspaceId];
+      } else {
+        const userWorkspaces = await prisma.member.findMany({
+          where: { userId: ctx.auth.user.id },
+          select: { workspaceId: true },
+        });
+        workspaceIds = userWorkspaces.map((m) => m.workspaceId);
+      }
 
       return prisma.textToJoinKeyword.findMany({
         where: { workspaceId: { in: workspaceIds } },

@@ -69,9 +69,6 @@ CREATE UNIQUE INDEX "campaign_link_shortCode_key" ON "campaign_link"("shortCode"
 CREATE INDEX "campaign_link_campaignId_idx" ON "campaign_link"("campaignId");
 
 -- CreateIndex
-CREATE INDEX "campaign_link_shortCode_idx" ON "campaign_link"("shortCode");
-
--- CreateIndex
 CREATE INDEX "campaign_link_click_linkId_idx" ON "campaign_link_click"("linkId");
 
 -- CreateIndex
