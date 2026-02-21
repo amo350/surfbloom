@@ -172,6 +172,9 @@ export function CampaignBuilder({
     (audienceType === "inactive" && audienceInactiveDays);
   const canStep4 = messageTemplate.trim().length > 0;
   const canLaunch = canStep2 && canStep3 && canStep4;
+  const canSubmit =
+    canLaunch &&
+    (!enableSendWindow || sendWindowStart < sendWindowEnd);
 
   const handleInsertToken = (key: string) => {
     setMessageTemplate((prev) => prev + `{${key}}`);
@@ -180,7 +183,7 @@ export function CampaignBuilder({
   const isCreating = createCampaign.isPending || createCampaignGroup.isPending;
 
   const handleCreate = async (launch: boolean) => {
-    if (!canLaunch) return;
+    if (!canSubmit) return;
 
     let scheduledAt: string | undefined;
     if (sendType === "scheduled" && scheduledDate && scheduledTime) {
@@ -1314,11 +1317,7 @@ export function CampaignBuilder({
                   </Button>
                   <Button
                     onClick={() => handleCreate(true)}
-                    disabled={
-                      isCreating ||
-                      !canLaunch ||
-                      (audiencePreview?.count || 0) === 0
-                    }
+                    disabled={!canSubmit || isCreating}
                   >
                     {isCreating ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-1.5" />

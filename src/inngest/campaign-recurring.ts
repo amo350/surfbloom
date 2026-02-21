@@ -87,7 +87,14 @@ export const checkRecurringCampaigns = inngest.createFunction(
         if (c.recurringType === "weekly") {
           if (c.recurringDay !== currentDayOfWeek) return false;
         } else if (c.recurringType === "monthly") {
-          if (c.recurringDay !== currentDayOfMonth) return false;
+          // For months shorter than recurringDay, fire on last day
+          const lastDayOfMonth = new Date(
+            now.getUTCFullYear(),
+            now.getUTCMonth() + 1,
+            0,
+          ).getUTCDate();
+          const effectiveDay = Math.min(c.recurringDay!, lastDayOfMonth);
+          if (effectiveDay !== currentDayOfMonth) return false;
         }
 
         // Skip if already ran today
@@ -133,6 +140,7 @@ export const checkRecurringCampaigns = inngest.createFunction(
             sendWindowStart: parent.sendWindowStart,
             sendWindowEnd: parent.sendWindowEnd,
             subject: parent.subject,
+            parentCampaignId: parent.id,
             status: "sending",
             startedAt: now,
             // No recurring fields — child is a one-time execution

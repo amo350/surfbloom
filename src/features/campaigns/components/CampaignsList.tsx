@@ -43,8 +43,8 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
   });
 
   const basePath = workspaceId
-    ? `/workspaces/${workspaceId}/campaigns`
-    : "/index/campaigns";
+    ? `/workspaces/${workspaceId}`
+    : "/index";
 
   const STATUS_FILTERS = [
     { value: undefined, label: "All" },
@@ -81,19 +81,19 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
 
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/index/campaigns/templates">
+            <Link href={`${basePath}/campaigns/templates`}>
               <FileText className="h-4 w-4 mr-1.5" />
               Templates
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/index/campaigns/reporting">
+            <Link href={`${basePath}/campaigns/reporting`}>
               <BarChart3 className="h-4 w-4 mr-1.5" />
               Reporting
             </Link>
           </Button>
           <Button size="sm" asChild>
-            <Link href={`${basePath}/new`}>
+            <Link href={`${basePath}/campaigns/new`}>
               <Plus className="h-4 w-4 mr-1.5" />
               New Campaign
             </Link>
@@ -133,7 +133,7 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
               Send your first SMS campaign to reach your contacts
             </p>
             <Button size="sm" className="mt-4" asChild>
-              <Link href={`${basePath}/new`}>
+              <Link href={`${basePath}/campaigns/new`}>
                 <Plus className="h-4 w-4 mr-1.5" />
                 Create Campaign
               </Link>
@@ -153,8 +153,8 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
               ? Math.round((item.repliedCount / item.sentCount) * 100)
               : 0;
           const href = isGroup
-            ? `${basePath}/group/${item.id}`
-            : `${basePath}/${item.id}`;
+            ? `${basePath}/campaigns/group/${item.id}`
+            : `${basePath}/campaigns/${item.id}`;
 
           return (
             <div key={item.id} className="border-t">
@@ -257,7 +257,7 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
                       {item.campaigns.map((campaign: any) => (
                         <Link
                           key={campaign.id}
-                          href={`${basePath}/${campaign.id}`}
+                          href={`${basePath}/campaigns/${campaign.id}`}
                           className="flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs hover:bg-muted/30"
                         >
                           <span className="truncate">

@@ -20,17 +20,25 @@ function isWithinSendWindow(
   const startMinutes = startH * 60 + startM;
   const endMinutes = endH * 60 + endM;
 
-  if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
-    return { allowed: true, waitMs: 0 };
+  const isOvernight = endMinutes <= startMinutes;
+
+  let allowed: boolean;
+  if (isOvernight) {
+    // e.g. 22:00–06:00: allowed if after start OR before end
+    allowed = currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  } else {
+    // e.g. 09:00–19:00: allowed if between start and end
+    allowed = currentMinutes >= startMinutes && currentMinutes < endMinutes;
   }
+
+  if (allowed) return { allowed: true, waitMs: 0 };
 
   // Calculate wait until next window open
   let waitMinutes: number;
   if (currentMinutes < startMinutes) {
-    // Before today's window
     waitMinutes = startMinutes - currentMinutes;
   } else {
-    // After today's window - wait until tomorrow's start
+    // After window — wait until next day's start
     waitMinutes = 24 * 60 - currentMinutes + startMinutes;
   }
 
@@ -253,8 +261,12 @@ export const sendCampaign = inngest.createFunction(
           orderBy: { id: "asc" },
         });
 
-        // Shuffle deterministically, then split
-        const shuffled = allRecipients.sort(() => Math.random() - 0.5);
+        // Fisher-Yates shuffle, then split
+        const shuffled = [...allRecipients];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
 
         const splitIndex = Math.round(
           shuffled.length * (campaign.variantSplit / 100),
@@ -295,40 +307,14 @@ export const sendCampaign = inngest.createFunction(
       return { campaignId, status: "completed", sent: 0 };
     }
 
-    // ─── Step 2.5: Business hours gate ──────────────────
-    if (campaign.sendWindowStart && campaign.sendWindowEnd) {
-      await step.run("business-hours-gate", async () => {
-        const { allowed, waitMs } = isWithinSendWindow(
-          campaign.sendWindowStart,
-          campaign.sendWindowEnd,
-        );
-
-        if (!allowed && waitMs > 0) {
-          // Return wait info - we'll use step.sleep after this
-          return { wait: true, waitMs };
-        }
-
-        return { wait: false, waitMs: 0 };
-      });
-
-      // Check again and sleep if needed
-      const { allowed, waitMs } = isWithinSendWindow(
-        campaign.sendWindowStart,
-        campaign.sendWindowEnd,
-      );
-
-      if (!allowed && waitMs > 0) {
-        await step.sleep("wait-for-send-window", waitMs);
-      }
-    }
-
     // ─── Step 3: Send in batches ────────────────────────
     let totalSent = 0;
     let batchIndex = 0;
+    let retryAttempt = 0;
 
     while (true) {
       const batchResult = await step.run(
-        `send-batch-${batchIndex}`,
+        `send-batch-${batchIndex}-${retryAttempt}`,
         async () => {
           // Check business hours
           if (campaign.sendWindowStart && campaign.sendWindowEnd) {
@@ -487,13 +473,14 @@ export const sendCampaign = inngest.createFunction(
           campaign.sendWindowEnd,
         );
         if (waitMs > 0) {
-          await step.sleep(`wait-for-window-${batchIndex}`, waitMs);
+          await step.sleep(`wait-for-window-${batchIndex}-${retryAttempt}`, waitMs);
         }
-        // Don't increment batchIndex - retry this batch
+        retryAttempt++;
         continue;
       }
 
       batchIndex++;
+      retryAttempt = 0;
 
       // Safety: cap at 200 batches (10,000 messages)
       if (batchIndex >= 200) {

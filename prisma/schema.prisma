@@ -665,6 +665,11 @@ model Campaign {
   recurringEndAt      DateTime?
   lastRecurredAt      DateTime?
 
+  // V3: Recurring parent link
+  parentCampaignId    String?
+  parentCampaign      Campaign?  @relation("RecurringChildren", fields: [parentCampaignId], references: [id], onDelete: SetNull)
+  childCampaigns      Campaign[] @relation("RecurringChildren")
+
   // V2: Business hours
   sendWindowStart     String?
   sendWindowEnd       String?
@@ -679,6 +684,7 @@ model Campaign {
   @@index([templateId])
   @@index([segmentId])
   @@index([recurringType])
+  @@index([parentCampaignId])
   @@index([status])
   @@map("campaign")
 }
