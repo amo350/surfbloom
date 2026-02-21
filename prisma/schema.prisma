@@ -47,6 +47,8 @@ model User {
   stages           Stage[]
   campaigns        Campaign[]
   campaignGroups   CampaignGroup[]
+  campaignTemplates CampaignTemplate[]
+  savedSegments     SavedSegment[]
 
   @@unique([email])
   @@index([accountOwnerId])
@@ -621,6 +623,13 @@ model Campaign {
   name                String
   channel             String    @default("sms")
   messageTemplate     String
+  subject             String?
+
+  // V2: Template + Segment links
+  templateId          String?
+  template            CampaignTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  segmentId           String?
+  segment             SavedSegment?     @relation(fields: [segmentId], references: [id], onDelete: SetNull)
 
   // Audience config
   audienceType        String    @default("all") // all, stage, category, inactive
@@ -640,6 +649,25 @@ model Campaign {
   deliveredCount      Int       @default(0)
   failedCount         Int       @default(0)
   repliedCount        Int       @default(0)
+  variantB            String?   @db.Text
+  variantSplit        Int       @default(50)
+  variantASent        Int       @default(0)
+  variantADelivered   Int       @default(0)
+  variantAReplied     Int       @default(0)
+  variantBSent        Int       @default(0)
+  variantBDelivered   Int       @default(0)
+  variantBReplied     Int       @default(0)
+
+  // V2: Recurring
+  recurringType       String?
+  recurringDay        Int?
+  recurringTime       String?
+  recurringEndAt      DateTime?
+  lastRecurredAt      DateTime?
+
+  // V2: Business hours
+  sendWindowStart     String?
+  sendWindowEnd       String?
 
   recipients          CampaignRecipient[]
   createdAt           DateTime  @default(now())
@@ -648,6 +676,9 @@ model Campaign {
   @@index([workspaceId])
   @@index([createdById])
   @@index([groupId])
+  @@index([templateId])
+  @@index([segmentId])
+  @@index([recurringType])
   @@index([status])
   @@map("campaign")
 }
@@ -665,6 +696,48 @@ model CampaignGroup {
   @@map("campaign_group")
 }
 
+model CampaignTemplate {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String
+  category  String   @default("custom")
+  channel   String   @default("sms")
+  subject   String?
+  body      String   @db.Text
+  isLibrary Boolean  @default(false)
+
+  campaigns Campaign[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([category])
+  @@index([isLibrary])
+  @@map("campaign_template")
+}
+
+model SavedSegment {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name                 String
+  audienceType         String   @default("all")
+  audienceStage        String?
+  audienceCategoryId   String?
+  audienceInactiveDays Int?
+  frequencyCapDays     Int?
+
+  campaigns            Campaign[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([userId])
+  @@map("saved_segment")
+}
+
 model CampaignRecipient {
   id           String      @id @default(cuid())
   campaignId   String
@@ -679,6 +752,7 @@ model CampaignRecipient {
   repliedAt    DateTime?
   errorMessage String?
   smsMessageId String?
+  variant      String?
 
   createdAt    DateTime  @default(now())
 

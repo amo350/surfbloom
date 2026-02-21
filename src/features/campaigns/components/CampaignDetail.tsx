@@ -45,6 +45,7 @@ import {
 import { CampaignStatusBadge } from "./CampaignStatusBadge";
 import { previewTemplate } from "../lib/tokens";
 import { StageBadge } from "@/features/contacts/components/StageBadge";
+import { ABComparisonCard } from "./ABComparisonCard";
 
 const RECIPIENT_STATUS_CONFIG: Record<string, { label: string; color: string }> =
   {
@@ -220,7 +221,10 @@ export function CampaignDetail({
           </Button>
           <div className="flex items-center gap-2 min-w-0">
             <AppHeaderTitle title={campaign.name} />
-            <CampaignStatusBadge status={campaign.status} />
+            <CampaignStatusBadge
+              status={campaign.status}
+              recurring={!!campaign.recurringType}
+            />
           </div>
 
           <div className="flex-1" />
@@ -346,6 +350,9 @@ export function CampaignDetail({
           />
         </div>
 
+        {/* A/B Comparison */}
+        {campaign.variantB && <ABComparisonCard campaign={campaign} />}
+
         {/* Campaign info */}
         <div className="grid grid-cols-2 gap-4">
           {/* Message preview */}
@@ -405,6 +412,15 @@ export function CampaignDetail({
                 </div>
               )}
 
+              {campaign.sendWindowStart && campaign.sendWindowEnd && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Send Window</span>
+                  <span className="font-medium">
+                    {campaign.sendWindowStart} - {campaign.sendWindowEnd}
+                  </span>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Created by</span>
                 <span className="font-medium">
@@ -450,6 +466,82 @@ export function CampaignDetail({
           </div>
         </div>
 
+        {/* Recurring executions history */}
+        {campaign.recurringType && campaign.childCampaigns?.length > 0 && (
+          <div className="border rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b bg-muted/10">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Recurring History
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/5">
+                    <th className="text-left text-[11px] font-medium text-muted-foreground px-4 py-2">
+                      Run
+                    </th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground px-3 py-2">
+                      Status
+                    </th>
+                    <th className="text-right text-[11px] font-medium text-muted-foreground px-3 py-2">
+                      Recipients
+                    </th>
+                    <th className="text-right text-[11px] font-medium text-muted-foreground px-3 py-2">
+                      Delivered
+                    </th>
+                    <th className="text-right text-[11px] font-medium text-muted-foreground px-3 py-2">
+                      Replied
+                    </th>
+                    <th className="text-right text-[11px] font-medium text-muted-foreground px-4 py-2">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaign.childCampaigns.map((child: any) => (
+                    <tr
+                      key={child.id}
+                      className="border-b last:border-0 hover:bg-muted/10 cursor-pointer"
+                      onClick={() => router.push(`${basePath}/${child.id}`)}
+                    >
+                      <td className="px-4 py-2.5">
+                        <p className="text-sm font-medium truncate max-w-[200px]">
+                          {child.name}
+                        </p>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <CampaignStatusBadge status={child.status} />
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-sm">
+                        {child.totalRecipients.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-sm">
+                        {child.deliveredCount.toLocaleString()}
+                        {child.sentCount > 0 && (
+                          <span className="text-[10px] text-muted-foreground ml-1">
+                            (
+                            {Math.round(
+                              (child.deliveredCount / child.sentCount) * 100,
+                            )}
+                            %)
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-sm">
+                        {child.repliedCount.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-xs text-muted-foreground">
+                        {new Date(child.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Recipients table */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -484,11 +576,18 @@ export function CampaignDetail({
 
           <div className="border rounded-lg overflow-hidden">
             {/* Header */}
-            <div className="grid grid-cols-[1fr_120px_120px_100px_140px] px-4 py-2 bg-muted/30 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <div
+              className={`grid px-4 py-2 bg-muted/30 text-[11px] font-medium text-muted-foreground uppercase tracking-wider ${
+                campaign.variantB
+                  ? "grid-cols-[1fr_120px_120px_100px_80px_140px]"
+                  : "grid-cols-[1fr_120px_120px_100px_140px]"
+              }`}
+            >
               <span>Contact</span>
               <span>Phone</span>
               <span>Stage</span>
               <span>Status</span>
+              {campaign.variantB && <span>Variant</span>}
               <span className="text-right">Timestamp</span>
             </div>
 
@@ -515,11 +614,15 @@ export function CampaignDetail({
               return (
                 <div
                   key={r.id}
-                  className="grid grid-cols-[1fr_120px_120px_100px_140px] px-4 py-2.5 border-t items-center"
+                  className={`grid px-4 py-2.5 border-t items-center ${
+                    campaign.variantB
+                      ? "grid-cols-[1fr_120px_120px_100px_80px_140px]"
+                      : "grid-cols-[1fr_120px_120px_100px_140px]"
+                  }`}
                 >
                   {/* Contact */}
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="h-6 w-6 rounded bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0">
+                    <div className="h-6 w-6 rounded bg-linear-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0">
                       <span className="text-[9px] font-bold text-white">
                         {r.contact?.firstName?.[0] || "?"}
                       </span>
@@ -562,6 +665,22 @@ export function CampaignDetail({
                       </span>
                     )}
                   </span>
+
+                  {campaign.variantB && (
+                    <div>
+                      {r.variant && (
+                        <span
+                          className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            r.variant === "A"
+                              ? "bg-teal-50 text-teal-700 border border-teal-200"
+                              : "bg-violet-50 text-violet-700 border border-violet-200"
+                          }`}
+                        >
+                          {r.variant}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Timestamp */}
                   <span className="text-xs text-muted-foreground text-right">
