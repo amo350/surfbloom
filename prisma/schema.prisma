@@ -979,6 +979,7 @@ model EmailTemplate {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  @@unique([userId, name])
   @@index([userId, category])
   @@map("email_template")
 }

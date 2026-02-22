@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Webhook } from "svix";
 import {
   fireContactOptedOut,
   fireEmailBounced,
@@ -29,6 +30,26 @@ interface ResendWebhookPayload {
   };
 }
 
+const WEBHOOK_EVENT_TTL_MS = 5 * 60 * 1000;
+const processedWebhookEvents = new Map<string, number>();
+
+function isDuplicateWebhookEvent(key: string): boolean {
+  const now = Date.now();
+
+  for (const [eventKey, ts] of processedWebhookEvents.entries()) {
+    if (now - ts > WEBHOOK_EVENT_TTL_MS) {
+      processedWebhookEvents.delete(eventKey);
+    }
+  }
+
+  if (processedWebhookEvents.has(key)) {
+    return true;
+  }
+
+  processedWebhookEvents.set(key, now);
+  return false;
+}
+
 function extractTag(
   tags: { name: string; value: string }[] | undefined,
   name: string,
@@ -38,27 +59,48 @@ function extractTag(
 
 export async function POST(req: NextRequest) {
   try {
-    // Verify webhook signature in production
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      return NextResponse.json(
+        { error: "RESEND_WEBHOOK_SECRET not configured" },
+        { status: 500 },
+      );
+    }
+
+    const rawBody = await req.text();
     const svixId = req.headers.get("svix-id");
     const svixTimestamp = req.headers.get("svix-timestamp");
     const svixSignature = req.headers.get("svix-signature");
 
-    // TODO: Full Svix signature verification with webhook secret
-    // For now, check that Svix headers are present as a basic guard
-    if (
-      process.env.NODE_ENV === "production" &&
-      (!svixId || !svixTimestamp || !svixSignature)
-    ) {
+    if (!svixId || !svixTimestamp || !svixSignature) {
       return NextResponse.json(
         { error: "Missing signature headers" },
         { status: 401 },
       );
     }
 
-    const payload: ResendWebhookPayload = await req.json();
+    let payload: ResendWebhookPayload;
+    try {
+      const webhook = new Webhook(webhookSecret);
+      payload = webhook.verify(rawBody, {
+        "svix-id": svixId,
+        "svix-timestamp": svixTimestamp,
+        "svix-signature": svixSignature,
+      }) as ResendWebhookPayload;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid webhook signature" },
+        { status: 401 },
+      );
+    }
 
     if (!payload.type || !payload.data?.email_id) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    const dedupeKey = `${payload.data.email_id}:${payload.created_at}`;
+    if (isDuplicateWebhookEvent(dedupeKey)) {
+      return NextResponse.json({ received: true, duplicate: true });
     }
 
     const providerId = payload.data.email_id;

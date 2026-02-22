@@ -1,5 +1,5 @@
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { enrollContacts as enrollContactsBatch } from "./enroll";
@@ -51,6 +51,51 @@ const CONDITION_TYPES = [
 ] as const;
 
 export { TRIGGER_TYPES, CONDITION_TYPES };
+
+function getRequiredChannels(
+  steps: Array<{ channel: string }>,
+): Set<"sms" | "email"> {
+  const required = new Set<"sms" | "email">();
+  for (const step of steps) {
+    if (step.channel === "sms" || step.channel === "email") {
+      required.add(step.channel);
+    }
+  }
+  return required;
+}
+
+async function filterContactsEligibleForChannels(params: {
+  workspaceId: string;
+  contactIds: string[];
+  requiredChannels: Set<"sms" | "email">;
+}) {
+  const uniqueContactIds = [...new Set(params.contactIds)];
+  const contacts = await prisma.chatContact.findMany({
+    where: {
+      id: { in: uniqueContactIds },
+      workspaceId: params.workspaceId,
+    },
+    select: {
+      id: true,
+      phone: true,
+      email: true,
+      optedOut: true,
+    },
+  });
+
+  const eligibleIds: string[] = [];
+  for (const contact of contacts) {
+    if (contact.optedOut) continue;
+    if (params.requiredChannels.has("sms") && !contact.phone) continue;
+    if (params.requiredChannels.has("email") && !contact.email) continue;
+    eligibleIds.push(contact.id);
+  }
+
+  return {
+    eligibleIds,
+    missingOrIneligibleCount: uniqueContactIds.length - eligibleIds.length,
+  };
+}
 
 export const sequenceRouter = createTRPCRouter({
   getSequences: protectedProcedure
@@ -198,7 +243,10 @@ export const sequenceRouter = createTRPCRouter({
             order: step.order,
             channel: step.channel,
             subject: step.subject,
-            bodyPreview: step.body.replace(/<[^>]+>/g, " ").trim().slice(0, 80),
+            bodyPreview: step.body
+              .replace(/<[^>]+>/g, " ")
+              .trim()
+              .slice(0, 80),
             sent: statusMap.get("sent") || 0,
             delivered: statusMap.get("delivered") || 0,
             failed: statusMap.get("failed") || 0,
@@ -582,10 +630,32 @@ export const sequenceRouter = createTRPCRouter({
         });
       }
 
+      if (new Set(input.stepIds).size !== input.stepIds.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Step IDs must be unique",
+        });
+      }
+
+      const steps = await prisma.campaignSequenceStep.findMany({
+        where: {
+          id: { in: input.stepIds },
+          sequenceId: input.sequenceId,
+        },
+        select: { id: true },
+      });
+
+      if (steps.length !== input.stepIds.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "All steps must belong to the target sequence",
+        });
+      }
+
       await prisma.$transaction(
         input.stepIds.map((id, index) =>
-          prisma.campaignSequenceStep.update({
-            where: { id },
+          prisma.campaignSequenceStep.updateMany({
+            where: { id, sequenceId: input.sequenceId },
             data: { order: index + 1 },
           }),
         ),
@@ -606,6 +676,8 @@ export const sequenceRouter = createTRPCRouter({
         where: { id: input.sequenceId },
         select: {
           status: true,
+          workspaceId: true,
+          steps: { select: { channel: true } },
           workspace: { select: { members: { select: { userId: true } } } },
         },
       });
@@ -624,14 +696,26 @@ export const sequenceRouter = createTRPCRouter({
         });
       }
 
-      const result = await enrollContactsBatch(
-        input.sequenceId,
-        input.contactIds,
-      );
+      const requiredChannels = getRequiredChannels(sequence.steps);
+      const { eligibleIds, missingOrIneligibleCount } =
+        await filterContactsEligibleForChannels({
+          workspaceId: sequence.workspaceId,
+          contactIds: input.contactIds,
+          requiredChannels,
+        });
+
+      if (eligibleIds.length === 0) {
+        return {
+          enrolled: 0,
+          skipped: [...new Set(input.contactIds)].length,
+        };
+      }
+
+      const result = await enrollContactsBatch(input.sequenceId, eligibleIds);
 
       return {
         enrolled: result.enrolled,
-        skipped: result.skipped,
+        skipped: result.skipped + missingOrIneligibleCount,
       };
     }),
 
@@ -795,6 +879,7 @@ export const sequenceRouter = createTRPCRouter({
               members: { select: { userId: true } },
             },
           },
+          steps: { select: { channel: true } },
           _count: { select: { steps: true } },
         },
       });
@@ -876,14 +961,26 @@ export const sequenceRouter = createTRPCRouter({
         return { enrolled: 0, skipped: 0 };
       }
 
-      const result = await enrollContactsBatch(
-        input.sequenceId,
-        contacts.map((c) => c.id),
-      );
+      const requiredChannels = getRequiredChannels(sequence.steps);
+      const { eligibleIds, missingOrIneligibleCount } =
+        await filterContactsEligibleForChannels({
+          workspaceId: sequence.workspace.id,
+          contactIds: contacts.map((c) => c.id),
+          requiredChannels,
+        });
+
+      if (eligibleIds.length === 0) {
+        return {
+          enrolled: 0,
+          skipped: contacts.length,
+        };
+      }
+
+      const result = await enrollContactsBatch(input.sequenceId, eligibleIds);
 
       return {
         enrolled: result.enrolled,
-        skipped: result.skipped,
+        skipped: result.skipped + missingOrIneligibleCount,
       };
     }),
 });

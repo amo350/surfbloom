@@ -1,7 +1,7 @@
-import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
+import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 
 const EMAIL_CATEGORIES = [
   { value: "custom", label: "Custom" },
@@ -124,7 +124,7 @@ export const emailTemplateRouter = createTRPCRouter({
 
       return prisma.emailTemplate.findMany({
         where,
-        orderBy: [{ isLibrary: "asc" }, { updatedAt: "desc" }],
+        orderBy: [{ isLibrary: "desc" }, { updatedAt: "desc" }],
       });
     }),
 

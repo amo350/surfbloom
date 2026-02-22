@@ -1,7 +1,8 @@
 "use client";
 
+import { Loader2, Settings2, Users, Zap } from "lucide-react";
 import { useState } from "react";
-import { Loader2, Users, Zap, Settings2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,17 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { useStages } from "@/features/contacts/hooks/use-contacts";
 import { useUpdateSequence } from "../hooks/use-sequences";
-
-const STAGES = [
-  "new_lead",
-  "prospecting",
-  "appointment",
-  "payment",
-  "not_a_fit",
-  "lost",
-];
 
 interface SequenceSettingsProps {
   sequence: any;
@@ -34,8 +26,13 @@ export function SequenceSettings({
   categories = [],
   keywords = [],
 }: SequenceSettingsProps) {
-  const [audienceType, setAudienceType] = useState(sequence.audienceType || "all");
-  const [audienceStage, setAudienceStage] = useState(sequence.audienceStage || "");
+  const { data: stages } = useStages();
+  const [audienceType, setAudienceType] = useState(
+    sequence.audienceType || "all",
+  );
+  const [audienceStage, setAudienceStage] = useState(
+    sequence.audienceStage || "",
+  );
   const [audienceCategoryId, setAudienceCategoryId] = useState(
     sequence.audienceCategoryId || "",
   );
@@ -45,7 +42,9 @@ export function SequenceSettings({
   const [frequencyCapDays, setFrequencyCapDays] = useState(
     sequence.frequencyCapDays?.toString() || "",
   );
-  const [triggerType, setTriggerType] = useState(sequence.triggerType || "manual");
+  const [triggerType, setTriggerType] = useState(
+    sequence.triggerType || "manual",
+  );
   const [triggerValue, setTriggerValue] = useState(sequence.triggerValue || "");
 
   const updateSequence = useUpdateSequence();
@@ -57,10 +56,15 @@ export function SequenceSettings({
         id: sequence.id,
         audienceType: audienceType as any,
         audienceStage: audienceType === "stage" ? audienceStage : null,
-        audienceCategoryId: audienceType === "category" ? audienceCategoryId : null,
+        audienceCategoryId:
+          audienceType === "category" ? audienceCategoryId : null,
         audienceInactiveDays:
-          audienceType === "inactive" ? parseInt(audienceInactiveDays, 10) || 30 : null,
-        frequencyCapDays: frequencyCapDays ? parseInt(frequencyCapDays, 10) : null,
+          audienceType === "inactive"
+            ? parseInt(audienceInactiveDays, 10) || 30
+            : null,
+        frequencyCapDays: frequencyCapDays
+          ? parseInt(frequencyCapDays, 10)
+          : null,
         triggerType: triggerType as any,
         triggerValue:
           triggerType === "keyword_join" || triggerType === "stage_change"
@@ -92,7 +96,11 @@ export function SequenceSettings({
           <label className="text-xs font-medium">Audience Filter</label>
         </div>
 
-        <Select value={audienceType} onValueChange={setAudienceType} disabled={isActive}>
+        <Select
+          value={audienceType}
+          onValueChange={setAudienceType}
+          disabled={isActive}
+        >
           <SelectTrigger className="h-9">
             <SelectValue />
           </SelectTrigger>
@@ -105,14 +113,18 @@ export function SequenceSettings({
         </Select>
 
         {audienceType === "stage" && (
-          <Select value={audienceStage} onValueChange={setAudienceStage} disabled={isActive}>
+          <Select
+            value={audienceStage}
+            onValueChange={setAudienceStage}
+            disabled={isActive}
+          >
             <SelectTrigger className="h-9">
               <SelectValue placeholder="Select stage" />
             </SelectTrigger>
             <SelectContent>
-              {STAGES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              {(stages || []).map((s: any) => (
+                <SelectItem key={s.id} value={s.slug}>
+                  {s.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -181,7 +193,11 @@ export function SequenceSettings({
           <label className="text-xs font-medium">Enrollment Trigger</label>
         </div>
 
-        <Select value={triggerType} onValueChange={setTriggerType} disabled={isActive}>
+        <Select
+          value={triggerType}
+          onValueChange={setTriggerType}
+          disabled={isActive}
+        >
           <SelectTrigger className="h-9">
             <SelectValue />
           </SelectTrigger>
@@ -194,7 +210,11 @@ export function SequenceSettings({
         </Select>
 
         {triggerType === "keyword_join" && (
-          <Select value={triggerValue} onValueChange={setTriggerValue} disabled={isActive}>
+          <Select
+            value={triggerValue}
+            onValueChange={setTriggerValue}
+            disabled={isActive}
+          >
             <SelectTrigger className="h-9">
               <SelectValue placeholder="Select keyword" />
             </SelectTrigger>
@@ -209,14 +229,18 @@ export function SequenceSettings({
         )}
 
         {triggerType === "stage_change" && (
-          <Select value={triggerValue} onValueChange={setTriggerValue} disabled={isActive}>
+          <Select
+            value={triggerValue}
+            onValueChange={setTriggerValue}
+            disabled={isActive}
+          >
             <SelectTrigger className="h-9">
               <SelectValue placeholder="Select target stage" />
             </SelectTrigger>
             <SelectContent>
-              {STAGES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              {(stages || []).map((s: any) => (
+                <SelectItem key={s.id} value={s.slug}>
+                  {s.name}
                 </SelectItem>
               ))}
             </SelectContent>

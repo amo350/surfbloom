@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
 import {
-  Plus,
-  Loader2,
-  Mail,
-  Trash2,
-  Pencil,
   Copy,
   Library,
+  Loader2,
+  Mail,
+  Pencil,
+  Plus,
   Search,
+  Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { toast } from "sonner";
+import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,16 +24,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
-import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { TemplateCategoryBadge } from "@/features/campaigns/components/TemplateCategoryBadge";
 import {
-  useEmailTemplates,
   useDeleteEmailTemplate,
   useDuplicateEmailTemplate,
   useEmailCategories,
+  useEmailTemplates,
 } from "../hooks/use-email-templates";
 import { EmailTemplateDialog } from "./EmailTemplateDialog";
-import { TemplateCategoryBadge } from "@/features/campaigns/components/TemplateCategoryBadge";
 
 export function EmailTemplateManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -299,12 +299,9 @@ function EmailTemplateCard({
         Subject: {template.subject}
       </p>
 
-      <div
-        className="text-xs text-muted-foreground line-clamp-2 prose prose-sm max-w-none"
-        dangerouslySetInnerHTML={{
-          __html: template.htmlBody.replace(/<[^>]+>/g, " ").slice(0, 200),
-        }}
-      />
+      <p className="text-xs text-muted-foreground line-clamp-2">
+        {template.htmlBody.replace(/<[^>]+>/g, " ").slice(0, 200)}
+      </p>
     </div>
   );
 }
