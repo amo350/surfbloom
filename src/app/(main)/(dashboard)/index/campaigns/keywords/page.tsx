@@ -1,5 +1,5 @@
 import { KeywordManager } from "@/features/campaigns/components/KeywordManager";
 
 export default function KeywordsPage() {
-  return <KeywordManager />;
+  return <KeywordManager basePath="/index" />;
 }
