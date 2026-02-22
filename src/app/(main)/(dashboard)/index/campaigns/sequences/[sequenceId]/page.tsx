@@ -1,6 +1,7 @@
 import { SequenceBuilder } from "@/features/sequences/components/SequenceBuilder";
 import { SequenceDetail } from "@/features/sequences/components/SequenceDetail";
 import { prisma } from "@/lib/prisma";
+import { notFound } from "next/navigation";
 
 export default async function SequenceBuilderPage({
   params,
@@ -15,7 +16,10 @@ export default async function SequenceBuilderPage({
     where: { id: sequenceId },
     select: { workspaceId: true },
   });
-  const workspaceId = sequence?.workspaceId || "";
+  if (!sequence) {
+    notFound();
+  }
+  const workspaceId = sequence.workspaceId;
 
   if (tab === "detail") {
     return (

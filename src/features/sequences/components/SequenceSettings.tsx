@@ -21,12 +21,18 @@ interface SequenceSettingsProps {
   keywords?: { keyword: string }[];
 }
 
+type StageOption = {
+  id: string;
+  slug: string;
+  name: string;
+};
+
 export function SequenceSettings({
   sequence,
   categories = [],
   keywords = [],
 }: SequenceSettingsProps) {
-  const { data: stages } = useStages();
+  const { data: stages, isLoading } = useStages();
   const [audienceType, setAudienceType] = useState(
     sequence.audienceType || "all",
   );
@@ -49,6 +55,11 @@ export function SequenceSettings({
 
   const updateSequence = useUpdateSequence();
   const isActive = sequence.status === "active";
+  const stageOptions = (stages ?? []).map((s: StageOption) => (
+    <SelectItem key={s.id} value={s.slug}>
+      {s.name}
+    </SelectItem>
+  ));
 
   const handleSave = () => {
     updateSequence.mutate(
@@ -116,18 +127,14 @@ export function SequenceSettings({
           <Select
             value={audienceStage}
             onValueChange={setAudienceStage}
-            disabled={isActive}
+            disabled={isActive || isLoading}
           >
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="Select stage" />
+              <SelectValue
+                placeholder={isLoading ? "Loading stages..." : "Select stage"}
+              />
             </SelectTrigger>
-            <SelectContent>
-              {(stages || []).map((s: any) => (
-                <SelectItem key={s.id} value={s.slug}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
+            <SelectContent>{stageOptions}</SelectContent>
           </Select>
         )}
 
@@ -232,18 +239,16 @@ export function SequenceSettings({
           <Select
             value={triggerValue}
             onValueChange={setTriggerValue}
-            disabled={isActive}
+            disabled={isActive || isLoading}
           >
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="Select target stage" />
+              <SelectValue
+                placeholder={
+                  isLoading ? "Loading stages..." : "Select target stage"
+                }
+              />
             </SelectTrigger>
-            <SelectContent>
-              {(stages || []).map((s: any) => (
-                <SelectItem key={s.id} value={s.slug}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
+            <SelectContent>{stageOptions}</SelectContent>
           </Select>
         )}
 

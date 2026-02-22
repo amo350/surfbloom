@@ -65,19 +65,13 @@ export function StepPerformanceCard({ step }: { step: StepStat }) {
           <div
             className="h-full bg-emerald-500"
             style={{
-              width: `${
-                nonSkippedTotal > 0
-                  ? (step.delivered / nonSkippedTotal) * 100
-                  : 0
-              }%`,
+              width: `${(step.delivered / step.total) * 100}%`,
             }}
           />
           <div
             className="h-full bg-red-400"
             style={{
-              width: `${
-                nonSkippedTotal > 0 ? (step.failed / nonSkippedTotal) * 100 : 0
-              }%`,
+              width: `${(step.failed / step.total) * 100}%`,
             }}
           />
           <div

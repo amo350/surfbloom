@@ -155,6 +155,17 @@ export function StepEditor({
       toast.error("Select both send window start and end times");
       return;
     }
+    if (enableSendWindow && sendWindowStart && sendWindowEnd) {
+      const [startHour, startMinute] = sendWindowStart.split(":").map(Number);
+      const [endHour, endMinute] = sendWindowEnd.split(":").map(Number);
+      const startTotalMinutes = startHour * 60 + startMinute;
+      const endTotalMinutes = endHour * 60 + endMinute;
+
+      if (endTotalMinutes <= startTotalMinutes) {
+        toast.error("Send window end must be after start");
+        return;
+      }
+    }
 
     const basePayload = {
       channel,

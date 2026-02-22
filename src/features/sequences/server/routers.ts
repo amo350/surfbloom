@@ -85,6 +85,7 @@ async function filterContactsEligibleForChannels(params: {
 
   const eligibleIds: string[] = [];
   for (const contact of contacts) {
+    // Centralized opt-out enforcement for all sequence enrollment paths.
     if (contact.optedOut) continue;
     if (params.requiredChannels.has("sms") && !contact.phone) continue;
     if (params.requiredChannels.has("email") && !contact.email) continue;
@@ -908,7 +909,6 @@ export const sequenceRouter = createTRPCRouter({
       const audienceWhere: any = {
         workspaceId: sequence.workspace.id,
         isContact: true,
-        optedOut: false,
       };
 
       if (sequence.audienceType === "stage" && sequence.audienceStage) {

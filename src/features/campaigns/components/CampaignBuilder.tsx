@@ -76,6 +76,53 @@ const AUDIENCE_TYPES = [
   },
 ];
 
+const EMAIL_SANITIZE_CONFIG: DOMPurify.Config = {
+  ALLOWED_TAGS: [
+    "a",
+    "p",
+    "br",
+    "strong",
+    "em",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "code",
+    "pre",
+    "img",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "hr",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "div",
+    "span",
+  ],
+  ALLOWED_ATTR: [
+    "href",
+    "src",
+    "alt",
+    "title",
+    "target",
+    "rel",
+    "width",
+    "height",
+    "style",
+  ],
+  USE_PROFILES: { html: true },
+  ALLOW_DATA_ATTR: false,
+  SANITIZE_NAMED_PROPS: true,
+  ALLOW_UNKNOWN_PROTOCOLS: false,
+};
+
 function FlowStep({ num, text }: { num: number; text: string }) {
   return (
     <div className="flex items-start gap-2">
@@ -214,7 +261,8 @@ export function CampaignBuilder({
   const handleInsertToken = (key: string) => {
     setMessageTemplate((prev) => prev + `{${key}}`);
   };
-  const sanitizeEmailHtml = (html: string) => DOMPurify.sanitize(html);
+  const sanitizeEmailHtml = (html: string) =>
+    DOMPurify.sanitize(html, EMAIL_SANITIZE_CONFIG);
 
   const isCreating = createCampaign.isPending || createCampaignGroup.isPending;
 

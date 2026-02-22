@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const dedupeKey = `${payload.data.email_id}:${payload.created_at}`;
+    const dedupeKey = `${payload.type}:${payload.data.email_id}:${payload.created_at}`;
     if (isDuplicateWebhookEvent(dedupeKey)) {
       return NextResponse.json({ received: true, duplicate: true });
     }

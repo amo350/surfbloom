@@ -300,7 +300,10 @@ function EmailTemplateCard({
       </p>
 
       <p className="text-xs text-muted-foreground line-clamp-2">
-        {template.htmlBody.replace(/<[^>]+>/g, " ").slice(0, 200)}
+        {(template.htmlBody ?? "")
+          .replace(/<[^>]+>/g, " ")
+          .trim()
+          .slice(0, 200)}
       </p>
     </div>
   );

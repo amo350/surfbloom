@@ -82,6 +82,24 @@ const LIBRARY_EMAIL_TEMPLATES = [
 
 export { EMAIL_CATEGORIES };
 
+function isEmailTemplateNameConflict(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as {
+    code?: string;
+    meta?: { target?: string | string[] };
+  };
+  if (err.code !== "P2002") return false;
+
+  const target = err.meta?.target;
+  if (Array.isArray(target)) {
+    return target.includes("userId") && target.includes("name");
+  }
+  if (typeof target === "string") {
+    return target.includes("userId") && target.includes("name");
+  }
+  return false;
+}
+
 export const emailTemplateRouter = createTRPCRouter({
   // ─── LIST ─────────────────────────────────────────────
   getTemplates: protectedProcedure
@@ -155,17 +173,27 @@ export const emailTemplateRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return prisma.emailTemplate.create({
-        data: {
-          userId: ctx.auth.user.id,
-          name: input.name,
-          category: input.category,
-          subject: input.subject,
-          htmlBody: input.htmlBody,
-          textBody: input.textBody || null,
-          isLibrary: false,
-        },
-      });
+      try {
+        return prisma.emailTemplate.create({
+          data: {
+            userId: ctx.auth.user.id,
+            name: input.name,
+            category: input.category,
+            subject: input.subject,
+            htmlBody: input.htmlBody,
+            textBody: input.textBody || null,
+            isLibrary: false,
+          },
+        });
+      } catch (error) {
+        if (isEmailTemplateNameConflict(error)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "You already have a template with this name",
+          });
+        }
+        throw error;
+      }
     }),
 
   // ─── UPDATE ───────────────────────────────────────────
@@ -198,7 +226,17 @@ export const emailTemplateRouter = createTRPCRouter({
       }
 
       const { id, ...data } = input;
-      return prisma.emailTemplate.update({ where: { id }, data });
+      try {
+        return prisma.emailTemplate.update({ where: { id }, data });
+      } catch (error) {
+        if (isEmailTemplateNameConflict(error)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "You already have a template with this name",
+          });
+        }
+        throw error;
+      }
     }),
 
   // ─── DELETE ───────────────────────────────────────────
@@ -237,17 +275,27 @@ export const emailTemplateRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      return prisma.emailTemplate.create({
-        data: {
-          userId: ctx.auth.user.id,
-          name: `${template.name} (copy)`,
-          category: template.category,
-          subject: template.subject,
-          htmlBody: template.htmlBody,
-          textBody: template.textBody,
-          isLibrary: false,
-        },
-      });
+      try {
+        return prisma.emailTemplate.create({
+          data: {
+            userId: ctx.auth.user.id,
+            name: `${template.name} (copy)`,
+            category: template.category,
+            subject: template.subject,
+            htmlBody: template.htmlBody,
+            textBody: template.textBody,
+            isLibrary: false,
+          },
+        });
+      } catch (error) {
+        if (isEmailTemplateNameConflict(error)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "A duplicate template with that name already exists",
+          });
+        }
+        throw error;
+      }
     }),
 
   // ─── CATEGORIES ───────────────────────────────────────

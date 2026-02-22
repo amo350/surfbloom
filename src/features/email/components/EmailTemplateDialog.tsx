@@ -35,6 +35,53 @@ const TOKENS = [
   { key: "location_phone", label: "Phone" },
 ];
 
+const EMAIL_ALLOWLIST: DOMPurify.Config = {
+  ALLOWED_TAGS: [
+    "a",
+    "p",
+    "br",
+    "strong",
+    "em",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "code",
+    "pre",
+    "img",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "hr",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "div",
+    "span",
+  ],
+  ALLOWED_ATTR: [
+    "href",
+    "src",
+    "alt",
+    "title",
+    "target",
+    "rel",
+    "width",
+    "height",
+    "style",
+  ],
+  USE_PROFILES: { html: true },
+  ALLOW_DATA_ATTR: false,
+  SANITIZE_NAMED_PROPS: true,
+  ALLOW_UNKNOWN_PROTOCOLS: false,
+};
+
 export function EmailTemplateDialog({
   open,
   onOpenChange,
@@ -130,7 +177,7 @@ export function EmailTemplateDialog({
     .replace(/\{email\}/g, "john@example.com")
     .replace(/\{location_name\}/g, "Joe's Bistro")
     .replace(/\{location_phone\}/g, "(555) 123-4567");
-  const sanitizedPreviewHtml = DOMPurify.sanitize(previewHtml);
+  const sanitizedPreviewHtml = DOMPurify.sanitize(previewHtml, EMAIL_ALLOWLIST);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
