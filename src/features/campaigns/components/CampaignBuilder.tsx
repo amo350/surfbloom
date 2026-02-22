@@ -8,8 +8,10 @@ import {
   ArrowRight,
   Check,
   Clock,
+  Code,
   Eye,
   Loader2,
+  Mail,
   Megaphone,
   MessageSquare,
   Send,
@@ -46,6 +48,7 @@ import { SaveSegmentDialog } from "./SaveSegmentDialog";
 import { SegmentPicker } from "./SegmentPicker";
 import { AIDraftDialog } from "./AIDraftDialog";
 import { TemplatePicker } from "./TemplatePicker";
+import { EmailTemplatePicker } from "@/features/email/components/EmailTemplatePicker";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -108,6 +111,15 @@ export function CampaignBuilder({
 
   // Step 1: Basics
   const [name, setName] = useState("");
+  const [channel, setChannel] = useState<"sms" | "email">("sms");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailHtmlBody, setEmailHtmlBody] = useState("");
+  const [emailTemplateId, setEmailTemplateId] = useState<string | undefined>(
+    undefined,
+  );
+  const [emailViewMode, setEmailViewMode] = useState<"edit" | "preview">(
+    "edit",
+  );
   const [selectedWorkspaces, setSelectedWorkspaces] = useState<string[]>(
     initialWorkspaceId ? [initialWorkspaceId] : [],
   );
@@ -148,7 +160,9 @@ export function CampaignBuilder({
   const [unsubscribeLink, setUnsubscribeLink] = useState(false);
   // AI Auto-Responder
   const [enableAutoReply, setEnableAutoReply] = useState(false);
-  const [autoReplyTone, setAutoReplyTone] = useState("friendly");
+  const [autoReplyTone, setAutoReplyTone] = useState<
+    "friendly" | "professional" | "casual"
+  >("friendly");
   const [autoReplyContext, setAutoReplyContext] = useState("");
   const [autoReplyMaxReplies, setAutoReplyMaxReplies] = useState(1);
 
@@ -188,7 +202,10 @@ export function CampaignBuilder({
     (audienceType === "stage" && audienceStage) ||
     (audienceType === "category" && audienceCategoryId) ||
     (audienceType === "inactive" && audienceInactiveDays);
-  const canStep4 = messageTemplate.trim().length > 0;
+  const canStep4 =
+    channel === "sms"
+      ? messageTemplate.trim().length > 0
+      : emailSubject.trim().length > 0 && emailHtmlBody.trim().length > 0;
   const canLaunch = canStep2 && canStep3 && canStep4;
   const canSubmit =
     canLaunch &&
@@ -208,10 +225,16 @@ export function CampaignBuilder({
       scheduledAt = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
     }
 
-    const payload = {
+    const campaignData = {
       name: name.trim(),
-      messageTemplate: messageTemplate.trim(),
-      templateId,
+      channel,
+      messageTemplate: channel === "sms" ? messageTemplate.trim() : "",
+      subject: channel === "email" ? emailSubject.trim() : undefined,
+      ...(channel === "email" && {
+        messageTemplate: emailHtmlBody.trim(),
+        subject: emailSubject.trim(),
+      }),
+      templateId: channel === "sms" ? templateId : emailTemplateId,
       segmentId,
       variantB: enableAB ? variantB.trim() : undefined,
       variantSplit: enableAB ? variantSplit : undefined,
@@ -247,7 +270,7 @@ export function CampaignBuilder({
       if (selectedWorkspaces.length === 1) {
         const campaign = await createCampaign.mutateAsync({
           workspaceId: selectedWorkspaces[0],
-          ...payload,
+          ...campaignData,
         });
         toast.success(
           launch
@@ -260,7 +283,7 @@ export function CampaignBuilder({
 
       const group = await createCampaignGroup.mutateAsync({
         workspaceIds: selectedWorkspaces,
-        ...payload,
+        ...campaignData,
       });
       toast.success(
         launch
@@ -379,6 +402,69 @@ export function CampaignBuilder({
                   </p>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Campaign Channel</label>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setChannel("sms")}
+                    className={`flex flex-col items-center gap-2 px-4 py-5 rounded-lg border transition-colors ${
+                      channel === "sms"
+                        ? "border-teal-300 bg-teal-50/50"
+                        : "border-border hover:bg-muted/30"
+                    }`}
+                  >
+                    <MessageSquare
+                      className={`h-6 w-6 ${
+                        channel === "sms"
+                          ? "text-teal-600"
+                          : "text-muted-foreground"
+                      }`}
+                    />
+                    <div className="text-center">
+                      <p className="text-sm font-medium">SMS</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Text message via Twilio
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setChannel("email")}
+                    className={`flex flex-col items-center gap-2 px-4 py-5 rounded-lg border transition-colors ${
+                      channel === "email"
+                        ? "border-teal-300 bg-teal-50/50"
+                        : "border-border hover:bg-muted/30"
+                    }`}
+                  >
+                    <Mail
+                      className={`h-6 w-6 ${
+                        channel === "email"
+                          ? "text-teal-600"
+                          : "text-muted-foreground"
+                      }`}
+                    />
+                    <div className="text-center">
+                      <p className="text-sm font-medium">Email</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Email via Resend
+                      </p>
+                    </div>
+                  </button>
+                </div>
+
+                {channel === "email" && (
+                  <div className="rounded-lg border bg-blue-50/50 border-blue-200 px-3 py-2">
+                    <p className="text-xs text-blue-700">
+                      Email campaigns target contacts with email addresses.
+                      Contacts without emails will be skipped.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <div className="flex justify-end pt-4">
                 <Button onClick={() => setStep(2)} disabled={!canStep2}>
@@ -598,7 +684,7 @@ export function CampaignBuilder({
           )}
 
           {/* Step 3: Message */}
-          {step === 3 && (
+          {step === 3 && channel === "sms" && (
             <div className="space-y-6">
               {/* Template picker + label */}
               <div className="flex items-center justify-between">
@@ -836,6 +922,249 @@ export function CampaignBuilder({
             </div>
           )}
 
+          {step === 3 && channel === "email" && (
+            <div className="space-y-6">
+              {/* Header with template picker + AI draft */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Email Message</label>
+                <div className="flex items-center gap-2">
+                  <AIDraftDialog
+                    onAccept={(msg) =>
+                      setEmailHtmlBody(`<p>${msg.replace(/\n/g, "</p><p>")}</p>`)
+                    }
+                    businessName={workspaceDetail?.name}
+                    businessType={workspaceDetail?.primaryCategory || undefined}
+                    currentMessage={emailHtmlBody.replace(/<[^>]+>/g, " ").trim()}
+                  />
+                  <EmailTemplatePicker
+                    selectedId={emailTemplateId}
+                    onSelect={(t) => {
+                      setEmailTemplateId(t.id);
+                      setEmailSubject(t.subject);
+                      setEmailHtmlBody(t.htmlBody);
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Subject line */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Subject Line
+                  </label>
+                  <div className="flex gap-1">
+                    {[
+                      { key: "first_name", label: "{first_name}" },
+                      { key: "location_name", label: "{location_name}" },
+                    ].map((token) => (
+                      <button
+                        key={token.key}
+                        type="button"
+                        onClick={() =>
+                          setEmailSubject((prev) => prev + `{${token.key}}`)
+                        }
+                        className="px-1.5 py-0.5 rounded border text-[9px] font-mono text-muted-foreground hover:bg-muted/50 transition-colors"
+                      >
+                        {token.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="e.g. How was your experience at {location_name}?"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  maxLength={200}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  {emailSubject.length}/200 characters
+                </p>
+              </div>
+
+              {/* Body — Edit/Preview toggle */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Email Body
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEmailViewMode("edit")}
+                      className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+                        emailViewMode === "edit"
+                          ? "bg-slate-900 text-white"
+                          : "text-muted-foreground hover:bg-muted/30"
+                      }`}
+                    >
+                      <Code className="h-2.5 w-2.5" />
+                      HTML
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEmailViewMode("preview")}
+                      className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+                        emailViewMode === "preview"
+                          ? "bg-slate-900 text-white"
+                          : "text-muted-foreground hover:bg-muted/30"
+                      }`}
+                    >
+                      <Eye className="h-2.5 w-2.5" />
+                      Preview
+                    </button>
+                  </div>
+                </div>
+
+                {emailViewMode === "edit" ? (
+                  <>
+                    <Textarea
+                      value={emailHtmlBody}
+                      onChange={(e) => setEmailHtmlBody(e.target.value)}
+                      placeholder={'<p>Hi {first_name},</p>\n<p>Your email content here...</p>'}
+                      rows={10}
+                      className="resize-none text-sm font-mono"
+                    />
+                    {/* Token pills */}
+                    <div className="flex flex-wrap gap-1">
+                      {TOKENS.map((token) => (
+                        <button
+                          key={token.key}
+                          type="button"
+                          onClick={() =>
+                            setEmailHtmlBody((prev) => prev + `{${token.key}}`)
+                          }
+                          className="px-2 py-0.5 rounded border text-[10px] font-mono text-muted-foreground hover:bg-muted/50 transition-colors"
+                        >
+                          {`{${token.key}}`}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+                    <div className="bg-muted/10 px-3 py-1.5 border-b sticky top-0">
+                      <p className="text-xs text-muted-foreground">
+                        Subject:{" "}
+                        <span className="font-medium text-foreground">
+                          {previewTemplate(emailSubject) || "(no subject)"}
+                        </span>
+                      </p>
+                    </div>
+                    <div
+                      className="p-4 prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          previewTemplate(emailHtmlBody) ||
+                          '<p class="text-muted-foreground">Write some HTML above...</p>',
+                      }}
+                    />
+                  </div>
+                )}
+
+                <p className="text-[10px] text-muted-foreground">
+                  {emailHtmlBody.length.toLocaleString()} characters
+                </p>
+              </div>
+
+              {/* A/B toggle for email */}
+              <div className="border-t pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEnableAB(!enableAB);
+                    if (enableAB) {
+                      setVariantB("");
+                      setVariantSplit(50);
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors w-full text-left ${
+                    enableAB
+                      ? "border-teal-300 bg-teal-50/50"
+                      : "border-border hover:bg-muted/30"
+                  }`}
+                >
+                  <div
+                    className={`h-4 w-8 rounded-full transition-colors relative ${
+                      enableAB ? "bg-teal-500" : "bg-muted-foreground/20"
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${
+                        enableAB ? "translate-x-4" : "translate-x-0.5"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">A/B Test Subject Line</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Test two subject lines with the same body
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              {enableAB && (
+                <div className="space-y-3 border rounded-lg p-4 bg-muted/5">
+                  <label className="text-sm font-medium">Variant B Subject</label>
+                  <input
+                    type="text"
+                    value={variantB}
+                    onChange={(e) => setVariantB(e.target.value)}
+                    placeholder="Try a different subject line angle..."
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    maxLength={200}
+                  />
+
+                  {/* Split slider */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Audience Split
+                    </label>
+                    <input
+                      type="range"
+                      min={10}
+                      max={90}
+                      step={10}
+                      value={variantSplit}
+                      onChange={(e) => setVariantSplit(parseInt(e.target.value, 10))}
+                      className="w-full accent-teal-500"
+                    />
+                    <div className="flex justify-between">
+                      <span className="text-[10px] font-medium text-teal-600">
+                        A: {variantSplit}%
+                      </span>
+                      <span className="text-[10px] font-medium text-violet-600">
+                        B: {100 - variantSplit}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Nav */}
+              <div className="flex items-center justify-between pt-4">
+                <Button variant="ghost" onClick={() => setStep(2)}>
+                  <ArrowLeft className="h-4 w-4 mr-1.5" />
+                  Back
+                </Button>
+                <Button
+                  onClick={() => setStep(4)}
+                  disabled={
+                    !emailSubject.trim() ||
+                    !emailHtmlBody.trim() ||
+                    (enableAB && !variantB.trim())
+                  }
+                >
+                  Review
+                  <ArrowRight className="h-4 w-4 ml-1.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Step 4: Review */}
           {step === 4 && (
             <div className="space-y-6">
@@ -929,9 +1258,41 @@ export function CampaignBuilder({
 
                 <div className="rounded-lg border p-4 col-span-2">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    {enableAB ? "Message Variants" : "Message Preview"}
+                    {channel === "email"
+                      ? "Email Preview"
+                      : enableAB
+                        ? "Message Variants"
+                        : "Message Preview"}
                   </p>
-                  {enableAB ? (
+                  {channel === "email" ? (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Subject:{" "}
+                        <span className="font-medium text-foreground">
+                          {previewTemplate(emailSubject)}
+                        </span>
+                      </p>
+                      {enableAB && (
+                        <p className="text-xs text-muted-foreground">
+                          Variant B:{" "}
+                          <span className="font-medium text-foreground">
+                            {previewTemplate(variantB)}
+                          </span>
+                          <span className="text-[10px] ml-1">
+                            ({variantSplit}/{100 - variantSplit} split)
+                          </span>
+                        </p>
+                      )}
+                      <div
+                        className="border rounded-lg p-3 prose prose-sm max-w-none max-h-[200px] overflow-y-auto mt-2"
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            previewTemplate(emailHtmlBody) ||
+                            '<p class="text-muted-foreground">Write some HTML above...</p>',
+                        }}
+                      />
+                    </div>
+                  ) : enableAB ? (
                     <div className="grid grid-cols-2 gap-3 mt-2">
                       <div className="space-y-1">
                         <p className="text-[10px] font-semibold text-teal-600">
@@ -955,13 +1316,21 @@ export function CampaignBuilder({
                       {previewTemplate(messageTemplate)}
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {messageTemplate.length} chars ·{" "}
-                    {Math.ceil(messageTemplate.length / 160)} SMS segment
-                    {Math.ceil(messageTemplate.length / 160) > 1 ? "s" : ""}
-                    {enableAB &&
-                      ` · A/B test ${variantSplit}/${100 - variantSplit} split`}
-                  </p>
+                  {channel === "email" ? (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {emailHtmlBody.length.toLocaleString()} chars
+                      {enableAB &&
+                        ` · A/B test ${variantSplit}/${100 - variantSplit} split`}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {messageTemplate.length} chars ·{" "}
+                      {Math.ceil(messageTemplate.length / 160)} SMS segment
+                      {Math.ceil(messageTemplate.length / 160) > 1 ? "s" : ""}
+                      {enableAB &&
+                        ` · A/B test ${variantSplit}/${100 - variantSplit} split`}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1406,7 +1775,11 @@ export function CampaignBuilder({
                           <button
                             key={t.value}
                             type="button"
-                            onClick={() => setAutoReplyTone(t.value)}
+                            onClick={() =>
+                              setAutoReplyTone(
+                                t.value as "friendly" | "professional" | "casual",
+                              )
+                            }
                             className={`px-3 py-2 rounded-lg border text-left transition-colors ${
                               autoReplyTone === t.value
                                 ? "border-violet-300 bg-violet-50 text-violet-700"
@@ -1530,13 +1903,21 @@ export function CampaignBuilder({
                             recurringType === "weekly" ? "weekly" : "monthly"
                           } to matching contacts`
                         : sendType === "now"
-                          ? `Sending to ~${audiencePreview?.count || 0} contacts now`
+                          ? `Sending ${
+                              channel === "email" ? "email" : "SMS"
+                            } to ~${audiencePreview?.count || 0} contacts now`
                           : scheduledDate && scheduledTime
                             ? `Scheduled for ${new Date(
                                 `${scheduledDate}T${scheduledTime}`,
                               ).toLocaleString()}`
                             : "Scheduled send pending date/time selection"}
                     </p>
+                    {channel === "email" && !enableRecurring && (
+                      <p className="text-xs text-amber-600 mt-0.5">
+                        Only contacts with email addresses will receive this
+                        campaign
+                      </p>
+                    )}
                     {enableRecurring && (
                       <p className="text-xs text-violet-600 mt-0.5">
                         Each run targets new contacts matching your audience

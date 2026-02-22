@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Mail,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ import { StageBadge } from "@/features/contacts/components/StageBadge";
 import { ABComparisonCard } from "./ABComparisonCard";
 import { AutoReplyLogsCard } from "./AutoReplyLogsCard";
 import { LinkStatsCard } from "./LinkStatsCard";
+import { EmailStatsCard } from "@/features/email/components/EmailStatsCard";
 
 const RECIPIENT_STATUS_CONFIG: Record<string, { label: string; color: string }> =
   {
@@ -412,7 +414,7 @@ export function CampaignDetail({
           {hasAiRepliesStat && (
             <div className="text-center rounded-lg border p-4">
               <p className="text-2xl font-semibold text-violet-600">
-                {campaign.autoReplyStats._count.toLocaleString()}
+                {(campaign.autoReplyStats?._count || 0).toLocaleString()}
               </p>
               <p className="text-xs text-muted-foreground">AI Replies</p>
             </div>
@@ -424,6 +426,10 @@ export function CampaignDetail({
 
         {/* Link tracking stats */}
         <LinkStatsCard campaignId={campaign.id} />
+
+        {campaign.channel === "email" && (
+          <EmailStatsCard campaignId={campaign.id} />
+        )}
 
         {/* AI Auto-Reply logs */}
         <AutoReplyLogsCard
@@ -464,20 +470,41 @@ export function CampaignDetail({
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
               Message
             </p>
-            <div className="max-w-xs">
-              <div className="rounded-2xl border bg-slate-50 p-3">
-                <div className="bg-white rounded-2xl rounded-bl-md px-3 py-2 shadow-sm border">
-                  <p className="text-sm whitespace-pre-wrap">
-                    {previewTemplate(campaign.messageTemplate)}
+            {campaign.channel === "email" ? (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-muted/10 px-4 py-2 border-b">
+                  <p className="text-xs text-muted-foreground">
+                    Subject:{" "}
+                    <span className="font-medium text-foreground">
+                      {campaign.subject || "—"}
+                    </span>
                   </p>
                 </div>
+                <div
+                  className="p-4 prose prose-sm max-w-none max-h-[300px] overflow-y-auto"
+                  dangerouslySetInnerHTML={{ __html: campaign.messageTemplate }}
+                />
               </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {campaign.messageTemplate.length} chars ·{" "}
-              {Math.ceil(campaign.messageTemplate.length / 160)} SMS segment
-              {Math.ceil(campaign.messageTemplate.length / 160) > 1 ? "s" : ""}
-            </p>
+            ) : (
+              <>
+                <div className="max-w-xs">
+                  <div className="rounded-2xl border bg-slate-50 p-3">
+                    <div className="bg-white rounded-2xl rounded-bl-md px-3 py-2 shadow-sm border">
+                      <p className="text-sm whitespace-pre-wrap">
+                        {previewTemplate(campaign.messageTemplate)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {campaign.messageTemplate.length} chars ·{" "}
+                  {Math.ceil(campaign.messageTemplate.length / 160)} SMS segment
+                  {Math.ceil(campaign.messageTemplate.length / 160) > 1
+                    ? "s"
+                    : ""}
+                </p>
+              </>
+            )}
           </div>
 
           {/* Details */}
@@ -487,6 +514,23 @@ export function CampaignDetail({
             </p>
 
             <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Channel</span>
+                <div className="flex items-center gap-1.5">
+                  {campaign.channel === "email" ? (
+                    <>
+                      <Mail className="h-3.5 w-3.5 text-blue-500" />
+                      <span className="font-medium">Email</span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="h-3.5 w-3.5 text-teal-500" />
+                      <span className="font-medium">SMS</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Location</span>
                 <span className="font-medium">

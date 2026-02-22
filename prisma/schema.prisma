@@ -46,6 +46,8 @@ model User {
   twilioConfig     TwilioConfig?
   stages           Stage[]
   campaigns        Campaign[]
+  campaignSequences CampaignSequence[]
+  emailTemplates   EmailTemplate[]
   campaignGroups   CampaignGroup[]
   campaignTemplates CampaignTemplate[]
   savedSegments     SavedSegment[]
@@ -158,10 +160,14 @@ model Workspace {
   categories   Category[]
   activities   Activity[]
   campaigns    Campaign[]
+  sequences    CampaignSequence[]
   textToJoinKeywords TextToJoinKeyword[]
+  webhookEndpoints WebhookEndpoint[]
 
   twilioPhoneNumber TwilioPhoneNumber?
   smsMessages       SmsMessage[]
+  fromEmail         String?
+  fromEmailName     String?
 
   user User @relation("CreatedWorkspaces", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -604,6 +610,7 @@ model ChatContact {
   activities Activity[]
   tasks      Task[]
   campaignRecipients CampaignRecipient[]
+  enrollments CampaignSequenceEnrollment[]
 
   @@index([workspaceId])
   @@unique([workspaceId, phone])
@@ -680,6 +687,7 @@ model Campaign {
   sendWindowEnd       String?
 
   recipients          CampaignRecipient[]
+  emailSends          EmailSend[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -835,6 +843,7 @@ model CampaignRecipient {
   aiRepliesSent Int       @default(0)
   linkClicks    CampaignLinkClick[]
   autoReplyLogs CampaignAutoReplyLog[]
+  emailSends    EmailSend[]
 
   createdAt    DateTime  @default(now())
 
@@ -842,6 +851,215 @@ model CampaignRecipient {
   @@index([campaignId, status])
   @@index([contactId])
   @@map("campaign_recipient")
+}
+
+model CampaignSequence {
+  id                  String     @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById         String
+  createdBy           User       @relation(fields: [createdById], references: [id])
+
+  name                String
+  description         String?    @db.Text
+  status              String     @default("draft") // draft, active, paused, archived
+
+  // Audience (same pattern as campaigns)
+  audienceType        String     @default("all")
+  audienceStage       String?
+  audienceCategoryId  String?
+  audienceInactiveDays Int?
+  frequencyCapDays    Int?
+
+  // Trigger
+  triggerType         String     @default("manual") // manual, contact_created, keyword_join, stage_change
+  triggerValue        String? // e.g. keyword id, stage slug
+
+  steps               CampaignSequenceStep[]
+  enrollments         CampaignSequenceEnrollment[]
+
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  @@index([workspaceId])
+  @@index([status])
+  @@map("campaign_sequence")
+}
+
+model CampaignSequenceStep {
+  id               String           @id @default(cuid())
+  sequenceId       String
+  sequence         CampaignSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  order            Int
+  channel          String           @default("sms") // sms, email
+  subject          String? // email only
+  body             String           @db.Text
+  templateId       String?
+
+  // Delay before this step (from previous step or enrollment)
+  delayMinutes     Int              @default(0)
+
+  // Conditions to skip/branch
+  conditionType    String? // replied, clicked, no_reply, opted_out
+  conditionAction  String           @default("continue") // continue, skip, stop
+
+  // Business hours
+  sendWindowStart  String?
+  sendWindowEnd    String?
+
+  stepLogs         CampaignSequenceStepLog[]
+
+  createdAt        DateTime         @default(now())
+
+  @@index([sequenceId, order])
+  @@map("campaign_sequence_step")
+}
+
+model CampaignSequenceEnrollment {
+  id              String                 @id @default(cuid())
+  sequenceId      String
+  sequence        CampaignSequence       @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  contactId       String
+  contact         ChatContact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  status          String                 @default("active") // active, completed, stopped, opted_out
+  currentStep     Int                    @default(0)
+  nextStepAt      DateTime?
+
+  enrolledAt      DateTime               @default(now())
+  completedAt     DateTime?
+  stoppedAt       DateTime?
+  stoppedReason   String?
+
+  stepLogs        CampaignSequenceStepLog[]
+
+  @@unique([sequenceId, contactId])
+  @@index([sequenceId, status])
+  @@index([contactId])
+  @@index([nextStepAt])
+  @@map("campaign_sequence_enrollment")
+}
+
+model CampaignSequenceStepLog {
+  id             String                     @id @default(cuid())
+  enrollmentId   String
+  enrollment     CampaignSequenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  stepId         String
+  step           CampaignSequenceStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  status         String // sent, delivered, failed, skipped
+  channel        String
+  messageId      String? // Twilio SID or email provider ID
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  failedAt       DateTime?
+  errorMessage   String?
+  skippedReason  String?
+
+  createdAt      DateTime                   @default(now())
+
+  @@index([enrollmentId])
+  @@index([stepId])
+  @@map("campaign_sequence_step_log")
+}
+
+model EmailTemplate {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+
+  name         String
+  subject      String
+  htmlBody     String   @db.Text
+  textBody     String?  @db.Text // plain text fallback
+  category     String   @default("custom")
+  isLibrary    Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, category])
+  @@map("email_template")
+}
+
+model EmailSend {
+  id           String              @id @default(cuid())
+  campaignId   String?
+  campaign     Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  recipientId  String?
+  recipient    CampaignRecipient?  @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  contactId    String
+  workspaceId  String
+
+  toEmail      String
+  fromEmail    String
+  fromName     String?
+  subject      String
+  providerId   String? // Resend message ID
+
+  status       String   @default("pending") // pending, sent, delivered, opened, clicked, bounced, complained
+  openCount    Int      @default(0)
+  clickCount   Int      @default(0)
+
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  openedAt     DateTime?
+  bouncedAt    DateTime?
+
+  createdAt    DateTime @default(now())
+
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([workspaceId])
+  @@index([providerId])
+  @@map("email_send")
+}
+
+model WebhookEndpoint {
+  id           String            @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  url          String
+  secret       String // HMAC signing secret
+  events       String[] // campaign.sent, contact.replied, etc.
+  active       Boolean           @default(true)
+
+  lastStatus   Int? // last HTTP status code
+  lastError    String?
+  lastFiredAt  DateTime?
+  failCount    Int               @default(0)
+
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  deliveries   WebhookDelivery[]
+
+  @@index([workspaceId])
+  @@map("webhook_endpoint")
+}
+
+model WebhookDelivery {
+  id            String          @id @default(cuid())
+  endpointId    String
+  endpoint      WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  event         String
+  payload       String          @db.Text // JSON
+  status        Int? // HTTP response code
+  responseBody  String?         @db.Text
+  duration      Int? // ms
+  error         String?
+
+  attemptCount  Int             @default(1)
+  nextRetryAt   DateTime?
+
+  createdAt     DateTime        @default(now())
+
+  @@index([endpointId])
+  @@index([nextRetryAt])
+  @@map("webhook_delivery")
 }
 
 model TextToJoinKeyword {

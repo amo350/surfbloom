@@ -7,25 +7,45 @@ import {
   CheckCircle,
   Link2,
   Loader2,
+  Mail,
   MapPin,
   MessageSquare,
   Send,
   Sparkles,
   TrendingUp,
   Trophy,
+  Users,
+  Workflow,
 } from "lucide-react";
 import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
 import { useCrossLocationStats } from "../hooks/use-campaigns";
+import { useQuery } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 function pct(n: number): string {
   return `${(n * 100).toFixed(1)}%`;
 }
 
 export function CampaignReporting() {
+  const trpc = useTRPC();
   const { data, isLoading } = useCrossLocationStats();
+  const { data: emailCampaigns } = useQuery(
+    trpc.campaigns.getCampaigns.queryOptions({
+      workspaceId: undefined,
+      channel: "email",
+      page: 1,
+      pageSize: 200,
+    }),
+  );
+  const { data: sequences } = useQuery(
+    trpc.sequences.getSequences.queryOptions({ workspaceId: undefined }),
+  );
 
   const locations = data?.locations || [];
   const totals = data?.totals;
+  const emailItems = emailCampaigns?.items || [];
+  const hasEmailData = emailItems.length > 0;
+  const hasSequenceData = (sequences?.length || 0) > 0;
 
   return (
     <div className="h-full flex flex-col">
@@ -113,8 +133,80 @@ export function CampaignReporting() {
           </>
         )}
 
+        {hasEmailData && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Mail className="h-4 w-4 text-blue-500" />
+              Email Campaigns
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <OverviewCard
+                icon={Mail}
+                label="Email Campaigns"
+                value={emailItems.length.toString()}
+              />
+              <OverviewCard
+                icon={Send}
+                label="Total Sent"
+                value={emailItems
+                  .reduce((sum: number, c: any) => sum + (c.sentCount || 0), 0)
+                  .toLocaleString()}
+              />
+              <OverviewCard
+                icon={CheckCircle}
+                label="Total Delivered"
+                value={emailItems
+                  .reduce((sum: number, c: any) => sum + (c.deliveredCount || 0), 0)
+                  .toLocaleString()}
+              />
+              <OverviewCard
+                icon={MessageSquare}
+                label="Total Failed"
+                value={emailItems
+                  .reduce((sum: number, c: any) => sum + (c.failedCount || 0), 0)
+                  .toLocaleString()}
+              />
+            </div>
+          </div>
+        )}
+
+        {hasSequenceData && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Workflow className="h-4 w-4 text-purple-500" />
+              Drip Sequences
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <OverviewCard
+                icon={Workflow}
+                label="Total Sequences"
+                value={(sequences?.length || 0).toString()}
+              />
+              <OverviewCard
+                icon={CheckCircle}
+                label="Active"
+                value={(sequences?.filter((s: any) => s.status === "active").length || 0).toString()}
+              />
+              <OverviewCard
+                icon={Users}
+                label="Total Enrollments"
+                value={(sequences || [])
+                  .reduce((sum: number, s: any) => sum + (s._count?.enrollments || 0), 0)
+                  .toLocaleString()}
+              />
+              <OverviewCard
+                icon={BarChart3}
+                label="Total Steps"
+                value={(sequences || [])
+                  .reduce((sum: number, s: any) => sum + (s._count?.steps || 0), 0)
+                  .toLocaleString()}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Empty */}
-        {!isLoading && (!totals || totals.sent === 0) && (
+        {!isLoading && (!totals || totals.sent === 0) && !hasEmailData && !hasSequenceData && (
           <div className="flex flex-col items-center py-16 text-center">
             <BarChart3 className="h-10 w-10 text-muted-foreground/30 mb-3" />
             <p className="text-sm font-medium text-muted-foreground">

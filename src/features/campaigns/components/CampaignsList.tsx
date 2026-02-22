@@ -10,6 +10,7 @@ import {
   Copy,
   FileText,
   Link2,
+  Mail,
   Megaphone,
   MessageSquare,
   MessageSquareText,
@@ -17,6 +18,7 @@ import {
   Send,
   Sparkles,
   Users,
+  Workflow,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -35,6 +37,9 @@ function formatDate(date: string | Date) {
 
 export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
   const [status, setStatus] = useState<string | undefined>(undefined);
+  const [channelFilter, setChannelFilter] = useState<"sms" | "email" | undefined>(
+    undefined,
+  );
   const [page, setPage] = useState(1);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
@@ -43,6 +48,7 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
   const { data, isLoading } = useCampaigns({
     workspaceId,
     status,
+    channel: channelFilter,
     page,
     pageSize: 20,
   });
@@ -60,36 +66,83 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
     { value: "completed", label: "Completed" },
     { value: "cancelled", label: "Cancelled" },
   ];
+  const CHANNEL_FILTERS: Array<{
+    value: "sms" | "email" | undefined;
+    label: string;
+  }> = [
+    { value: undefined, label: "All Channels" },
+    { value: "sms", label: "SMS" },
+    { value: "email", label: "Email" },
+  ];
 
   return (
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.label}
-              type="button"
-              onClick={() => {
-                setStatus(f.value);
-                setPage(1);
-              }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                status === f.value
-                  ? "bg-foreground/10 text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.label}
+                type="button"
+                onClick={() => {
+                  setStatus(f.value);
+                  setPage(1);
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  status === f.value
+                    ? "bg-foreground/10 text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            {CHANNEL_FILTERS.map((f) => (
+              <button
+                key={f.label}
+                type="button"
+                onClick={() => {
+                  setChannelFilter(f.value);
+                  setPage(1);
+                }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                  channelFilter === f.value
+                    ? "bg-slate-900 text-white"
+                    : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
+            <Link href={`${basePath}/campaigns/sequences`}>
+              <Workflow className="h-4 w-4 mr-1.5" />
+              Sequences
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${basePath}/campaigns/email-templates`}>
+              <Mail className="h-4 w-4 mr-1.5" />
+              Email Templates
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
             <Link href={`${basePath}/campaigns/templates`}>
               <FileText className="h-4 w-4 mr-1.5" />
               Templates
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${basePath}/campaigns/segments`}>
+              <Users className="h-4 w-4 mr-1.5" />
+              Segments
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
@@ -142,7 +195,11 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
               No campaigns yet
             </p>
             <p className="text-xs text-muted-foreground/60 mt-1">
-              Send your first SMS campaign to reach your contacts
+                  {channelFilter === "email"
+                    ? "Send your first email campaign to reach your contacts"
+                    : channelFilter === "sms"
+                      ? "Send your first SMS campaign to reach your contacts"
+                      : "Send your first campaign to reach your contacts"}
             </p>
             <Button size="sm" className="mt-4" asChild>
               <Link href={`${basePath}/campaigns/new`}>
@@ -179,12 +236,18 @@ export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
                 >
                   {/* Name + preview */}
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate flex items-center gap-1.5">
-                      {isGroup && (
+                    <div className="flex items-center gap-1.5">
+                      {isGroup ? (
                         <Megaphone className="h-3.5 w-3.5 text-teal-600" />
+                      ) : item.channel === "email" ? (
+                        <Mail className="h-3 w-3 text-blue-500" />
+                      ) : (
+                        <MessageSquare className="h-3 w-3 text-teal-500" />
                       )}
-                      {item.name}
-                    </p>
+                      <span className="text-sm font-medium truncate">
+                        {item.name}
+                      </span>
+                    </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {isGroup
                         ? `${item.campaignCount} location campaign${item.campaignCount !== 1 ? "s" : ""}`

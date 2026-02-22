@@ -6,6 +6,7 @@ import { useTRPC } from "@/trpc/client";
 export const useCampaigns = (filters: {
   workspaceId?: string;
   status?: string;
+  channel?: "sms" | "email";
   page?: number;
   pageSize?: number;
 }) => {
@@ -14,6 +15,7 @@ export const useCampaigns = (filters: {
     trpc.campaigns.getCampaigns.queryOptions({
       workspaceId: filters.workspaceId,
       status: filters.status as any,
+      channel: filters.channel,
       page: filters.page || 1,
       pageSize: filters.pageSize || 20,
     }),

@@ -2,6 +2,11 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
+import {
+  generateQRCodeDataUrl,
+  generateQRCodeSvg,
+  buildSmsUri,
+} from "../lib/qr-generator";
 
 const RESERVED_KEYWORDS = [
   "stop",
@@ -202,5 +207,80 @@ export const keywordRouter = createTRPCRouter({
 
       await prisma.textToJoinKeyword.delete({ where: { id: input.id } });
       return { success: true };
+    }),
+
+  // ─── QR CODE ──────────────────────────────────────────
+  getKeywordQR: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        format: z.enum(["png", "svg"]).default("png"),
+        width: z.number().int().min(128).max(2048).default(512),
+        darkColor: z.string().default("#000000"),
+        lightColor: z.string().default("#FFFFFF"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const keyword = await prisma.textToJoinKeyword.findUnique({
+        where: { id: input.id },
+        select: {
+          keyword: true,
+          workspace: {
+            select: {
+              name: true,
+              members: { select: { userId: true } },
+              twilioPhoneNumber: { select: { phoneNumber: true } },
+            },
+          },
+        },
+      });
+
+      if (!keyword) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const isMember = keyword.workspace.members.some(
+        (m) => m.userId === ctx.auth.user.id,
+      );
+      if (!isMember) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const phone = keyword.workspace.twilioPhoneNumber?.phoneNumber;
+      if (!phone) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No phone number configured for this location",
+        });
+      }
+
+      const smsUri = buildSmsUri(phone, keyword.keyword);
+
+      if (input.format === "svg") {
+        const svg = await generateQRCodeSvg(smsUri, {
+          width: input.width,
+          darkColor: input.darkColor,
+          lightColor: input.lightColor,
+        });
+        return {
+          format: "svg" as const,
+          data: svg,
+          keyword: keyword.keyword,
+          phone,
+          businessName: keyword.workspace.name,
+          smsUri,
+        };
+      }
+
+      const dataUrl = await generateQRCodeDataUrl(smsUri, {
+        width: input.width,
+        darkColor: input.darkColor,
+        lightColor: input.lightColor,
+      });
+
+      return {
+        format: "png" as const,
+        data: dataUrl,
+        keyword: keyword.keyword,
+        phone,
+        businessName: keyword.workspace.name,
+        smsUri,
+      };
     }),
 });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fireContactOptedOut } from "@/features/webhooks/server/webhook-events";
 import { prisma } from "@/lib/prisma";
 import { verifyUnsubscribeToken } from "@/features/campaigns/lib/unsubscribe";
 
@@ -52,6 +53,12 @@ export async function POST(req: NextRequest) {
           },
         }),
       ]);
+
+      fireContactOptedOut(
+        contact.workspaceId,
+        { id: contactId, phone: null, email: null },
+        "unsubscribe_link",
+      ).catch((err) => console.error("Webhook dispatch error:", err));
     }
 
     return NextResponse.json({ success: true });
