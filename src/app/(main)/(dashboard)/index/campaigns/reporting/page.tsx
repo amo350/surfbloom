@@ -1,5 +1,5 @@
-import { ReportingPage } from "@/features/campaigns/components/reporting/ReportingPage";
+import { CampaignReporting } from "@/features/campaigns/components/CampaignReporting";
 
-export default function IndexCampaignReportingPage() {
-  return <ReportingPage basePath="/index" />;
+export default function ReportingPage() {
+  return <CampaignReporting />;
 }

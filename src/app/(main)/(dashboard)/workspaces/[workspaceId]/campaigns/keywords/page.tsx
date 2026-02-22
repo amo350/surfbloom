@@ -6,10 +6,5 @@ export default async function KeywordsPage({
   params: Promise<{ workspaceId: string }>;
 }) {
   const { workspaceId } = await params;
-  return (
-    <KeywordManager
-      workspaceId={workspaceId}
-      basePath={`/workspaces/${workspaceId}`}
-    />
-  );
+  return <KeywordManager workspaceId={workspaceId} />;
 }
