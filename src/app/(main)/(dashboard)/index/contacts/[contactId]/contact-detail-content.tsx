@@ -36,6 +36,7 @@ import {
   useContact,
   useDeleteContact,
 } from "@/features/contacts/hooks/use-contacts";
+import { ContactSequenceCard } from "@/features/sequences/components/ContactSequenceCard";
 
 function getInitials(first?: string | null, last?: string | null) {
   return [first?.[0], last?.[0]].filter(Boolean).join("").toUpperCase() || "?";
@@ -125,7 +126,7 @@ export function ContactDetailContent({
           <div className="rounded-xl border bg-card p-6">
             <div className="flex items-start gap-4">
               {/* Avatar */}
-              <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
+              <div className="h-16 w-16 rounded-xl bg-linear-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
                 <span className="text-xl font-bold text-white">{initials}</span>
               </div>
 
@@ -309,6 +310,8 @@ export function ContactDetailContent({
               <ContactPanelActivity contactId={contactId} />
             </div>
           </div>
+
+          <ContactSequenceCard contactId={contact.id} />
         </div>
       </div>
     </div>

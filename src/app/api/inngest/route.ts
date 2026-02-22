@@ -4,6 +4,7 @@ import { sendCampaign } from "@/inngest/campaign-send";
 import { inngest } from "@/inngest/client";
 import { executeWorkflow } from "@/inngest/functions";
 import { generateReport } from "@/inngest/report";
+import { processSequenceSteps } from "@/inngest/sequence-engine";
 import { syncReviews } from "@/inngest/sync-reviews";
 
 export const { GET, POST, PUT } = serve({
@@ -14,5 +15,6 @@ export const { GET, POST, PUT } = serve({
     syncReviews,
     sendCampaign,
     checkRecurringCampaigns,
+    processSequenceSteps,
   ],
 });

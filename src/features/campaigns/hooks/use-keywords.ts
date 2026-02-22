@@ -51,3 +51,25 @@ export const useDeleteKeyword = () => {
     }),
   );
 };
+
+export const useKeywordQR = (
+  id: string | null,
+  options?: {
+    format?: "png" | "svg";
+    width?: number;
+    darkColor?: string;
+    lightColor?: string;
+  },
+) => {
+  const trpc = useTRPC();
+  return useQuery({
+    ...trpc.keywords.getKeywordQR.queryOptions({
+      id: id!,
+      format: options?.format || "png",
+      width: options?.width || 512,
+      darkColor: options?.darkColor || "#000000",
+      lightColor: options?.lightColor || "#FFFFFF",
+    }),
+    enabled: !!id,
+  });
+};

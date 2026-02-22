@@ -31,6 +31,7 @@ import {
   useDeleteKeyword,
 } from "../hooks/use-keywords";
 import { KeywordDialog } from "./KeywordDialog";
+import { QRCodeDialog } from "./QRCodeDialog";
 
 export function KeywordManager({ workspaceId }: { workspaceId?: string }) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -123,6 +124,7 @@ export function KeywordManager({ workspaceId }: { workspaceId?: string }) {
                     </div>
 
                     <div className="flex items-center gap-0.5">
+                      <QRCodeDialog keywordId={kw.id} keywordText={kw.keyword} />
                       <Button
                         variant="ghost"
                         size="icon"

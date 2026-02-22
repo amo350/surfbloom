@@ -98,6 +98,7 @@ export const campaignsRouter = createTRPCRouter({
       z.object({
         workspaceId: z.string().optional(),
         status: z.enum(STATUSES).optional(),
+        channel: z.enum(["sms", "email"]).optional(),
         page: z.number().default(1),
         pageSize: z.number().default(20),
       }),
@@ -119,6 +120,7 @@ export const campaignsRouter = createTRPCRouter({
           workspaceId: { in: workspaceIds },
         };
         if (input.status) where.status = input.status;
+        if (input.channel) where.channel = input.channel;
 
         const [campaigns, totalCount] = await Promise.all([
           prisma.campaign.findMany({
@@ -154,12 +156,14 @@ export const campaignsRouter = createTRPCRouter({
         groupId: null,
       };
       if (input.status) campaignWhere.status = input.status;
+      if (input.channel) campaignWhere.channel = input.channel;
 
       const groupWhere: any = {
         createdById: ctx.auth.user.id,
         campaigns: {
           some: {
             workspaceId: { in: workspaceIds },
+            ...(input.channel ? { channel: input.channel } : {}),
           },
         },
       };
@@ -182,6 +186,7 @@ export const campaignsRouter = createTRPCRouter({
             campaigns: {
               where: {
                 workspaceId: { in: workspaceIds },
+                ...(input.channel ? { channel: input.channel } : {}),
               },
               include: {
                 workspace: { select: { id: true, name: true } },
@@ -370,7 +375,9 @@ export const campaignsRouter = createTRPCRouter({
         .object({
           workspaceId: z.string(),
           name: z.string().trim().min(1).max(100),
+          channel: z.enum(["sms", "email"]).default("sms"),
           messageTemplate: z.string().trim().min(1).max(1600),
+          subject: z.string().trim().max(200).optional(),
           templateId: z.string().optional(),
           segmentId: z.string().optional(),
           variantB: z.string().max(1600).optional(),
@@ -427,18 +434,20 @@ export const campaignsRouter = createTRPCRouter({
       });
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
 
-      // Verify workspace has a Twilio number
-      const workspace = await prisma.workspace.findUnique({
-        where: { id: input.workspaceId },
-        select: {
-          twilioPhoneNumber: { select: { phoneNumber: true } },
-        },
-      });
-      if (!workspace?.twilioPhoneNumber?.phoneNumber) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "This location needs an SMS number before sending campaigns",
+      if (input.channel === "sms") {
+        // Verify workspace has a Twilio number for SMS campaigns
+        const workspace = await prisma.workspace.findUnique({
+          where: { id: input.workspaceId },
+          select: {
+            twilioPhoneNumber: { select: { phoneNumber: true } },
+          },
         });
+        if (!workspace?.twilioPhoneNumber?.phoneNumber) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This location needs an SMS number before sending campaigns",
+          });
+        }
       }
 
       const status = input.recurringType
@@ -453,7 +462,9 @@ export const campaignsRouter = createTRPCRouter({
             workspaceId: input.workspaceId,
             createdById: ctx.auth.user.id,
             name: input.name,
+            channel: input.channel,
             messageTemplate: input.messageTemplate,
+            subject: input.subject || null,
             templateId: input.templateId || null,
             segmentId: input.segmentId || null,
             variantB: input.variantB || null,
@@ -501,7 +512,9 @@ export const campaignsRouter = createTRPCRouter({
         .object({
           name: z.string().trim().min(1).max(100),
           workspaceIds: z.array(z.string()).min(2),
+          channel: z.enum(["sms", "email"]).default("sms"),
           messageTemplate: z.string().trim().min(1).max(1600),
+          subject: z.string().trim().max(200).optional(),
           templateId: z.string().optional(),
           segmentId: z.string().optional(),
           variantB: z.string().max(1600).optional(),
@@ -571,22 +584,24 @@ export const campaignsRouter = createTRPCRouter({
         });
       }
 
-      const workspaces = await prisma.workspace.findMany({
-        where: { id: { in: workspaceIds } },
-        select: {
-          id: true,
-          name: true,
-          twilioPhoneNumber: { select: { phoneNumber: true } },
-        },
-      });
-      const missingNumber = workspaces
-        .filter((w) => !w.twilioPhoneNumber?.phoneNumber)
-        .map((w) => w.name);
-      if (missingNumber.length > 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Missing SMS number for: ${missingNumber.join(", ")}`,
+      if (input.channel === "sms") {
+        const workspaces = await prisma.workspace.findMany({
+          where: { id: { in: workspaceIds } },
+          select: {
+            id: true,
+            name: true,
+            twilioPhoneNumber: { select: { phoneNumber: true } },
+          },
         });
+        const missingNumber = workspaces
+          .filter((w) => !w.twilioPhoneNumber?.phoneNumber)
+          .map((w) => w.name);
+        if (missingNumber.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Missing SMS number for: ${missingNumber.join(", ")}`,
+          });
+        }
       }
 
       const status = input.recurringType
@@ -610,7 +625,9 @@ export const campaignsRouter = createTRPCRouter({
                 workspaceId,
                 createdById: ctx.auth.user.id,
                 name: input.name,
+                channel: input.channel,
                 messageTemplate: input.messageTemplate,
+                subject: input.subject || null,
                 templateId: input.templateId || null,
                 segmentId: input.segmentId || null,
                 variantB: input.variantB || null,

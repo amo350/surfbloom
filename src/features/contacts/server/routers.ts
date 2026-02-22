@@ -3,6 +3,10 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import {
+  autoEnrollOnContactCreated,
+  autoEnrollOnStageChange,
+} from "@/features/sequences/server/auto-enroll";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { DEFAULT_STAGES } from "./default-stages";
 import { logActivity } from "./log-activity";
@@ -292,6 +296,10 @@ export const contactsRouter = createTRPCRouter({
         description: `Contact created by ${ctx.auth.user.name || "team member"}`,
       });
 
+      autoEnrollOnContactCreated(input.workspaceId, contact.id).catch((err) =>
+        console.error("Sequence auto-enroll error:", err),
+      );
+
       return contact;
     }),
 
@@ -331,6 +339,10 @@ export const contactsRouter = createTRPCRouter({
         type: "contact_created",
         description: "Promoted from conversation to contact",
       });
+
+      autoEnrollOnContactCreated(contact.workspaceId, contact.id).catch((err) =>
+        console.error("Sequence auto-enroll error:", err),
+      );
 
       return contact;
     }),
@@ -400,6 +412,10 @@ export const contactsRouter = createTRPCRouter({
             changedBy: ctx.auth.user.name || ctx.auth.user.id,
           },
         });
+
+        autoEnrollOnStageChange(current.workspaceId, id, input.stage).catch(
+          (err) => console.error("Sequence auto-enroll error:", err),
+        );
       }
 
       return contact;
@@ -793,10 +809,11 @@ export const contactsRouter = createTRPCRouter({
       }
 
       let created = 0;
+      let newContacts: { id: string; workspaceId: string }[] = [];
 
       if (toCreate.length > 0) {
         // Use transaction to get IDs back
-        const newContacts = await prisma.$transaction(
+        newContacts = await prisma.$transaction(
           toCreate.map((data) =>
             prisma.chatContact.create({
               data,
@@ -816,6 +833,13 @@ export const contactsRouter = createTRPCRouter({
             })),
           });
         }
+      }
+
+      for (const createdContact of newContacts) {
+        autoEnrollOnContactCreated(
+          createdContact.workspaceId,
+          createdContact.id,
+        ).catch((err) => console.error("Sequence auto-enroll error:", err));
       }
 
       return {

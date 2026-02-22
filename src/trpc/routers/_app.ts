@@ -18,6 +18,10 @@ import { segmentRouter } from "@/features/campaigns/server/segment-router";
 import { aiRouter } from "@/features/campaigns/server/ai-router";
 import { linkRouter } from "@/features/campaigns/server/link-router";
 import { keywordRouter } from "@/features/campaigns/server/keyword-router";
+import { emailTemplateRouter } from "@/features/email/server/email-template-router";
+import { emailStatsRouter } from "@/features/email/server/email-stats-router";
+import { webhookRouter } from "@/features/webhooks/server/webhook-router";
+import { sequenceRouter } from "@/features/sequences/server/sequence-router";
 
 export const appRouter = createTRPCRouter({
   executions: executionsRouter,
@@ -39,6 +43,10 @@ export const appRouter = createTRPCRouter({
   campaignAi: aiRouter,
   campaignLinks: linkRouter,
   keywords: keywordRouter,
+  emailTemplates: emailTemplateRouter,
+  emailStats: emailStatsRouter,
+  webhooks: webhookRouter,
+  sequences: sequenceRouter,
 });
 //CRITICAL: Do not remove this line - required for tRPC type inference
 export type AppRouter = typeof appRouter;

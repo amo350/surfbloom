@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleCampaignAutoReply } from "@/features/campaigns/server/handle-auto-reply";
 import { handleKeywordMatch } from "@/features/campaigns/server/handle-keyword";
 import { updateCampaignStats } from "@/features/campaigns/server/update-campaign-stats";
+import {
+  fireContactOptedOut,
+  fireContactReplied,
+} from "@/features/webhooks/server/webhook-events";
 import { logActivity } from "@/features/contacts/server/log-activity";
 import { prisma } from "@/lib/prisma";
 
@@ -72,7 +76,7 @@ export async function POST(req: NextRequest) {
         workspaceId,
         phone: from,
       },
-      select: { id: true },
+      select: { id: true, firstName: true, phone: true, email: true },
     });
 
     if (OPT_OUT.includes(normalizedBody)) {
@@ -104,6 +108,17 @@ export async function POST(req: NextRequest) {
         } catch {
           // best-effort
         }
+
+        fireContactOptedOut(
+          workspace.id,
+          {
+            id: existingContact.id,
+            firstName: existingContact.firstName,
+            phone: existingContact.phone,
+            email: existingContact.email,
+          },
+          "sms_stop",
+        ).catch((err) => console.error("Webhook dispatch error:", err));
       }
       return NextResponse.json({ handled: true, optedOut: true });
     }
@@ -231,6 +246,7 @@ export async function POST(req: NextRequest) {
             id: true,
             campaignId: true,
             contactId: true,
+            campaign: { select: { name: true } },
             contact: {
               select: {
                 firstName: true,
@@ -248,6 +264,20 @@ export async function POST(req: NextRequest) {
               repliedAt: new Date(),
             },
           });
+
+          fireContactReplied(
+            workspace.id,
+            {
+              id: campaignRecipient.campaignId,
+              name: campaignRecipient.campaign?.name || "",
+            },
+            {
+              id: campaignRecipient.contactId,
+              firstName: campaignRecipient.contact?.firstName,
+              phone: from,
+            },
+            body || "",
+          ).catch((err) => console.error("Webhook dispatch error:", err));
 
           // Log reply on contact timeline
           try {

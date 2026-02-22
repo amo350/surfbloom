@@ -3,7 +3,16 @@ import { replaceUrls } from "@/features/campaigns/lib/link-utils";
 import { generateUnsubscribeToken } from "@/features/campaigns/lib/unsubscribe";
 import { createCampaignLinks } from "@/features/campaigns/server/create-campaign-links";
 import { updateCampaignStats } from "@/features/campaigns/server/update-campaign-stats";
+import {
+  fireCampaignCompleted,
+  fireCampaignSent,
+} from "@/features/webhooks/server/webhook-events";
+import { wrapEmailHtml, htmlToPlainText } from "@/features/email/lib/email-defaults";
+import { resolveEmailTemplate } from "@/features/email/server/resolve-email-template";
+import { getEmailConfig } from "@/features/email/server/get-email-config";
+import { sendEmail } from "@/features/email/server/send-email";
 import { prisma } from "@/lib/prisma";
+import { sendSms } from "@/lib/twilio";
 import { inngest } from "./client";
 
 const BATCH_SIZE = 50;
@@ -110,7 +119,10 @@ export const sendCampaign = inngest.createFunction(
           id: true,
           workspaceId: true,
           status: true,
+          name: true,
+          channel: true,
           messageTemplate: true,
+          subject: true,
           variantB: true,
           variantSplit: true,
           audienceType: true,
@@ -126,6 +138,8 @@ export const sendCampaign = inngest.createFunction(
               id: true,
               name: true,
               userId: true,
+              fromEmail: true,
+              fromEmailName: true,
               twilioPhoneNumber: {
                 select: { phoneNumber: true },
               },
@@ -140,7 +154,7 @@ export const sendCampaign = inngest.createFunction(
           `Campaign status is ${c.status}, not sending`,
         );
       }
-      if (!c.workspace?.twilioPhoneNumber?.phoneNumber) {
+      if (c.channel === "sms" && !c.workspace?.twilioPhoneNumber?.phoneNumber) {
         throw new NonRetriableError(
           "No Twilio number configured for this workspace",
         );
@@ -150,7 +164,10 @@ export const sendCampaign = inngest.createFunction(
         id: c.id,
         workspaceId: c.workspaceId,
         status: c.status,
+        name: c.name,
+        channel: c.channel,
         messageTemplate: c.messageTemplate,
+        subject: c.subject,
         variantB: c.variantB,
         variantSplit: c.variantSplit,
         audienceType: c.audienceType,
@@ -161,11 +178,19 @@ export const sendCampaign = inngest.createFunction(
         sendWindowStart: c.sendWindowStart,
         sendWindowEnd: c.sendWindowEnd,
         unsubscribeLink: c.unsubscribeLink,
+        workspace: c.workspace,
         workspaceName: c.workspace.name,
-        twilioPhone: c.workspace.twilioPhoneNumber.phoneNumber,
+        twilioPhone: c.workspace.twilioPhoneNumber?.phoneNumber || "",
         workspaceUserId: c.workspace.userId,
       };
     });
+
+    const emailConfig =
+      campaign.channel === "email"
+        ? await step.run("load-email-config", async () => {
+            return getEmailConfig(campaign.workspaceId);
+          })
+        : null;
 
     // ─── Step 2: Build audience + create recipients ─────
     const recipientCount = await step.run("create-recipients", async () => {
@@ -174,8 +199,13 @@ export const sendCampaign = inngest.createFunction(
         workspaceId: campaign.workspaceId,
         isContact: true,
         optedOut: false,
-        phone: { not: null },
       };
+
+      if (campaign.channel === "email") {
+        where.email = { not: null };
+      } else {
+        where.phone = { not: null };
+      }
 
       switch (campaign.audienceType) {
         case "stage":
@@ -308,6 +338,18 @@ export const sendCampaign = inngest.createFunction(
       return totalRecipients;
     });
 
+    await step.run("webhook-campaign-sent", async () => {
+      await fireCampaignSent(
+        campaign.workspaceId,
+        {
+          id: campaign.id,
+          name: campaign.name,
+          channel: campaign.channel,
+        },
+        recipientCount,
+      );
+    });
+
     if (recipientCount === 0) {
       return { campaignId, status: "completed", sent: 0 };
     }
@@ -393,100 +435,177 @@ export const sendCampaign = inngest.createFunction(
             ? undefined
             : `${appUrl}/api/twilio/status`;
 
-          const { sendSms } = await import("@/lib/twilio");
           let batchSent = 0;
+          const replacementMap = new Map(Object.entries(linkReplacements));
+          const hasLinkReplacements = replacementMap.size > 0;
 
           for (const recipient of recipients) {
-            if (!recipient.contact?.phone) {
-              await prisma.campaignRecipient.update({
-                where: { id: recipient.id },
-                data: {
-                  status: "failed",
-                  failedAt: new Date(),
-                  errorMessage: "No phone number",
-                },
-              });
-              continue;
-            }
-
             try {
-              const template =
-                recipient.variant === "B" && campaign.variantB
-                  ? campaign.variantB
+              const isVariantB = !!campaign.variantB && recipient.variant === "B";
+
+              if (campaign.channel === "email") {
+                if (!recipient.contact?.email) {
+                  await prisma.campaignRecipient.update({
+                    where: { id: recipient.id },
+                    data: {
+                      status: "failed",
+                      failedAt: new Date(),
+                      errorMessage: "No email address",
+                    },
+                  });
+                  continue;
+                }
+                if (!emailConfig) {
+                  throw new NonRetriableError("Missing email config");
+                }
+
+                const htmlBody = campaign.messageTemplate;
+                const subjectLine =
+                  isVariantB && campaign.variantB
+                    ? campaign.variantB
+                    : campaign.subject || "";
+
+                const { subject: resolvedSubject, html: resolvedHtml } =
+                  resolveEmailTemplate(
+                    subjectLine,
+                    htmlBody,
+                    {
+                      firstName: recipient.contact.firstName,
+                      lastName: recipient.contact.lastName,
+                      email: recipient.contact.email,
+                    },
+                    {
+                      name: campaign.workspace.name,
+                      phone: campaign.workspace.twilioPhoneNumber?.phoneNumber,
+                    },
+                  );
+
+                let unsubscribeUrl: string | undefined;
+                if (campaign.unsubscribeLink && appUrl && !isLocal) {
+                  const token = generateUnsubscribeToken(recipient.contact.id);
+                  unsubscribeUrl = `${appUrl}/u/${token}`;
+                }
+
+                let finalHtml = resolvedHtml;
+                if (hasLinkReplacements) {
+                  finalHtml = replaceUrls(finalHtml, replacementMap);
+                }
+
+                const wrappedHtml = wrapEmailHtml(finalHtml, {
+                  unsubscribeUrl,
+                  businessName: campaign.workspace.name,
+                });
+                const plainText = htmlToPlainText(finalHtml);
+
+                const emailResult = await sendEmail({
+                  to: recipient.contact.email,
+                  subject: resolvedSubject,
+                  html: wrappedHtml,
+                  text: plainText,
+                  fromEmail: emailConfig.fromEmail,
+                  fromName: emailConfig.fromName,
+                  workspaceId: campaign.workspaceId,
+                  contactId: recipient.contact.id,
+                  campaignId: campaign.id,
+                  recipientId: recipient.id,
+                });
+
+                if (emailResult.success) {
+                  await prisma.campaignRecipient.update({
+                    where: { id: recipient.id },
+                    data: {
+                      status: "sent",
+                      sentAt: new Date(),
+                    },
+                  });
+                  batchSent++;
+                } else {
+                  await prisma.campaignRecipient.update({
+                    where: { id: recipient.id },
+                    data: {
+                      status: "failed",
+                      failedAt: new Date(),
+                      errorMessage: emailResult.error || "Email send failed",
+                    },
+                  });
+                }
+              } else {
+                if (!recipient.contact?.phone) {
+                  await prisma.campaignRecipient.update({
+                    where: { id: recipient.id },
+                    data: {
+                      status: "failed",
+                      failedAt: new Date(),
+                      errorMessage: "No phone number",
+                    },
+                  });
+                  continue;
+                }
+
+                const template = isVariantB
+                  ? campaign.variantB!
                   : campaign.messageTemplate;
 
-              let message = resolveTemplate(
-                template,
-                recipient.contact,
-                {
+                let message = resolveTemplate(template, recipient.contact, {
                   name: campaign.workspaceName,
                   twilioPhone: campaign.twilioPhone,
-                },
-              );
+                });
 
-              // Replace URLs with tracked short links
-              if (Object.keys(linkReplacements).length > 0) {
-                const replacementMap = new Map(Object.entries(linkReplacements));
-                message = replaceUrls(message, replacementMap);
-              }
+                if (hasLinkReplacements) {
+                  message = replaceUrls(message, replacementMap);
+                }
 
-              // Append unsubscribe link if enabled
-              if (campaign.unsubscribeLink) {
-                const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-                const isLocal = /localhost|127\.0\.0\.1/i.test(appUrl);
-
-                if (!isLocal) {
+                if (campaign.unsubscribeLink && appUrl && !isLocal) {
                   const unsubToken = generateUnsubscribeToken(recipient.contact.id);
                   message += `\n\nReply STOP or visit ${appUrl}/u/${unsubToken} to unsubscribe`;
                 }
-              }
 
-              const result = await sendSms({
-                userId: campaign.workspaceUserId,
-                from: campaign.twilioPhone,
-                to: recipient.contact.phone,
-                body: message,
-                statusCallback: statusCallbackUrl,
-              });
-
-              // Create SmsMessage for inbox tracking
-              const smsMessage = await prisma.smsMessage.create({
-                data: {
-                  workspaceId: campaign.workspaceId,
-                  direction: "outbound",
+                const smsResult = await sendSms({
+                  userId: campaign.workspaceUserId,
                   from: campaign.twilioPhone,
                   to: recipient.contact.phone,
                   body: message,
-                  twilioSid: result.sid,
-                  status: "SENT",
-                  // Link to existing SMS chat room if one exists
-                  chatRoomId: await findOrCreateSmsRoom(
-                    campaign.workspaceId,
-                    recipient.contact.id,
-                  ),
-                },
-              });
+                  statusCallback: statusCallbackUrl,
+                });
 
-              await prisma.campaignRecipient.update({
-                where: { id: recipient.id },
-                data: {
-                  status: "sent",
-                  sentAt: new Date(),
-                  smsMessageId: smsMessage.id,
-                },
-              });
+                const smsMessage = await prisma.smsMessage.create({
+                  data: {
+                    workspaceId: campaign.workspaceId,
+                    direction: "outbound",
+                    from: campaign.twilioPhone,
+                    to: recipient.contact.phone,
+                    body: message,
+                    twilioSid: smsResult.sid,
+                    status: "SENT",
+                    chatRoomId: await findOrCreateSmsRoom(
+                      campaign.workspaceId,
+                      recipient.contact.id,
+                    ),
+                  },
+                });
 
-              batchSent++;
+                await prisma.campaignRecipient.update({
+                  where: { id: recipient.id },
+                  data: {
+                    status: "sent",
+                    sentAt: new Date(),
+                    smsMessageId: smsMessage.id,
+                  },
+                });
 
-              // Throttle between messages
-              await new Promise((resolve) => setTimeout(resolve, THROTTLE_MS));
+                batchSent++;
+
+                // Throttle SMS only (Twilio rate limits)
+                await new Promise((resolve) => setTimeout(resolve, THROTTLE_MS));
+              }
             } catch (err: any) {
+              console.error(`Failed to send to ${recipient.id}:`, err);
               await prisma.campaignRecipient.update({
                 where: { id: recipient.id },
                 data: {
                   status: "failed",
                   failedAt: new Date(),
-                  errorMessage: err?.message?.slice(0, 200) || "Send failed",
+                  errorMessage: err?.message?.slice(0, 500) || "Unknown error",
                 },
               });
             }
@@ -592,6 +711,36 @@ export const sendCampaign = inngest.createFunction(
           where: { id: campaign.id },
           data: updateData,
         });
+      }
+    });
+
+    await step.run("webhook-campaign-completed", async () => {
+      const final = await prisma.campaign.findUnique({
+        where: { id: campaign.id },
+        select: {
+          status: true,
+          sentCount: true,
+          deliveredCount: true,
+          failedCount: true,
+          repliedCount: true,
+        },
+      });
+
+      if (final?.status === "completed") {
+        await fireCampaignCompleted(
+          campaign.workspaceId,
+          {
+            id: campaign.id,
+            name: campaign.name,
+            channel: campaign.channel,
+          },
+          {
+            sent: final.sentCount,
+            delivered: final.deliveredCount,
+            failed: final.failedCount,
+            replied: final.repliedCount,
+          },
+        );
       }
     });
 

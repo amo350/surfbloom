@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fireContactClicked } from "@/features/webhooks/server/webhook-events";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -45,4 +46,27 @@ async function recordClick(
       data: { clickCount: { increment: 1 } },
     }),
   ]);
+
+  const link = await prisma.campaignLink.findUnique({
+    where: { id: linkId },
+    select: {
+      originalUrl: true,
+      campaign: {
+        select: {
+          id: true,
+          name: true,
+          workspaceId: true,
+        },
+      },
+    },
+  });
+
+  if (link?.campaign) {
+    fireContactClicked(
+      link.campaign.workspaceId,
+      { id: link.campaign.id, name: link.campaign.name },
+      null,
+      link.originalUrl,
+    ).catch((err) => console.error("Webhook dispatch error:", err));
+  }
 }

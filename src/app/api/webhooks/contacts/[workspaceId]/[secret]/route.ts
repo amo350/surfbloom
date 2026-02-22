@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/features/contacts/server/log-activity";
+import { autoEnrollOnContactCreated } from "@/features/sequences/server/auto-enroll";
 
 export async function POST(
   req: NextRequest,
@@ -52,6 +53,7 @@ export async function POST(
     updated: 0,
     errors: [] as string[],
   };
+  const createdContacts: { id: string }[] = [];
 
   for (const contact of contacts) {
     try {
@@ -164,9 +166,16 @@ export async function POST(
       }
 
       results.created++;
+      createdContacts.push({ id: newContact.id });
     } catch (err: any) {
       results.errors.push(err.message || "Unknown error");
     }
+  }
+
+  for (const contact of createdContacts) {
+    autoEnrollOnContactCreated(workspaceId, contact.id).catch((err) =>
+      console.error("Sequence auto-enroll error:", err),
+    );
   }
 
   return NextResponse.json({

@@ -1,5 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { sendSms } from "@/lib/twilio";
+import {
+  autoEnrollOnContactCreated,
+  autoEnrollOnKeywordJoin,
+} from "@/features/sequences/server/auto-enroll";
+import {
+  fireContactCreated,
+  fireKeywordJoined,
+} from "@/features/webhooks/server/webhook-events";
 
 /**
  * Check if an inbound message matches a text-to-join keyword.
@@ -46,6 +54,16 @@ export async function handleKeywordMatch(
   const twilioPhone = match.workspace.twilioPhoneNumber?.phoneNumber;
   if (!twilioPhone) return false;
 
+  const existingContact = await prisma.chatContact.findUnique({
+    where: {
+      workspaceId_phone: {
+        workspaceId,
+        phone: fromPhone,
+      },
+    } as any,
+    select: { id: true },
+  });
+
   const contact = await prisma.chatContact.upsert({
     where: {
       workspaceId_phone: {
@@ -67,6 +85,7 @@ export async function handleKeywordMatch(
     },
     select: { id: true, optedOut: true },
   });
+  const isNewContact = !existingContact;
 
   if (match.categoryId) {
     await prisma.contactCategory.upsert({
@@ -93,6 +112,27 @@ export async function handleKeywordMatch(
       description: `Joined via text-to-join keyword "${keyword}"`,
     },
   });
+
+  fireKeywordJoined(workspaceId, keyword, {
+    id: contact.id,
+    phone: fromPhone,
+  }).catch((err) => console.error("Webhook dispatch error:", err));
+
+  fireContactCreated(workspaceId, {
+    id: contact.id,
+    phone: fromPhone,
+    source: match.source,
+  }).catch((err) => console.error("Webhook dispatch error:", err));
+
+  autoEnrollOnKeywordJoin(workspaceId, contact.id, keyword).catch((err) =>
+    console.error("Sequence auto-enroll error:", err),
+  );
+
+  if (isNewContact) {
+    autoEnrollOnContactCreated(workspaceId, contact.id).catch((err) =>
+      console.error("Sequence auto-enroll error:", err),
+    );
+  }
 
   // Send auto-reply
   try {
