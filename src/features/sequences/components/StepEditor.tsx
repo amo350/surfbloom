@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2, MessageSquare, Mail, GitBranch, Clock } from "lucide-react";
+import { Clock, GitBranch, Loader2, Mail, MessageSquare } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 import { useAddStep, useUpdateStep } from "../hooks/use-sequences";
 import { formatDelay } from "./SequenceTimeline";
 
@@ -80,27 +80,30 @@ export function StepEditor({
 
   useEffect(() => {
     if (open && editStep) {
+      const resolvedEditDelay = editStep.delayMinutes ?? 1440;
       setChannel(editStep.channel || "sms");
       setSubject(editStep.subject || "");
       setBody(editStep.body || "");
-      setDelayMinutes(editStep.delayMinutes || 1440);
+      setDelayMinutes(resolvedEditDelay);
       setConditionType(editStep.conditionType || "none");
       setConditionAction(editStep.conditionAction || "continue");
       setSendWindowStart(editStep.sendWindowStart || "");
       setSendWindowEnd(editStep.sendWindowEnd || "");
-      setEnableSendWindow(!!(editStep.sendWindowStart && editStep.sendWindowEnd));
+      setEnableSendWindow(
+        !!(editStep.sendWindowStart && editStep.sendWindowEnd),
+      );
 
-      const isPreset = DELAY_PRESETS.some((p) => p.value === editStep.delayMinutes);
+      const isPreset = DELAY_PRESETS.some((p) => p.value === resolvedEditDelay);
       setCustomDelay(!isPreset);
       if (!isPreset) {
-        if (editStep.delayMinutes % 1440 === 0) {
-          setCustomDelayValue(String(editStep.delayMinutes / 1440));
+        if (resolvedEditDelay % 1440 === 0) {
+          setCustomDelayValue(String(resolvedEditDelay / 1440));
           setCustomDelayUnit("days");
-        } else if (editStep.delayMinutes % 60 === 0) {
-          setCustomDelayValue(String(editStep.delayMinutes / 60));
+        } else if (resolvedEditDelay % 60 === 0) {
+          setCustomDelayValue(String(resolvedEditDelay / 60));
           setCustomDelayUnit("hours");
         } else {
-          setCustomDelayValue(String(editStep.delayMinutes));
+          setCustomDelayValue(String(resolvedEditDelay));
           setCustomDelayUnit("minutes");
         }
       }
@@ -148,21 +151,28 @@ export function StepEditor({
       toast.error("Email subject is required");
       return;
     }
+    if (enableSendWindow && (!sendWindowStart || !sendWindowEnd)) {
+      toast.error("Select both send window start and end times");
+      return;
+    }
 
-    const payload = {
+    const basePayload = {
       channel,
-      subject: channel === "email" ? subject.trim() : undefined,
       body: body.trim(),
       delayMinutes: resolvedDelay,
       conditionType: conditionType as any,
       conditionAction: conditionAction as any,
-      sendWindowStart: enableSendWindow ? sendWindowStart || undefined : undefined,
-      sendWindowEnd: enableSendWindow ? sendWindowEnd || undefined : undefined,
     };
 
     if (isEditing) {
       updateStep.mutate(
-        { id: editStep.id, ...payload },
+        {
+          id: editStep.id,
+          ...basePayload,
+          subject: channel === "email" ? subject.trim() : null,
+          sendWindowStart: enableSendWindow ? sendWindowStart : null,
+          sendWindowEnd: enableSendWindow ? sendWindowEnd : null,
+        },
         {
           onSuccess: () => {
             toast.success("Step updated");
@@ -173,7 +183,13 @@ export function StepEditor({
       );
     } else {
       addStep.mutate(
-        { sequenceId, ...payload },
+        {
+          sequenceId,
+          ...basePayload,
+          subject: channel === "email" ? subject.trim() : undefined,
+          sendWindowStart: enableSendWindow ? sendWindowStart : undefined,
+          sendWindowEnd: enableSendWindow ? sendWindowEnd : undefined,
+        },
         {
           onSuccess: () => {
             toast.success("Step added");
@@ -196,7 +212,9 @@ export function StepEditor({
 
         <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-5 py-2">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Channel</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Channel
+            </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -209,7 +227,9 @@ export function StepEditor({
               >
                 <MessageSquare
                   className={`h-4 w-4 ${
-                    channel === "sms" ? "text-teal-600" : "text-muted-foreground"
+                    channel === "sms"
+                      ? "text-teal-600"
+                      : "text-muted-foreground"
                   }`}
                 />
                 <span className="text-sm font-medium">SMS</span>
@@ -225,7 +245,9 @@ export function StepEditor({
               >
                 <Mail
                   className={`h-4 w-4 ${
-                    channel === "email" ? "text-blue-600" : "text-muted-foreground"
+                    channel === "email"
+                      ? "text-blue-600"
+                      : "text-muted-foreground"
                   }`}
                 />
                 <span className="text-sm font-medium">Email</span>
@@ -309,7 +331,9 @@ export function StepEditor({
 
           {channel === "email" && (
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Subject Line</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Subject Line
+              </label>
               <Input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
@@ -348,14 +372,18 @@ export function StepEditor({
               ))}
             </div>
             {channel === "sms" && (
-              <p className="text-[10px] text-muted-foreground">{body.length}/320 characters</p>
+              <p className="text-[10px] text-muted-foreground">
+                {body.length}/320 characters
+              </p>
             )}
           </div>
 
           <div className="space-y-2 border rounded-lg p-3 bg-muted/5">
             <div className="flex items-center gap-1.5">
               <GitBranch className="h-3.5 w-3.5 text-amber-500" />
-              <label className="text-xs font-medium">Condition (optional)</label>
+              <label className="text-xs font-medium">
+                Condition (optional)
+              </label>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -379,13 +407,20 @@ export function StepEditor({
 
               {conditionType !== "none" && (
                 <div className="space-y-1">
-                  <label className="text-[10px] text-muted-foreground">Then...</label>
-                  <Select value={conditionAction} onValueChange={setConditionAction}>
+                  <label className="text-[10px] text-muted-foreground">
+                    Then...
+                  </label>
+                  <Select
+                    value={conditionAction}
+                    onValueChange={setConditionAction}
+                  >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="continue">Continue to this step</SelectItem>
+                      <SelectItem value="continue">
+                        Continue to this step
+                      </SelectItem>
                       <SelectItem value="skip">Skip this step</SelectItem>
                       <SelectItem value="stop">Stop sequence</SelectItem>
                     </SelectContent>
@@ -464,19 +499,30 @@ export function StepEditor({
 
         <div className="flex items-center justify-between pt-4 border-t">
           <p className="text-[10px] text-muted-foreground">
-            Delay: {resolvedDelay === 0 ? "Immediate" : formatDelay(resolvedDelay)}
+            Delay:{" "}
+            {resolvedDelay === 0 ? "Immediate" : formatDelay(resolvedDelay)}
             {conditionType !== "none" && ` · Condition: ${conditionType}`}
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button
               size="sm"
               onClick={handleSave}
-              disabled={isPending || !body.trim() || (channel === "email" && !subject.trim())}
+              disabled={
+                isPending ||
+                !body.trim() ||
+                (channel === "email" && !subject.trim())
+              }
             >
-              {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              {isPending && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              )}
               {isEditing ? "Save Changes" : "Add Step"}
             </Button>
           </div>

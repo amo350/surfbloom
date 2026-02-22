@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import DOMPurify from "dompurify";
 import {
   AlertCircle,
   AlertTriangle,
@@ -37,6 +38,7 @@ import {
   useCategories,
   useStages,
 } from "@/features/contacts/hooks/use-contacts";
+import { EmailTemplatePicker } from "@/features/email/components/EmailTemplatePicker";
 import { useTRPC } from "@/trpc/client";
 import {
   useAudiencePreview,
@@ -44,11 +46,10 @@ import {
   useCreateCampaignGroup,
 } from "../hooks/use-campaigns";
 import { previewTemplate, TOKENS } from "../lib/tokens";
+import { AIDraftDialog } from "./AIDraftDialog";
 import { SaveSegmentDialog } from "./SaveSegmentDialog";
 import { SegmentPicker } from "./SegmentPicker";
-import { AIDraftDialog } from "./AIDraftDialog";
 import { TemplatePicker } from "./TemplatePicker";
-import { EmailTemplatePicker } from "@/features/email/components/EmailTemplatePicker";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -208,12 +209,12 @@ export function CampaignBuilder({
       : emailSubject.trim().length > 0 && emailHtmlBody.trim().length > 0;
   const canLaunch = canStep2 && canStep3 && canStep4;
   const canSubmit =
-    canLaunch &&
-    (!enableSendWindow || sendWindowStart < sendWindowEnd);
+    canLaunch && (!enableSendWindow || sendWindowStart < sendWindowEnd);
 
   const handleInsertToken = (key: string) => {
     setMessageTemplate((prev) => prev + `{${key}}`);
   };
+  const sanitizeEmailHtml = (html: string) => DOMPurify.sanitize(html);
 
   const isCreating = createCampaign.isPending || createCampaignGroup.isPending;
 
@@ -493,7 +494,9 @@ export function CampaignBuilder({
                     setAudienceInactiveDays(
                       segment.audienceInactiveDays?.toString() || "",
                     );
-                    setFrequencyCapDays(segment.frequencyCapDays?.toString() || "");
+                    setFrequencyCapDays(
+                      segment.frequencyCapDays?.toString() || "",
+                    );
                   }}
                 />
               </div>
@@ -794,7 +797,9 @@ export function CampaignBuilder({
                     <AIDraftDialog
                       onAccept={(msg) => setVariantB(msg)}
                       businessName={workspaceDetail?.name}
-                      businessType={workspaceDetail?.primaryCategory || undefined}
+                      businessType={
+                        workspaceDetail?.primaryCategory || undefined
+                      }
                       currentMessage={variantB}
                     />
                   </div>
@@ -930,18 +935,24 @@ export function CampaignBuilder({
                 <div className="flex items-center gap-2">
                   <AIDraftDialog
                     onAccept={(msg) =>
-                      setEmailHtmlBody(`<p>${msg.replace(/\n/g, "</p><p>")}</p>`)
+                      setEmailHtmlBody(
+                        sanitizeEmailHtml(
+                          `<p>${msg.replace(/\n/g, "</p><p>")}</p>`,
+                        ),
+                      )
                     }
                     businessName={workspaceDetail?.name}
                     businessType={workspaceDetail?.primaryCategory || undefined}
-                    currentMessage={emailHtmlBody.replace(/<[^>]+>/g, " ").trim()}
+                    currentMessage={emailHtmlBody
+                      .replace(/<[^>]+>/g, " ")
+                      .trim()}
                   />
                   <EmailTemplatePicker
                     selectedId={emailTemplateId}
                     onSelect={(t) => {
                       setEmailTemplateId(t.id);
                       setEmailSubject(t.subject);
-                      setEmailHtmlBody(t.htmlBody);
+                      setEmailHtmlBody(sanitizeEmailHtml(t.htmlBody));
                     }}
                   />
                 </div>
@@ -1023,7 +1034,9 @@ export function CampaignBuilder({
                     <Textarea
                       value={emailHtmlBody}
                       onChange={(e) => setEmailHtmlBody(e.target.value)}
-                      placeholder={'<p>Hi {first_name},</p>\n<p>Your email content here...</p>'}
+                      placeholder={
+                        "<p>Hi {first_name},</p>\n<p>Your email content here...</p>"
+                      }
                       rows={10}
                       className="resize-none text-sm font-mono"
                     />
@@ -1056,9 +1069,10 @@ export function CampaignBuilder({
                     <div
                       className="p-4 prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{
-                        __html:
+                        __html: sanitizeEmailHtml(
                           previewTemplate(emailHtmlBody) ||
-                          '<p class="text-muted-foreground">Write some HTML above...</p>',
+                            '<p class="text-muted-foreground">Write some HTML above...</p>',
+                        ),
                       }}
                     />
                   </div>
@@ -1108,7 +1122,9 @@ export function CampaignBuilder({
 
               {enableAB && (
                 <div className="space-y-3 border rounded-lg p-4 bg-muted/5">
-                  <label className="text-sm font-medium">Variant B Subject</label>
+                  <label className="text-sm font-medium">
+                    Variant B Subject
+                  </label>
                   <input
                     type="text"
                     value={variantB}
@@ -1129,7 +1145,9 @@ export function CampaignBuilder({
                       max={90}
                       step={10}
                       value={variantSplit}
-                      onChange={(e) => setVariantSplit(parseInt(e.target.value, 10))}
+                      onChange={(e) =>
+                        setVariantSplit(parseInt(e.target.value, 10))
+                      }
                       className="w-full accent-teal-500"
                     />
                     <div className="flex justify-between">
@@ -1286,9 +1304,10 @@ export function CampaignBuilder({
                       <div
                         className="border rounded-lg p-3 prose prose-sm max-w-none max-h-[200px] overflow-y-auto mt-2"
                         dangerouslySetInnerHTML={{
-                          __html:
+                          __html: sanitizeEmailHtml(
                             previewTemplate(emailHtmlBody) ||
-                            '<p class="text-muted-foreground">Write some HTML above...</p>',
+                              '<p class="text-muted-foreground">Write some HTML above...</p>',
+                          ),
                         }}
                       />
                     </div>
@@ -1407,7 +1426,9 @@ export function CampaignBuilder({
                   >
                     <div
                       className={`h-4 w-8 rounded-full transition-colors relative ${
-                        enableRecurring ? "bg-teal-500" : "bg-muted-foreground/20"
+                        enableRecurring
+                          ? "bg-teal-500"
+                          : "bg-muted-foreground/20"
                       }`}
                     >
                       <div
@@ -1476,22 +1497,28 @@ export function CampaignBuilder({
 
                       {recurringType === "weekly" ? (
                         <div className="flex gap-1.5">
-                          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                            (day, i) => (
-                              <button
-                                key={day}
-                                type="button"
-                                onClick={() => setRecurringDay(i)}
-                                className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                                  recurringDay === i
-                                    ? "bg-teal-500 text-white"
-                                    : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
-                                }`}
-                              >
-                                {day}
-                              </button>
-                            ),
-                          )}
+                          {[
+                            "Sun",
+                            "Mon",
+                            "Tue",
+                            "Wed",
+                            "Thu",
+                            "Fri",
+                            "Sat",
+                          ].map((day, i) => (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => setRecurringDay(i)}
+                              className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                recurringDay === i
+                                  ? "bg-teal-500 text-white"
+                                  : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          ))}
                         </div>
                       ) : (
                         <div className="flex flex-wrap gap-1">
@@ -1694,7 +1721,9 @@ export function CampaignBuilder({
                   >
                     <div
                       className={`h-4 w-8 rounded-full transition-colors relative ${
-                        unsubscribeLink ? "bg-teal-500" : "bg-muted-foreground/20"
+                        unsubscribeLink
+                          ? "bg-teal-500"
+                          : "bg-muted-foreground/20"
                       }`}
                     >
                       <div
@@ -1777,7 +1806,10 @@ export function CampaignBuilder({
                             type="button"
                             onClick={() =>
                               setAutoReplyTone(
-                                t.value as "friendly" | "professional" | "casual",
+                                t.value as
+                                  | "friendly"
+                                  | "professional"
+                                  | "casual",
                               )
                             }
                             className={`px-3 py-2 rounded-lg border text-left transition-colors ${
@@ -1954,8 +1986,8 @@ export function CampaignBuilder({
                     {enableRecurring
                       ? "Create Recurring Campaign"
                       : sendType === "now"
-                      ? "Create & Launch"
-                      : "Create & Schedule"}
+                        ? "Create & Launch"
+                        : "Create & Schedule"}
                   </Button>
                 </div>
               </div>

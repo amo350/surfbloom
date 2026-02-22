@@ -1,28 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import DOMPurify from "dompurify";
 import {
   ArrowLeft,
-  Send,
-  Users,
-  CheckCircle2,
-  XCircle,
-  MessageSquare,
-  Loader2,
-  Pause,
-  Play,
-  Trash2,
   Ban,
-  Clock,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Copy,
+  Loader2,
   Mail,
+  MessageSquare,
+  Pause,
+  Play,
+  Send,
   Sparkles,
+  Trash2,
+  Users,
+  XCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,36 +36,37 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
-import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
+import { Button } from "@/components/ui/button";
+import { StageBadge } from "@/features/contacts/components/StageBadge";
+import { EmailStatsCard } from "@/features/email/components/EmailStatsCard";
+import { useCampaignLinks } from "../hooks/use-campaign-links";
 import {
   useCampaign,
-  useRecipients,
+  useCancelCampaign,
+  useCloneCampaign,
+  useDeleteCampaign,
   useLaunchCampaign,
   usePauseCampaign,
+  useRecipients,
   useResumeCampaign,
-  useCancelCampaign,
-  useDeleteCampaign,
-  useCloneCampaign,
 } from "../hooks/use-campaigns";
-import { useCampaignLinks } from "../hooks/use-campaign-links";
-import { CampaignStatusBadge } from "./CampaignStatusBadge";
 import { previewTemplate } from "../lib/tokens";
-import { StageBadge } from "@/features/contacts/components/StageBadge";
 import { ABComparisonCard } from "./ABComparisonCard";
 import { AutoReplyLogsCard } from "./AutoReplyLogsCard";
+import { CampaignStatusBadge } from "./CampaignStatusBadge";
 import { LinkStatsCard } from "./LinkStatsCard";
-import { EmailStatsCard } from "@/features/email/components/EmailStatsCard";
 
-const RECIPIENT_STATUS_CONFIG: Record<string, { label: string; color: string }> =
-  {
+const RECIPIENT_STATUS_CONFIG: Record<
+  string,
+  { label: string; color: string }
+> = {
   pending: { label: "Pending", color: "text-slate-500" },
   sent: { label: "Sent", color: "text-blue-500" },
   delivered: { label: "Delivered", color: "text-emerald-500" },
   failed: { label: "Failed", color: "text-red-500" },
   replied: { label: "Replied", color: "text-violet-500" },
   opted_out: { label: "Opted Out", color: "text-amber-500" },
-  };
+};
 
 function StatCard({
   label,
@@ -199,28 +202,40 @@ export function CampaignDetail({
   const handleLaunch = () => {
     launch.mutate(
       { id: campaignId },
-      { onSuccess: () => toast.success("Campaign launched"), onError: (err) => toast.error(err.message) },
+      {
+        onSuccess: () => toast.success("Campaign launched"),
+        onError: (err) => toast.error(err.message),
+      },
     );
   };
 
   const handlePause = () => {
     pause.mutate(
       { id: campaignId },
-      { onSuccess: () => toast.success("Campaign paused"), onError: (err) => toast.error(err.message) },
+      {
+        onSuccess: () => toast.success("Campaign paused"),
+        onError: (err) => toast.error(err.message),
+      },
     );
   };
 
   const handleResume = () => {
     resume.mutate(
       { id: campaignId },
-      { onSuccess: () => toast.success("Campaign resumed"), onError: (err) => toast.error(err.message) },
+      {
+        onSuccess: () => toast.success("Campaign resumed"),
+        onError: (err) => toast.error(err.message),
+      },
     );
   };
 
   const handleCancel = () => {
     cancel.mutate(
       { id: campaignId },
-      { onSuccess: () => toast.success("Campaign cancelled"), onError: (err) => toast.error(err.message) },
+      {
+        onSuccess: () => toast.success("Campaign cancelled"),
+        onError: (err) => toast.error(err.message),
+      },
     );
   };
 
@@ -339,7 +354,11 @@ export function CampaignDetail({
             {canDelete && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="text-destructive">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                  >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </AlertDialogTrigger>
@@ -482,7 +501,9 @@ export function CampaignDetail({
                 </div>
                 <div
                   className="p-4 prose prose-sm max-w-none max-h-[300px] overflow-y-auto"
-                  dangerouslySetInnerHTML={{ __html: campaign.messageTemplate }}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(campaign.messageTemplate),
+                  }}
                 />
               </div>
             ) : (
@@ -580,7 +601,8 @@ export function CampaignDetail({
                   <span className="text-muted-foreground">Tracked Links</span>
                   <span className="font-medium">
                     {campaignLinks.length} link
-                    {campaignLinks.length !== 1 ? "s" : ""} · {totalClicks} click
+                    {campaignLinks.length !== 1 ? "s" : ""} · {totalClicks}{" "}
+                    click
                     {totalClicks !== 1 ? "s" : ""}
                   </span>
                 </div>
@@ -595,7 +617,9 @@ export function CampaignDetail({
 
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Created</span>
-                <span className="text-xs">{formatDate(campaign.createdAt)}</span>
+                <span className="text-xs">
+                  {formatDate(campaign.createdAt)}
+                </span>
               </div>
 
               {campaign.scheduledAt && (
@@ -769,9 +793,10 @@ export function CampaignDetail({
               const statusConfig =
                 RECIPIENT_STATUS_CONFIG[r.status] ||
                 RECIPIENT_STATUS_CONFIG.pending;
-              const name = [r.contact?.firstName, r.contact?.lastName]
-                .filter(Boolean)
-                .join(" ") || "Unknown";
+              const name =
+                [r.contact?.firstName, r.contact?.lastName]
+                  .filter(Boolean)
+                  .join(" ") || "Unknown";
               const timestamp =
                 r.repliedAt || r.deliveredAt || r.sentAt || r.failedAt;
 
@@ -806,15 +831,11 @@ export function CampaignDetail({
 
                   {/* Stage */}
                   <div>
-                    {r.contact?.stage && (
-                      <StageBadge stage={r.contact.stage} />
-                    )}
+                    {r.contact?.stage && <StageBadge stage={r.contact.stage} />}
                   </div>
 
                   {/* Status */}
-                  <span
-                    className={`text-xs font-medium ${statusConfig.color}`}
-                  >
+                  <span className={`text-xs font-medium ${statusConfig.color}`}>
                     {statusConfig.label}
                     {r.errorMessage && (
                       <span
@@ -849,7 +870,9 @@ export function CampaignDetail({
                           <span className="font-medium">{r.aiRepliesSent}</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground">—</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          —
+                        </span>
                       )}
                     </div>
                   )}
@@ -882,9 +905,7 @@ export function CampaignDetail({
                   variant="outline"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={() =>
-                    setRecipientPage((p) => Math.max(1, p - 1))
-                  }
+                  onClick={() => setRecipientPage((p) => Math.max(1, p - 1))}
                   disabled={recipientPage <= 1}
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />

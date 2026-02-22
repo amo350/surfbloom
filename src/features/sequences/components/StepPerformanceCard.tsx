@@ -1,13 +1,13 @@
 "use client";
 
-import type { ReactNode } from "react";
 import {
-  MessageSquare,
-  Mail,
   CheckCircle,
-  XCircle,
+  Mail,
+  MessageSquare,
   SkipForward,
+  XCircle,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 interface StepStat {
   stepId: string;
@@ -24,9 +24,10 @@ interface StepStat {
 
 export function StepPerformanceCard({ step }: { step: StepStat }) {
   const isEmail = step.channel === "email";
+  const nonSkippedTotal = step.sent + step.delivered + step.failed;
   const successRate =
-    step.total > 0
-      ? Math.round(((step.sent + step.delivered) / step.total) * 100)
+    nonSkippedTotal > 0
+      ? Math.round((step.delivered / nonSkippedTotal) * 100)
       : null;
 
   return (
@@ -41,7 +42,9 @@ export function StepPerformanceCard({ step }: { step: StepStat }) {
           <MessageSquare className="h-4 w-4 text-teal-500 mt-0.5" />
         )}
         <p className="text-sm font-medium leading-5 line-clamp-2">
-          {isEmail && step.subject ? step.subject : step.bodyPreview || "Untitled step"}
+          {isEmail && step.subject
+            ? step.subject
+            : step.bodyPreview || "Untitled step"}
         </p>
       </div>
 
@@ -61,11 +64,21 @@ export function StepPerformanceCard({ step }: { step: StepStat }) {
         <div className="h-2 rounded overflow-hidden bg-muted flex">
           <div
             className="h-full bg-emerald-500"
-            style={{ width: `${((step.sent + step.delivered) / step.total) * 100}%` }}
+            style={{
+              width: `${
+                nonSkippedTotal > 0
+                  ? (step.delivered / nonSkippedTotal) * 100
+                  : 0
+              }%`,
+            }}
           />
           <div
             className="h-full bg-red-400"
-            style={{ width: `${(step.failed / step.total) * 100}%` }}
+            style={{
+              width: `${
+                nonSkippedTotal > 0 ? (step.failed / nonSkippedTotal) * 100 : 0
+              }%`,
+            }}
           />
           <div
             className="h-full bg-amber-300"

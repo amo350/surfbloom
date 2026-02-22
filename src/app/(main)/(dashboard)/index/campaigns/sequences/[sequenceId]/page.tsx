@@ -1,5 +1,6 @@
 import { SequenceBuilder } from "@/features/sequences/components/SequenceBuilder";
 import { SequenceDetail } from "@/features/sequences/components/SequenceDetail";
+import { prisma } from "@/lib/prisma";
 
 export default async function SequenceBuilderPage({
   params,
@@ -10,14 +11,27 @@ export default async function SequenceBuilderPage({
 }) {
   const { sequenceId } = await params;
   const { tab } = await searchParams;
+  const sequence = await prisma.campaignSequence.findUnique({
+    where: { id: sequenceId },
+    select: { workspaceId: true },
+  });
+  const workspaceId = sequence?.workspaceId || "";
 
   if (tab === "detail") {
     return (
-      <SequenceDetail sequenceId={sequenceId} workspaceId="" basePath="/index" />
+      <SequenceDetail
+        sequenceId={sequenceId}
+        workspaceId={workspaceId}
+        basePath="/index"
+      />
     );
   }
 
   return (
-    <SequenceBuilder sequenceId={sequenceId} workspaceId="" basePath="/index" />
+    <SequenceBuilder
+      sequenceId={sequenceId}
+      workspaceId={workspaceId}
+      basePath="/index"
+    />
   );
 }

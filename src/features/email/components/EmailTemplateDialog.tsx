@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2, Eye, Code } from "lucide-react";
+import DOMPurify from "dompurify";
+import { Code, Eye, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +12,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -18,11 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 import {
   useCreateEmailTemplate,
-  useUpdateEmailTemplate,
   useEmailCategories,
+  useUpdateEmailTemplate,
 } from "../hooks/use-email-templates";
 
 const TOKENS = [
@@ -129,6 +130,7 @@ export function EmailTemplateDialog({
     .replace(/\{email\}/g, "john@example.com")
     .replace(/\{location_name\}/g, "Joe's Bistro")
     .replace(/\{location_phone\}/g, "(555) 123-4567");
+  const sanitizedPreviewHtml = DOMPurify.sanitize(previewHtml);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -275,7 +277,7 @@ export function EmailTemplateDialog({
                   className="p-4 prose prose-sm max-w-none"
                   dangerouslySetInnerHTML={{
                     __html:
-                      previewHtml ||
+                      sanitizedPreviewHtml ||
                       "<p class='text-muted-foreground'>Write some HTML above...</p>",
                   }}
                 />
