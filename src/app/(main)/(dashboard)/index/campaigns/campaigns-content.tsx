@@ -1,27 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CampaignHeader } from "@/features/campaigns/components/CampaignHeader";
+import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
 import { CampaignsList } from "@/features/campaigns/components/CampaignsList";
-import { CampaignSubNav } from "@/features/campaigns/components/CampaignSubNav";
 
 export function CampaignsContent({ workspaceId }: { workspaceId?: string }) {
-  const [search, setSearch] = useState("");
-  const basePath = useMemo(
-    () => (workspaceId ? `/workspaces/${workspaceId}` : "/index"),
-    [workspaceId],
-  );
-
   return (
     <div className="h-full flex flex-col">
-      <CampaignHeader
-        basePath={basePath}
-        search={search}
-        onSearchChange={setSearch}
-      />
-      <CampaignSubNav basePath={basePath} />
+      <AppHeader>
+        <AppHeaderTitle title="Campaigns" />
+      </AppHeader>
       <div className="flex-1 overflow-y-auto p-6">
-        <CampaignsList workspaceId={workspaceId} search={search} />
+        <CampaignsList workspaceId={workspaceId} />
       </div>
     </div>
   );

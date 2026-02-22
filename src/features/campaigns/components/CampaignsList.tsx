@@ -1,20 +1,24 @@
 "use client";
 
 import {
+  BarChart3,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronRight as ChevronRightSmall,
   Copy,
+  FileText,
+  Link2,
   Mail,
   Megaphone,
   MessageSquare,
+  MessageSquareText,
   Plus,
   Send,
   Sparkles,
   Users,
-  Link2,
+  Workflow,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -31,13 +35,7 @@ function formatDate(date: string | Date) {
   });
 }
 
-export function CampaignsList({
-  workspaceId,
-  search = "",
-}: {
-  workspaceId?: string;
-  search?: string;
-}) {
+export function CampaignsList({ workspaceId }: { workspaceId?: string }) {
   const [status, setStatus] = useState<string | undefined>(undefined);
   const [channelFilter, setChannelFilter] = useState<"sms" | "email" | undefined>(
     undefined,
@@ -77,24 +75,11 @@ export function CampaignsList({
     { value: "email", label: "Email" },
   ];
 
-  const searchTerm = search.trim().toLowerCase();
-  const visibleItems = data?.items.filter((item: any) => {
-    if (!searchTerm) return true;
-    return [
-      item.name,
-      item.workspace?.name,
-      item.messageTemplate,
-      item.status,
-      item.channel,
-    ]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(searchTerm));
-  });
-
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
           <div className="flex items-center gap-1.5">
             {STATUS_FILTERS.map((f) => (
               <button
@@ -133,6 +118,52 @@ export function CampaignsList({
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${basePath}/campaigns/sequences`}>
+              <Workflow className="h-4 w-4 mr-1.5" />
+              Sequences
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${basePath}/campaigns/email-templates`}>
+              <Mail className="h-4 w-4 mr-1.5" />
+              Email Templates
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${basePath}/campaigns/templates`}>
+              <FileText className="h-4 w-4 mr-1.5" />
+              Templates
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${basePath}/campaigns/segments`}>
+              <Users className="h-4 w-4 mr-1.5" />
+              Segments
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${basePath}/campaigns/reporting`}>
+              <BarChart3 className="h-4 w-4 mr-1.5" />
+              Reporting
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${basePath}/campaigns/keywords`}>
+              <MessageSquareText className="h-4 w-4 mr-1.5" />
+              Keywords
+            </Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href={`${basePath}/campaigns/new`}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              New Campaign
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -157,20 +188,18 @@ export function CampaignsList({
         )}
 
         {/* Empty */}
-        {!isLoading && (visibleItems?.length ?? 0) === 0 && (
+        {!isLoading && data?.items.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Megaphone className="h-10 w-10 text-muted-foreground/30 mb-3" />
             <p className="text-sm font-medium text-muted-foreground">
-              {searchTerm ? "No matching campaigns" : "No campaigns yet"}
+              No campaigns yet
             </p>
             <p className="text-xs text-muted-foreground/60 mt-1">
-              {searchTerm
-                ? "Try a different search term or adjust filters"
-                : channelFilter === "email"
-                  ? "Send your first email campaign to reach your contacts"
-                  : channelFilter === "sms"
-                    ? "Send your first SMS campaign to reach your contacts"
-                    : "Send your first campaign to reach your contacts"}
+                  {channelFilter === "email"
+                    ? "Send your first email campaign to reach your contacts"
+                    : channelFilter === "sms"
+                      ? "Send your first SMS campaign to reach your contacts"
+                      : "Send your first campaign to reach your contacts"}
             </p>
             <Button size="sm" className="mt-4" asChild>
               <Link href={`${basePath}/campaigns/new`}>
@@ -182,7 +211,7 @@ export function CampaignsList({
         )}
 
         {/* Rows */}
-        {visibleItems?.map((item: any) => {
+        {data?.items.map((item: any) => {
           const isGroup = item.type === "group";
           const deliveryRate =
             item.sentCount > 0

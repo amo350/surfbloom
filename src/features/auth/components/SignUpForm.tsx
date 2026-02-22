@@ -62,23 +62,6 @@ const SignUpForm = () => {
     );
   };
 
-  const signInGoogle = async () => {
-    await authClient.signIn.social(
-      {
-        provider: "google",
-        callbackURL: "/index/locations",
-      },
-      {
-        onSuccess: () => {
-          router.push("/index/locations");
-        },
-        onError: () => {
-          toast.error("Something went wrong");
-        },
-      },
-    );
-  };
-
   const isPending = form.formState.isSubmitting;
 
   return (
@@ -99,7 +82,6 @@ const SignUpForm = () => {
                   className="w-full shadow-md"
                   type="button"
                   disabled={isPending}
-                  onClick={signInGoogle}
                 >
                   <FcGoogle className="mr-2 h-5 w-5" />
                   Continue with Google

@@ -1,15 +1,5 @@
-import { ReportingPage } from "@/features/campaigns/components/reporting/ReportingPage";
+import { CampaignReporting } from "@/features/campaigns/components/CampaignReporting";
 
-export default async function WorkspaceCampaignReportingPage({
-  params,
-}: {
-  params: Promise<{ workspaceId: string }>;
-}) {
-  const { workspaceId } = await params;
-  return (
-    <ReportingPage
-      workspaceId={workspaceId}
-      basePath={`/workspaces/${workspaceId}`}
-    />
-  );
+export default function ReportingPage() {
+  return <CampaignReporting />;
 }
