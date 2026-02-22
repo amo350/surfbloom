@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowLeft,
   Copy,
   Library,
   Loader2,
@@ -10,6 +11,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
@@ -35,7 +37,7 @@ import {
 } from "../hooks/use-email-templates";
 import { EmailTemplateDialog } from "./EmailTemplateDialog";
 
-export function EmailTemplateManager() {
+export function EmailTemplateManager({ basePath = "/index" }: { basePath?: string }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTemplate, setEditTemplate] = useState<any>(null);
   const [category, setCategory] = useState<string | undefined>(undefined);
@@ -84,7 +86,14 @@ export function EmailTemplateManager() {
   return (
     <div className="h-full flex flex-col">
       <AppHeader>
-        <AppHeaderTitle title="Email Templates" />
+        <div className="flex items-center gap-2 flex-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+            <Link href={`${basePath}/campaigns`}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <AppHeaderTitle title="Email Templates" />
+        </div>
       </AppHeader>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  ArrowLeft,
   Plus,
   Loader2,
   Workflow,
@@ -98,7 +99,14 @@ export function SequenceList({ workspaceId, basePath }: SequenceListProps) {
   return (
     <div className="h-full flex flex-col">
       <AppHeader>
-        <AppHeaderTitle title="Drip Sequences" />
+        <div className="flex items-center gap-2 flex-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+            <Link href={`${basePath}/campaigns`}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <AppHeaderTitle title="Drip Sequences" />
+        </div>
       </AppHeader>
 
       <div className="flex-1 overflow-y-auto">

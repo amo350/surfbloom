@@ -1,27 +1,28 @@
 import { accountMembersRouter } from "@/features/account-members/server/routers";
+import { aiRouter } from "@/features/campaigns/server/ai-router";
+import { analyticsRouter } from "@/features/campaigns/server/analytics-router";
+import { keywordRouter } from "@/features/campaigns/server/keyword-router";
+import { linkRouter } from "@/features/campaigns/server/link-router";
+import { campaignsRouter } from "@/features/campaigns/server/routers";
+import { segmentRouter } from "@/features/campaigns/server/segment-router";
+import { templateRouter } from "@/features/campaigns/server/template-router";
+import { chatbotRouter } from "@/features/chatbot/server/routers";
+import { contactsRouter } from "@/features/contacts/server/routers";
+import { emailStatsRouter } from "@/features/email/server/email-stats-router";
+import { emailTemplateRouter } from "@/features/email/server/email-template-router";
 import { executionsRouter } from "@/features/executions/server/routers";
+import { integrationsRouter } from "@/features/integrations/server/routers";
 import { invitationsRouter } from "@/features/invitations/server/routers";
 import { membersRouter } from "@/features/members/server/routers";
+import { reviewsRouter } from "@/features/reviews/server/routers";
 import { seoReportsRouter } from "@/features/seo-reports/server/routers";
+import { sequenceRouter } from "@/features/sequences/server/sequence-router";
 import { taskColumnsRouter } from "@/features/task-columns/server/routers";
 import { tasksRouter } from "@/features/tasks/server/routers";
+import { webhookRouter } from "@/features/webhooks/server/webhook-router";
 import { workflowsRouter } from "@/features/workflows/server/routers";
 import { workspacesRouter } from "@/features/workspaces/server/routers";
 import { createTRPCRouter } from "../init";
-import { reviewsRouter } from "@/features/reviews/server/routers";
-import { chatbotRouter } from "@/features/chatbot/server/routers";
-import { integrationsRouter } from "@/features/integrations/server/routers";
-import { contactsRouter } from "@/features/contacts/server/routers";
-import { campaignsRouter } from "@/features/campaigns/server/routers";
-import { templateRouter } from "@/features/campaigns/server/template-router";
-import { segmentRouter } from "@/features/campaigns/server/segment-router";
-import { aiRouter } from "@/features/campaigns/server/ai-router";
-import { linkRouter } from "@/features/campaigns/server/link-router";
-import { keywordRouter } from "@/features/campaigns/server/keyword-router";
-import { emailTemplateRouter } from "@/features/email/server/email-template-router";
-import { emailStatsRouter } from "@/features/email/server/email-stats-router";
-import { webhookRouter } from "@/features/webhooks/server/webhook-router";
-import { sequenceRouter } from "@/features/sequences/server/sequence-router";
 
 export const appRouter = createTRPCRouter({
   executions: executionsRouter,
@@ -47,6 +48,7 @@ export const appRouter = createTRPCRouter({
   emailStats: emailStatsRouter,
   webhooks: webhookRouter,
   sequences: sequenceRouter,
+  analytics: analyticsRouter,
 });
 //CRITICAL: Do not remove this line - required for tRPC type inference
 export type AppRouter = typeof appRouter;
