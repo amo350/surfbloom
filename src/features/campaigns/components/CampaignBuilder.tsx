@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -173,6 +173,15 @@ export function CampaignBuilder({
   const { data: stages } = useStages();
   const { data: categories } = useCategories(primaryWorkspaceId);
   const { data: surveys } = useSurveys("active");
+  const surveyOptions = surveys || [];
+  const hasSurveyToken = messageTemplate.includes("{survey_link}");
+
+  useEffect(() => {
+    if (!hasSurveyToken) return;
+    if (surveyOptions.length === 0 && surveyId) {
+      setSurveyId("");
+    }
+  }, [hasSurveyToken, surveyId, surveyOptions.length]);
 
   const { data: audiencePreview } = useAudiencePreview({
     workspaceId: primaryWorkspaceId,
@@ -760,25 +769,43 @@ export function CampaignBuilder({
                 </div>
               </div>
 
-              {messageTemplate.includes("{survey_link}") && (
+              {hasSurveyToken && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">
                     Survey
                   </label>
-                  <Select value={surveyId} onValueChange={setSurveyId}>
+                  <Select
+                    value={surveyId}
+                    onValueChange={setSurveyId}
+                    disabled={surveyOptions.length === 0}
+                  >
                     <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select a survey..." />
+                      <SelectValue
+                        placeholder={
+                          surveyOptions.length === 0
+                            ? "No active surveys"
+                            : "Select a survey..."
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {(surveys || []).map((s: any) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
+                      {surveyOptions.length === 0 ? (
+                        <SelectItem value="__none" disabled>
+                          No active surveys
                         </SelectItem>
-                      ))}
+                      ) : (
+                        surveyOptions.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
-                    Required when using {"{survey_link}"}.
+                    {surveyOptions.length === 0
+                      ? "Create and activate a survey first, then select it here."
+                      : `Required when using {"{survey_link}"}.`}
                   </p>
                 </div>
               )}

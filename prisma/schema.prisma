@@ -669,12 +669,17 @@ model SurveyEnrollment {
   surveyId    String
   survey      Survey      @relation(fields: [surveyId], references: [id], onDelete: Cascade)
   contactId   String
-  contact     ChatContact @relation(fields: [contactId], references: [id])
+  contact     ChatContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   workspaceId String // which location sent the survey
-  workspace   Workspace   @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   campaignId  String? // which campaign distributed it
 
   status      String           @default("pending") // pending, in_progress, completed, timed_out
+  channel     String           @default("web") // web, sms
+  currentStep Int              @default(0) // 0 = not started, 1+ = question order
+  lastMessageAt DateTime?
+  timeoutAt   DateTime? // defaults to 72h after last message at write-time
+  retryCount  Int              @default(0) // invalid response retries for current question
   score       Float? // computed overall score (NPS answer or average stars)
   npsCategory String? // promoter, passive, detractor
   completedAt DateTime?
@@ -694,7 +699,7 @@ model SurveyResponse {
   enrollmentId String
   enrollment   SurveyEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   questionId   String
-  question     SurveyQuestion   @relation(fields: [questionId], references: [id])
+  question     SurveyQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   answerText   String? // free text, yes/no text
   answerNumber Float? // NPS (0-10), star (1-5)

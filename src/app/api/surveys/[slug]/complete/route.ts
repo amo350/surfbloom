@@ -38,6 +38,7 @@ export async function POST(
 
   let score: number | null = enrollment.score;
   let npsCategory: string | null = enrollment.npsCategory;
+  let didComplete = false;
 
   if (enrollment.status !== "completed") {
     const npsResponse = enrollment.responses.find((r) => r.question.type === "nps");
@@ -65,8 +66,11 @@ export async function POST(
       npsCategory = null;
     }
 
-    await prisma.surveyEnrollment.update({
-      where: { id: enrollment.id },
+    const completionUpdate = await prisma.surveyEnrollment.updateMany({
+      where: {
+        id: enrollment.id,
+        status: { not: "completed" },
+      },
       data: {
         status: "completed",
         score,
@@ -74,7 +78,10 @@ export async function POST(
         completedAt: new Date(),
       },
     });
+    didComplete = completionUpdate.count > 0;
+  }
 
+  if (didComplete) {
     if (score != null && score <= enrollment.survey.taskThreshold) {
       const contactName =
         [enrollment.contact.firstName, enrollment.contact.lastName]

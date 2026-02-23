@@ -50,7 +50,23 @@ export function SurveySettingsPanel({
     setAssigneeId(survey.taskAssigneeId || "none");
   }, [survey]);
 
+  const isValidHttpUrl = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return true;
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
   const handleSave = () => {
+    if (!isValidHttpUrl(reviewUrl)) {
+      toast.error("Please enter a valid https:// or http:// URL");
+      return;
+    }
+
     updateSurvey.mutate(
       {
         id: survey.id,
@@ -121,7 +137,7 @@ export function SurveySettingsPanel({
               className="h-9 pr-8"
               disabled={!editable}
             />
-            {reviewUrl && (
+            {reviewUrl && isValidHttpUrl(reviewUrl) && (
               <a
                 href={reviewUrl}
                 target="_blank"

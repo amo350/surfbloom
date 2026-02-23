@@ -13,7 +13,7 @@ interface SurveySummaryCardProps {
 export function SurveySummaryCard({ workspaceId, days }: SurveySummaryCardProps) {
   const trpc = useTRPC();
 
-  const { data, isLoading } = useQuery(
+  const { data, isLoading, isError, error } = useQuery(
     trpc.analytics.getSurveySummary.queryOptions({ workspaceId, days }),
   );
 
@@ -21,6 +21,22 @@ export function SurveySummaryCard({ workspaceId, days }: SurveySummaryCardProps)
     return (
       <div className="border rounded-lg bg-white p-4 flex justify-center py-8">
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="border rounded-lg bg-white p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <ClipboardList className="h-4 w-4 text-red-500" />
+          <h4 className="text-sm font-semibold">Surveys</h4>
+        </div>
+        <p className="text-xs text-red-600 text-center py-4">
+          {error instanceof Error
+            ? error.message
+            : "Failed to load survey summary"}
+        </p>
       </div>
     );
   }

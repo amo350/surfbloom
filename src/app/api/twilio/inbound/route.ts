@@ -3,12 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleCampaignAutoReply } from "@/features/campaigns/server/handle-auto-reply";
 import { handleKeywordMatch } from "@/features/campaigns/server/handle-keyword";
 import { updateCampaignStats } from "@/features/campaigns/server/update-campaign-stats";
+import { handleSurveyResponse } from "@/features/surveys/server/sms-survey-handler";
 import {
   fireContactOptedOut,
   fireContactReplied,
 } from "@/features/webhooks/server/webhook-events";
 import { logActivity } from "@/features/contacts/server/log-activity";
 import { prisma } from "@/lib/prisma";
+import { sendSms } from "@/lib/twilio";
 
 export async function POST(req: NextRequest) {
   try {
@@ -155,6 +157,41 @@ export async function POST(req: NextRequest) {
 
     if (wasKeyword) {
       return NextResponse.json({ handled: true });
+    }
+
+    // ─── Active SMS survey check (after opt-out + keyword) ───
+    const surveyContact =
+      existingContact ??
+      (await prisma.chatContact.upsert({
+        where: {
+          workspaceId_phone: { workspaceId, phone: from },
+        } as any,
+        update: {},
+        create: {
+          domainId: workspaceDomainId ?? undefined,
+          workspaceId,
+          phone: from,
+        },
+        select: { id: true },
+      }));
+
+    const surveyResult = await handleSurveyResponse(
+      workspaceId,
+      surveyContact.id,
+      body || "",
+    );
+    if (surveyResult.handled) {
+      if (surveyResult.replyMessage) {
+        await sendSms({
+          userId: workspaceUserId,
+          to: from,
+          from: to,
+          body: surveyResult.replyMessage,
+        }).catch((err) => {
+          console.error("[Inbound SMS] Survey reply send failed:", err);
+        });
+      }
+      return NextResponse.json({ success: true, handled: true, survey: true });
     }
 
     // ─── Normal message processing continues below ──────

@@ -1,15 +1,21 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { inferRouterInputs } from "@trpc/server";
 import { useTRPC } from "@/trpc/client";
+import type { AppRouter } from "@/trpc/routers/_app";
+
+type RouterInputs = inferRouterInputs<AppRouter>;
+type SurveyStatus = RouterInputs["surveys"]["getSurveys"]["status"];
+type ResponseStatus = RouterInputs["surveys"]["getResponses"]["status"];
 
 // ─── Survey CRUD ────────────────────────────────────────
 
-export const useSurveys = (status?: string) => {
+export const useSurveys = (status?: SurveyStatus) => {
   const trpc = useTRPC();
   return useQuery(
     trpc.surveys.getSurveys.queryOptions({
-      status: status as any,
+      status,
     }),
   );
 };
@@ -17,7 +23,7 @@ export const useSurveys = (status?: string) => {
 export const useSurvey = (id: string | null) => {
   const trpc = useTRPC();
   return useQuery({
-    ...trpc.surveys.getSurvey.queryOptions({ id: id! }),
+    ...trpc.surveys.getSurvey.queryOptions({ id: id ?? "" }),
     enabled: !!id,
   });
 };
@@ -114,21 +120,21 @@ export const useReorderQuestions = () => {
 export const useSurveyStats = (surveyId: string | null) => {
   const trpc = useTRPC();
   return useQuery({
-    ...trpc.surveys.getSurveyStats.queryOptions({ surveyId: surveyId! }),
+    ...trpc.surveys.getSurveyStats.queryOptions({ surveyId: surveyId ?? "" }),
     enabled: !!surveyId,
   });
 };
 
 export const useSurveyResponses = (
   surveyId: string | null,
-  status?: string,
+  status?: ResponseStatus,
   page: number = 1,
 ) => {
   const trpc = useTRPC();
   return useQuery({
     ...trpc.surveys.getResponses.queryOptions({
-      surveyId: surveyId!,
-      status: status as any,
+      surveyId: surveyId ?? "",
+      status,
       page,
     }),
     enabled: !!surveyId,
@@ -138,7 +144,7 @@ export const useSurveyResponses = (
 export const useQuestionBreakdown = (surveyId: string | null) => {
   const trpc = useTRPC();
   return useQuery({
-    ...trpc.surveys.getQuestionBreakdown.queryOptions({ surveyId: surveyId! }),
+    ...trpc.surveys.getQuestionBreakdown.queryOptions({ surveyId: surveyId ?? "" }),
     enabled: !!surveyId,
   });
 };
@@ -146,7 +152,7 @@ export const useQuestionBreakdown = (surveyId: string | null) => {
 export const useScoreDistribution = (surveyId: string | null) => {
   const trpc = useTRPC();
   return useQuery({
-    ...trpc.surveys.getScoreDistribution.queryOptions({ surveyId: surveyId! }),
+    ...trpc.surveys.getScoreDistribution.queryOptions({ surveyId: surveyId ?? "" }),
     enabled: !!surveyId,
   });
 };

@@ -36,7 +36,9 @@ const STATUS_FILTERS = [
   { value: "active", label: "Active" },
   { value: "draft", label: "Draft" },
   { value: "archived", label: "Archived" },
-];
+] as const;
+
+type SurveyStatusFilter = (typeof STATUS_FILTERS)[number]["value"];
 
 const STATUS_CONFIG: Record<
   string,
@@ -47,11 +49,14 @@ const STATUS_CONFIG: Record<
   archived: { bg: "bg-red-100", text: "text-red-700", label: "Archived" },
 };
 
+type DeleteSurveyResult = {
+  id: string;
+  status?: "archived" | "deleted" | string;
+};
+
 export function SurveyList() {
   const [createOpen, setCreateOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(
-    undefined,
-  );
+  const [statusFilter, setStatusFilter] = useState<SurveyStatusFilter>(undefined);
 
   const { data: surveys, isLoading } = useSurveys(statusFilter);
   const updateSurvey = useUpdateSurvey();
@@ -71,11 +76,11 @@ export function SurveyList() {
     deleteSurvey.mutate(
       { id },
       {
-        onSuccess: (result: any) => {
+        onSuccess: (result: DeleteSurveyResult) => {
           if (result?.status === "archived") {
-            toast.success("Survey has responses, so it was archived")
+            toast.success("Survey has responses, so it was archived");
           } else {
-            toast.success("Survey deleted")
+            toast.success("Survey deleted");
           }
         },
         onError: (err) => toast.error(err?.message || "Failed"),

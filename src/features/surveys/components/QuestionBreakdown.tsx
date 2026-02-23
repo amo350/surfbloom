@@ -42,6 +42,17 @@ interface QuestionBreakdownProps {
   surveyId: string;
 }
 
+interface QuestionBreakdownData {
+  id: string;
+  order: number;
+  type: string;
+  text: string;
+  total: number;
+  avg: number | null;
+  distribution: unknown[];
+  samples?: string[];
+}
+
 export function QuestionBreakdown({ surveyId }: QuestionBreakdownProps) {
   const { data: questions, isLoading } = useQuestionBreakdown(surveyId);
 
@@ -80,14 +91,14 @@ export function QuestionBreakdown({ surveyId }: QuestionBreakdownProps) {
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-semibold">Per-Question Breakdown</h3>
-      {questions.map((q: any) => (
+      {(questions as QuestionBreakdownData[]).map((q) => (
         <QuestionChart key={q.id} question={q} />
       ))}
     </div>
   );
 }
 
-function QuestionChart({ question }: { question: any }) {
+function QuestionChart({ question }: { question: QuestionBreakdownData }) {
   const icon = TYPE_ICON[question.type] || TYPE_ICON.free_text;
 
   return (
@@ -124,13 +135,25 @@ function QuestionChart({ question }: { question: any }) {
       ) : question.type === "free_text" ? (
         <FreeTextSamples samples={question.samples || []} total={question.total} />
       ) : question.type === "nps" ? (
-        <NpsChart data={question.distribution} />
+        <NpsChart data={question.distribution as { value: number; count: number }[]} />
       ) : question.type === "star" ? (
-        <StarChart data={question.distribution} />
+        <StarChart
+          data={
+            question.distribution as { value: number; count: number; label: string }[]
+          }
+        />
       ) : question.type === "multiple_choice" ? (
-        <ChoiceChart data={question.distribution} total={question.total} />
+        <ChoiceChart
+          data={
+            question.distribution as { value: string; count: number; label: string }[]
+          }
+          total={question.total}
+        />
       ) : question.type === "yes_no" ? (
-        <YesNoBar data={question.distribution} total={question.total} />
+        <YesNoBar
+          data={question.distribution as { value: string; count: number }[]}
+          total={question.total}
+        />
       ) : null}
     </div>
   );
@@ -292,7 +315,7 @@ function FreeTextSamples({
     <div className="space-y-1.5">
       {samples.slice(0, 5).map((text, i) => (
         <div
-          key={i}
+          key={`${i}-${text}`}
           className="px-3 py-2 rounded bg-muted/10 border text-xs text-foreground"
         >
           "{text}"

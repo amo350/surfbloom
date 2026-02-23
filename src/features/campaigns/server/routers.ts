@@ -1234,6 +1234,9 @@ export const campaignsRouter = createTRPCRouter({
         (m) => m.userId === ctx.auth.user.id,
       );
       if (!isMember) throw new TRPCError({ code: "FORBIDDEN" });
+      if (campaign.surveyId) {
+        await assertSurveyAccess(campaign.surveyId, ctx.auth.user.id);
+      }
 
       const clone = await prisma.$transaction(async (tx) => {
         const createdCampaign = await tx.campaign.create({
