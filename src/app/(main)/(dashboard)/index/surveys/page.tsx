@@ -1,5 +1,5 @@
-import { SurveyList } from "@/features/surveys/components/SurveyList";
+import { redirect } from "next/navigation";
 
 export default function SurveysPage() {
-  return <SurveyList />;
+  redirect("/index/campaigns/surveys");
 }

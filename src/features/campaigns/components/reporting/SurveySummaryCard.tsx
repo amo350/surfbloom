@@ -52,7 +52,11 @@ export function SurveySummaryCard({ workspaceId, days }: SurveySummaryCardProps)
           No survey responses in the last {days} days
         </p>
         <Link
-          href="/index/surveys"
+          href={
+            workspaceId
+              ? `/workspaces/${workspaceId}/campaigns/surveys`
+              : "/index/campaigns/surveys"
+          }
           className="text-xs text-teal-600 hover:underline flex justify-center"
         >
           Go to Surveys →
@@ -71,7 +75,11 @@ export function SurveySummaryCard({ workspaceId, days }: SurveySummaryCardProps)
           <h4 className="text-sm font-semibold">Surveys</h4>
         </div>
         <Link
-          href="/index/surveys"
+          href={
+            workspaceId
+              ? `/workspaces/${workspaceId}/campaigns/surveys`
+              : "/index/campaigns/surveys"
+          }
           className="text-[10px] text-teal-600 hover:underline"
         >
           View all →

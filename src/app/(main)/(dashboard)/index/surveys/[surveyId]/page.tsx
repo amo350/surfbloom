@@ -1,4 +1,4 @@
-import { SurveyBuilder } from "@/features/surveys/components/SurveyBuilder";
+import { redirect } from "next/navigation";
 
 export default async function SurveyDetailPage({
   params,
@@ -6,5 +6,5 @@ export default async function SurveyDetailPage({
   params: Promise<{ surveyId: string }>;
 }) {
   const { surveyId } = await params;
-  return <SurveyBuilder surveyId={surveyId} />;
+  redirect(`/index/campaigns/surveys/${surveyId}`);
 }

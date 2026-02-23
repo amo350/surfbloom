@@ -72,9 +72,10 @@ type Tab = (typeof TABS)[number];
 
 interface SurveyBuilderProps {
   surveyId: string;
+  listPath: string;
 }
 
-export function SurveyBuilder({ surveyId }: SurveyBuilderProps) {
+export function SurveyBuilder({ surveyId, listPath }: SurveyBuilderProps) {
   const [tab, setTab] = useState<Tab>("Questions");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<any>(null);
@@ -160,12 +161,10 @@ export function SurveyBuilder({ surveyId }: SurveyBuilderProps) {
     setEditorOpen(true);
   };
 
-  const copyLink = () => {
-    if (!survey) return;
-    const url = `${window.location.origin}/s/${survey.slug}`;
+  const copyToClipboard = (value: string, successMessage: string) => {
     const fallbackCopy = () => {
       const textarea = document.createElement("textarea");
-      textarea.value = url;
+      textarea.value = value;
       textarea.setAttribute("readonly", "");
       textarea.style.position = "absolute";
       textarea.style.left = "-9999px";
@@ -178,19 +177,34 @@ export function SurveyBuilder({ surveyId }: SurveyBuilderProps) {
 
     if (navigator.clipboard?.writeText) {
       navigator.clipboard
-        .writeText(url)
-        .then(() => toast.success("Survey link copied"))
+        .writeText(value)
+        .then(() => toast.success(successMessage))
         .catch(() => {
           const copied = fallbackCopy();
-          if (copied) toast.success("Survey link copied");
-          else toast.error("Unable to copy survey link");
+          if (copied) toast.success(successMessage);
+          else toast.error("Unable to copy");
         });
       return;
     }
 
     const copied = fallbackCopy();
-    if (copied) toast.success("Survey link copied");
-    else toast.error("Unable to copy survey link");
+    if (copied) toast.success(successMessage);
+    else toast.error("Unable to copy");
+  };
+
+  const copyToken = () => {
+    copyToClipboard(
+      "{survey_link}",
+      "Copied {survey_link} token for campaign message",
+    );
+  };
+
+  const copyScopedToken = () => {
+    if (!survey) return;
+    copyToClipboard(
+      `{survey_link:${survey.slug}}`,
+      "Copied survey-specific token",
+    );
   };
 
   const handleSaveTemplate = () => {
@@ -263,7 +277,7 @@ export function SurveyBuilder({ surveyId }: SurveyBuilderProps) {
       <AppHeader>
         <div className="flex items-center gap-3 flex-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-            <Link href="/index/surveys">
+            <Link href={listPath}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
@@ -284,12 +298,11 @@ export function SurveyBuilder({ surveyId }: SurveyBuilderProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Copy link */}
-          <Button variant="ghost" size="sm" onClick={copyLink}>
+          {/* Copy token */}
+          <Button variant="ghost" size="sm" onClick={copyToken}>
             <Copy className="h-3.5 w-3.5 mr-1.5" />
-            Copy Link
+            Copy Token
           </Button>
-
           <Button variant="ghost" size="sm" onClick={() => setSaveTemplateOpen(true)}>
             <BookmarkPlus className="h-3.5 w-3.5 mr-1.5" />
             Save as Template
@@ -298,7 +311,7 @@ export function SurveyBuilder({ surveyId }: SurveyBuilderProps) {
           {/* Preview */}
           <Button variant="ghost" size="sm" asChild>
             <a
-              href={`/s/${survey.slug}?preview=true&c=test_contact&w=test_workspace&cam=test_campaign`}
+              href={`/s/${survey.slug}?preview=true`}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -368,7 +381,7 @@ export function SurveyBuilder({ surveyId }: SurveyBuilderProps) {
       <div className="flex-1 overflow-y-auto p-6">
         {/* ─── Questions Tab ─────────────────────────────── */}
         {tab === "Questions" && (
-          <div className="space-y-3 max-w-2xl">
+          <div className="max-w-3xl mx-auto space-y-4">
             {survey.questions.length > 0 ? (
               <DndContext
                 sensors={sensors}
@@ -423,29 +436,54 @@ export function SurveyBuilder({ surveyId }: SurveyBuilderProps) {
 
             {/* Survey link */}
             {survey.questions.length > 0 && (
-              <div className="flex items-center gap-2 pt-4 mt-4 border-t">
-                <span className="text-[10px] text-muted-foreground">
-                  Public link:
-                </span>
-                <code className="text-[10px] bg-muted/30 px-2 py-1 rounded font-mono">
-                  {typeof window !== "undefined"
-                    ? `${window.location.origin}/s/${survey.slug}`
-                    : `/s/${survey.slug}`}
-                </code>
-                <Button variant="ghost" size="sm" onClick={copyLink}>
-                  <Copy className="h-3 w-3" />
-                </Button>
+              <div className="pt-4 mt-4 border-t space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">
+                    Campaign token (selected survey in campaign):
+                  </span>
+                  <code className="text-[10px] bg-muted/30 px-2 py-1 rounded font-mono">
+                    {"{survey_link}"}
+                  </code>
+                  <Button variant="ghost" size="sm" className="h-6" onClick={copyToken}>
+                    <Copy className="h-2.5 w-2.5" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">
+                    Survey-specific token:
+                  </span>
+                  <code className="text-[10px] bg-muted/30 px-2 py-1 rounded font-mono">
+                    {`{survey_link:${survey.slug}}`}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6"
+                    onClick={copyScopedToken}
+                  >
+                    <Copy className="h-2.5 w-2.5" />
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground/70">
+                  Use tokens in campaigns. We generate unique per-recipient links
+                  with contact/workspace IDs. Use the survey-specific token when
+                  you want to clearly distinguish between multiple surveys.
+                </p>
               </div>
             )}
           </div>
         )}
 
         {/* ─── Settings Tab ──────────────────────────────── */}
-        {tab === "Settings" && <SurveySettingsPanel survey={survey} />}
+        {tab === "Settings" && (
+          <div className="max-w-lg mx-auto">
+            <SurveySettingsPanel survey={survey} />
+          </div>
+        )}
 
         {/* ─── Responses Tab ─────────────────────────────── */}
         {tab === "Responses" && (
-          <div className="space-y-6">
+          <div className="max-w-4xl mx-auto space-y-6">
             <SurveyStats surveyId={surveyId} />
             <AiSummaryCard surveyId={surveyId} />
             <ScoreDistribution surveyId={surveyId} />

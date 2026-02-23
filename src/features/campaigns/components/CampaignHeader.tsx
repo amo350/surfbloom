@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Hash, Plus, Search } from "lucide-react";
+import { BarChart3, ClipboardList, Hash, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,13 @@ export function CampaignHeader({
           <Link href={`${basePath}/campaigns/reporting`}>
             <BarChart3 className="h-4 w-4 mr-1.5" />
             Reporting
+          </Link>
+        </Button>
+
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`${basePath}/campaigns/surveys`}>
+            <ClipboardList className="h-4 w-4 mr-1.5" />
+            Surveys
           </Link>
         </Button>
       </div>

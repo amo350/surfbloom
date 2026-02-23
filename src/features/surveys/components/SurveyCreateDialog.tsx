@@ -29,11 +29,13 @@ import {
 interface SurveyCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  detailBasePath: string;
 }
 
 export function SurveyCreateDialog({
   open,
   onOpenChange,
+  detailBasePath,
 }: SurveyCreateDialogProps) {
   const [tab, setTab] = useState<"blank" | "template">("blank");
   const [name, setName] = useState("");
@@ -69,7 +71,7 @@ export function SurveyCreateDialog({
           onOpenChange(false);
           setName("");
           setDescription("");
-          router.push(`/index/surveys/${survey.id}`);
+          router.push(`${detailBasePath}/${survey.id}`);
         },
         onError: (err) => toast.error(err?.message || "Failed"),
       },
@@ -99,7 +101,7 @@ export function SurveyCreateDialog({
           setDescription("");
           setSelectedTemplateId("");
           setTab("blank");
-          router.push(`/index/surveys/${survey.id}`);
+          router.push(`${detailBasePath}/${survey.id}`);
         },
         onError: (err) => toast.error(err?.message || "Failed"),
       },

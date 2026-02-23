@@ -168,13 +168,14 @@ export function CampaignBuilder({
   >("friendly");
   const [autoReplyContext, setAutoReplyContext] = useState("");
   const [autoReplyMaxReplies, setAutoReplyMaxReplies] = useState(1);
+  const [surveySearch, setSurveySearch] = useState("");
 
   // Data
   const { data: stages } = useStages();
   const { data: categories } = useCategories(primaryWorkspaceId);
   const { data: surveys } = useSurveys("active");
   const surveyOptions = surveys || [];
-  const hasSurveyToken = messageTemplate.includes("{survey_link}");
+  const hasSurveyToken = /\{survey_link(?::[^}]+)?\}/.test(messageTemplate);
 
   useEffect(() => {
     if (surveyOptions.length === 0 && surveyId) {
@@ -217,7 +218,7 @@ export function CampaignBuilder({
   const canStep4 =
     channel === "sms"
       ? messageTemplate.trim().length > 0 &&
-        (!messageTemplate.includes("{survey_link}") || !!surveyId)
+        (!hasSurveyToken || !!surveyId)
       : emailSubject.trim().length > 0 && emailHtmlBody.trim().length > 0;
   const canLaunch = canStep2 && canStep3 && canStep4;
   const canSubmit =
@@ -225,6 +226,22 @@ export function CampaignBuilder({
 
   const handleInsertToken = (key: string) => {
     setMessageTemplate((prev) => prev + `{${key}}`);
+  };
+  const handleInsertSurveyLink = () => {
+    if (!surveyId) {
+      toast.error("Select a survey first");
+      return;
+    }
+    const selectedSurvey = surveyOptions.find((s: any) => s.id === surveyId);
+    if (!selectedSurvey?.slug) {
+      toast.error("Selected survey is missing a slug");
+      return;
+    }
+    setMessageTemplate((prev) => {
+      const spacer = prev.trim().length === 0 ? "" : " ";
+      return `${prev}${spacer}{survey_link:${selectedSurvey.slug}}`;
+    });
+    toast.success("Survey link token added to message");
   };
   const sanitizeEmailHtml = (html: string) => DOMPurify.sanitize(html);
 
@@ -769,9 +786,21 @@ export function CampaignBuilder({
                 <label className="text-xs font-medium text-muted-foreground">
                   Survey
                 </label>
+                <Input
+                  value={surveySearch}
+                  onChange={(e) => setSurveySearch(e.target.value)}
+                  placeholder="Search surveys..."
+                  className="h-8"
+                />
                 <Select
                   value={surveyId}
-                  onValueChange={setSurveyId}
+                  onValueChange={(value) => {
+                    setSurveyId(value);
+                    const selected = surveyOptions.find((s: any) => s.id === value);
+                    if (selected?.name) {
+                      toast.success(`Selected survey: ${selected.name}`);
+                    }
+                  }}
                   disabled={surveyOptions.length === 0}
                 >
                   <SelectTrigger className="h-9">
@@ -789,19 +818,47 @@ export function CampaignBuilder({
                         No active surveys
                       </SelectItem>
                     ) : (
-                      surveyOptions.map((s: any) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))
+                      (() => {
+                        const filtered = surveyOptions.filter((s: any) =>
+                          s.name
+                            .toLowerCase()
+                            .includes(surveySearch.trim().toLowerCase()),
+                        );
+                        if (filtered.length === 0) {
+                          return (
+                            <SelectItem value="__no_match" disabled>
+                              No matching surveys
+                            </SelectItem>
+                          );
+                        }
+                        return filtered.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ));
+                      })()
                     )}
                   </SelectContent>
                 </Select>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleInsertSurveyLink}
+                    disabled={!surveyId}
+                  >
+                    Add Survey Link to Message
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground">
+                    Adds {`{survey_link:<slug>}`} automatically
+                  </span>
+                </div>
                 <p className="text-[11px] text-muted-foreground">
                   {surveyOptions.length === 0
                     ? "Create and activate a survey first, then select it here."
                     : hasSurveyToken
-                      ? `Required when using {"{survey_link}"}.`
+                      ? `Required when using {"{survey_link}"} or {"{survey_link:<slug>}"} tokens.`
                       : "Optional: attach a survey to turn this campaign into an SMS survey flow."}
                 </p>
                 {surveyId && (

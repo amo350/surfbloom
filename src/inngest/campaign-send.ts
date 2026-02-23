@@ -104,6 +104,47 @@ function buildSurveyUrl(
   return `${baseUrl}/s/${surveySlug}?c=${contactId}&w=${workspaceId}&cam=${campaignId}`;
 }
 
+const SURVEY_LINK_TOKEN_REGEX = /\{survey_link(?::([^}]+))?\}/g;
+
+function applySurveyLinkTokens(
+  input: string,
+  params: {
+    appUrl: string;
+    defaultSurveySlug: string | null;
+    contactId: string | null;
+    workspaceId: string;
+    campaignId: string;
+  },
+): { text: string; usedToken: boolean; unresolved: string[] } {
+  let usedToken = false;
+  const unresolved = new Set<string>();
+
+  const text = input.replace(SURVEY_LINK_TOKEN_REGEX, (match, explicitSlug) => {
+    usedToken = true;
+    const selectedSlug =
+      typeof explicitSlug === "string" && explicitSlug.trim().length > 0
+        ? explicitSlug.trim()
+        : params.defaultSurveySlug;
+
+    const url = buildSurveyUrl(
+      params.appUrl,
+      selectedSlug,
+      params.contactId,
+      params.workspaceId,
+      params.campaignId,
+    );
+
+    if (!url) {
+      unresolved.add(selectedSlug || "{missing-survey-slug}");
+      return "";
+    }
+
+    return url;
+  });
+
+  return { text, usedToken, unresolved: Array.from(unresolved) };
+}
+
 function formatFirstQuestionSms(
   introMessage: string,
   firstQuestion: {
@@ -591,30 +632,38 @@ export const sendCampaign = inngest.createFunction(
                     },
                   );
 
-                const surveyUrl = buildSurveyUrl(
+                const subjectSurveyApplied = applySurveyLinkTokens(resolvedSubject, {
                   appUrl,
-                  campaign.surveySlug,
-                  recipient.contact.id,
-                  campaign.workspaceId,
-                  campaign.id,
-                );
+                  defaultSurveySlug: campaign.surveySlug,
+                  contactId: recipient.contact.id,
+                  workspaceId: campaign.workspaceId,
+                  campaignId: campaign.id,
+                });
+                const htmlSurveyApplied = applySurveyLinkTokens(resolvedHtml, {
+                  appUrl,
+                  defaultSurveySlug: campaign.surveySlug,
+                  contactId: recipient.contact.id,
+                  workspaceId: campaign.workspaceId,
+                  campaignId: campaign.id,
+                });
+
                 if (
-                  !surveyUrl &&
-                  (resolvedSubject.includes("{survey_link}") ||
-                    resolvedHtml.includes("{survey_link}"))
+                  subjectSurveyApplied.unresolved.length > 0 ||
+                  htmlSurveyApplied.unresolved.length > 0
                 ) {
+                  const unresolved = Array.from(
+                    new Set([
+                      ...subjectSurveyApplied.unresolved,
+                      ...htmlSurveyApplied.unresolved,
+                    ]),
+                  ).join(", ");
                   console.warn(
-                    `[CampaignSend] {survey_link} requested but no survey configured for campaign ${campaign.id}`,
+                    `[CampaignSend] survey_link token unresolved for campaign ${campaign.id}. Slugs: ${unresolved}`,
                   );
                 }
-                const subjectWithSurvey = resolvedSubject.replace(
-                  /\{survey_link\}/g,
-                  surveyUrl,
-                );
-                const htmlWithSurvey = resolvedHtml.replace(
-                  /\{survey_link\}/g,
-                  surveyUrl,
-                );
+
+                const subjectWithSurvey = subjectSurveyApplied.text;
+                const htmlWithSurvey = htmlSurveyApplied.text;
 
                 let unsubscribeUrl: string | undefined;
                 if (campaign.unsubscribeLink && appUrl && !isLocal) {
@@ -687,21 +736,19 @@ export const sendCampaign = inngest.createFunction(
                   twilioPhone: campaign.twilioPhone,
                 });
 
-                if (message.includes("{survey_link}")) {
-                  const surveyUrl = buildSurveyUrl(
-                    appUrl,
-                    campaign.surveySlug,
-                    recipient.contact.id,
-                    campaign.workspaceId,
-                    campaign.id,
+                const surveyApplied = applySurveyLinkTokens(message, {
+                  appUrl,
+                  defaultSurveySlug: campaign.surveySlug,
+                  contactId: recipient.contact.id,
+                  workspaceId: campaign.workspaceId,
+                  campaignId: campaign.id,
+                });
+                if (surveyApplied.unresolved.length > 0) {
+                  console.warn(
+                    `[CampaignSend] survey_link token unresolved for campaign ${campaign.id}. Slugs: ${surveyApplied.unresolved.join(", ")}`,
                   );
-                  if (!surveyUrl) {
-                    console.warn(
-                      `[CampaignSend] {survey_link} requested but no survey configured for campaign ${campaign.id}`,
-                    );
-                  }
-                  message = message.replace(/\{survey_link\}/g, surveyUrl);
                 }
+                message = surveyApplied.text;
 
                 if (hasLinkReplacements) {
                   message = replaceUrls(message, replacementMap);

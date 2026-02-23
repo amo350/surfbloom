@@ -86,7 +86,7 @@ export function SurveySettingsPanel({
   const editable = survey.status !== "active";
 
   return (
-    <div className="space-y-6 max-w-lg">
+    <div className="space-y-6">
       {survey.status === "active" && (
         <div className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
           Set to draft to edit settings

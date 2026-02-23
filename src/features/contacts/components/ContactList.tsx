@@ -17,6 +17,7 @@ import {
   useExportContacts,
   useStages,
 } from "../hooks/use-contacts";
+import { AppHeader } from "@/components/AppHeader";
 import { ContactRow } from "./ContactRow";
 import { CSVImportDialog } from "./CSVImportDialog";
 import { CreateContactDialog } from "./CreateContactDialog";
@@ -126,51 +127,43 @@ export function ContactsList({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Top bar */}
-      <div className="px-6 py-4 border-b space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Search */}
-            <div className="relative w-64">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search contacts..."
-                className="pl-8 h-9 text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <MergeDuplicatesDialog workspaceId={workspaceId} />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExport}
-              disabled={exporting}
-            >
-              {exporting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-              ) : (
-                <Download className="h-4 w-4 mr-1.5" />
-              )}
-              Export
-            </Button>
-            <CSVImportDialog
-              workspaceId={workspaceId}
-              workspaces={workspaces}
-            />
-            <CreateContactDialog
-              workspaceId={workspaceId}
-              workspaces={workspaces}
-            />
-          </div>
+      <AppHeader>
+        <div className="flex items-center gap-2">
+          <CreateContactDialog workspaceId={workspaceId} workspaces={workspaces} />
+          <MergeDuplicatesDialog workspaceId={workspaceId} />
         </div>
 
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="relative w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search contacts..."
+              className="pl-8 h-8 text-sm"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+            ) : (
+              <Download className="h-4 w-4 mr-1.5" />
+            )}
+            Export
+          </Button>
+          <CSVImportDialog workspaceId={workspaceId} workspaces={workspaces} />
+        </div>
+      </AppHeader>
+
+      <div className="px-6 py-3 border-b">
         {/* Stage filter pills */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <button

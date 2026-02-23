@@ -145,18 +145,8 @@ export function SmsSetupProgress({
       {/* Twilio reassurance */}
       {!allComplete && (
         <div className="rounded-lg bg-blue-50/50 border border-blue-100 px-3 py-2.5">
-          <p className="text-xs text-blue-800 font-medium">Powered by Twilio</p>
-          <p className="text-[11px] text-blue-700 mt-0.5 leading-relaxed">
-            Your messages are delivered through Twilio, the industry-leading
-            messaging platform trusted by over 300,000 businesses worldwide. All
-            messages comply with TCPA regulations and carrier requirements.
-            {verificationStatus === "pending" && (
-              <span className="block mt-1">
-                While carrier verification is processing, you can send SMS to
-                individually verified numbers. Once approved, all sending
-                restrictions are lifted.
-              </span>
-            )}
+          <p className="text-[11px] text-blue-700 leading-relaxed">
+            All messages comply with TCPA regulations and carrier requirements.
           </p>
         </div>
       )}

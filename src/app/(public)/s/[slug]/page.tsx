@@ -307,15 +307,15 @@ export default function PublicSurveyPage() {
   if (loadingSurvey) {
     return (
       <main
-        className="min-h-dvh flex items-center justify-center"
+        className="min-h-dvh relative overflow-hidden flex items-center justify-center p-6"
         style={{
           background:
-            "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 28%, #7dd3fc 55%, #fef3c7 78%, #fff7ed 100%)",
+            "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 25%, #7dd3fc 50%, #e0f2fe 75%, #fff7ed 100%)",
         }}
       >
-        <div className="rounded-2xl border border-white/35 bg-white/80 p-5 shadow-lg backdrop-blur">
+        <div className="rounded-2xl border border-white/25 bg-white/90 p-5 shadow-lg backdrop-blur">
           <Loader2 className="mx-auto h-6 w-6 animate-spin text-sky-600" />
-          <p className="mt-2 text-xs text-slate-600">Loading your survey...</p>
+          <p className="mt-2 text-xs text-slate-600">Loading survey...</p>
         </div>
       </main>
     );
@@ -324,16 +324,14 @@ export default function PublicSurveyPage() {
   if (surveyError) {
     return (
       <main
-        className="min-h-dvh flex items-center justify-center p-6"
+        className="min-h-dvh relative overflow-hidden flex items-center justify-center p-6"
         style={{
           background:
-            "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 28%, #7dd3fc 55%, #fef3c7 78%, #fff7ed 100%)",
+            "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 25%, #7dd3fc 50%, #e0f2fe 75%, #fff7ed 100%)",
         }}
       >
-        <div className="w-full max-w-md rounded-2xl border border-white/35 bg-white/85 p-5 text-center shadow-lg backdrop-blur">
-          <h1 className="text-base font-semibold text-slate-900">
-            Aloha, we hit a wave
-          </h1>
+        <div className="w-full max-w-sm rounded-2xl border border-white/25 bg-white/90 p-6 text-center shadow-xl backdrop-blur">
+          <h1 className="text-lg font-semibold text-slate-900">We hit a snag</h1>
           <p className="mt-1 text-sm text-slate-600">{surveyError}</p>
         </div>
       </main>
@@ -343,14 +341,14 @@ export default function PublicSurveyPage() {
   if (isInvalidLink) {
     return (
       <main
-        className="min-h-dvh flex items-center justify-center p-6"
+        className="min-h-dvh relative overflow-hidden flex items-center justify-center p-6"
         style={{
           background:
-            "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 28%, #7dd3fc 55%, #fef3c7 78%, #fff7ed 100%)",
+            "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 25%, #7dd3fc 50%, #e0f2fe 75%, #fff7ed 100%)",
         }}
       >
-        <div className="w-full max-w-md rounded-2xl border border-white/35 bg-white/85 p-5 text-center shadow-lg backdrop-blur">
-          <h1 className="text-base font-semibold text-slate-900">Invalid link</h1>
+        <div className="w-full max-w-sm rounded-2xl border border-white/25 bg-white/90 p-6 text-center shadow-xl backdrop-blur">
+          <h1 className="text-lg font-semibold text-slate-900">Invalid link</h1>
           <p className="mt-1 text-sm text-slate-600">
             Missing contact or workspace identifier.
           </p>
@@ -362,13 +360,13 @@ export default function PublicSurveyPage() {
   if (!survey || survey.questions.length === 0) {
     return (
       <main
-        className="min-h-dvh flex items-center justify-center p-6"
+        className="min-h-dvh relative overflow-hidden flex items-center justify-center p-6"
         style={{
           background:
-            "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 28%, #7dd3fc 55%, #fef3c7 78%, #fff7ed 100%)",
+            "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 25%, #7dd3fc 50%, #e0f2fe 75%, #fff7ed 100%)",
         }}
       >
-        <div className="w-full max-w-md rounded-2xl border border-white/35 bg-white/85 p-5 text-center shadow-lg backdrop-blur">
+        <div className="w-full max-w-sm rounded-2xl border border-white/25 bg-white/90 p-6 text-center shadow-xl backdrop-blur">
           <p className="text-sm text-slate-700">No questions are available.</p>
         </div>
       </main>
@@ -378,25 +376,26 @@ export default function PublicSurveyPage() {
   if (completion && completionView) {
     return (
       <main
-        className="min-h-dvh relative overflow-hidden flex items-center justify-center p-4"
+        className="min-h-dvh relative overflow-hidden flex items-center justify-center px-5 py-8"
         style={{
           background:
-            "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 28%, #7dd3fc 55%, #fef3c7 78%, #fff7ed 100%)",
+            "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 25%, #7dd3fc 50%, #e0f2fe 75%, #fff7ed 100%)",
         }}
       >
-        <svg
-          className="absolute bottom-0 left-0 w-full opacity-[0.08]"
-          viewBox="0 0 1440 320"
-          preserveAspectRatio="none"
-          style={{ height: "30%" }}
-        >
-          <path
-            fill="#0369a1"
-            d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,213.3C672,224,768,224,864,208C960,192,1056,160,1152,154.7C1248,149,1344,171,1392,181.3L1440,192L1440,320L0,320Z"
-          />
-        </svg>
-
-        <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/35 bg-white/88 p-6 text-center shadow-xl backdrop-blur">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <svg
+            className="absolute bottom-0 left-0 w-full opacity-[0.06]"
+            viewBox="0 0 1440 320"
+            preserveAspectRatio="none"
+            style={{ height: "40%" }}
+          >
+            <path
+              fill="#0369a1"
+              d="M0,160L48,144C96,128,192,96,288,106.7C384,117,480,171,576,181.3C672,192,768,160,864,133.3C960,107,1056,85,1152,90.7C1248,96,1344,128,1392,144L1440,160L1440,320L0,320Z"
+            />
+          </svg>
+        </div>
+        <div className="relative z-10 w-full max-w-sm rounded-2xl border border-white/20 bg-white/92 p-6 text-center shadow-xl backdrop-blur">
           {workspace?.imageUrl ? (
             <Image
               src={workspace.imageUrl}
@@ -422,14 +421,11 @@ export default function PublicSurveyPage() {
           {completionView.ctaUrl && (
             <a
               href={completionView.ctaUrl}
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-sky-700 px-4 text-sm font-medium text-white shadow-sm"
+              className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-sky-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-sky-700"
             >
               {completionView.ctaLabel}
             </a>
           )}
-          <p className="mt-5 text-[10px] tracking-wide text-slate-500">
-            Powered by SurfBloom
-          </p>
         </div>
       </main>
     );
@@ -444,41 +440,89 @@ export default function PublicSurveyPage() {
       className="min-h-dvh relative overflow-hidden"
       style={{
         background:
-          "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 28%, #7dd3fc 55%, #fef3c7 78%, #fff7ed 100%)",
+          "linear-gradient(165deg, #0ea5e9 0%, #38bdf8 25%, #7dd3fc 50%, #e0f2fe 75%, #fff7ed 100%)",
       }}
     >
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-10 -left-16 h-48 w-48 rounded-full bg-white/20 blur-2xl" />
-        <div className="absolute top-24 -right-16 h-56 w-56 rounded-full bg-cyan-100/35 blur-2xl" />
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <svg
-          className="absolute bottom-0 left-0 w-full opacity-[0.08]"
+          className="absolute bottom-0 left-0 w-full opacity-[0.06]"
           viewBox="0 0 1440 320"
           preserveAspectRatio="none"
-          style={{ height: "34%" }}
+          style={{ height: "40%" }}
         >
           <path
-            fill="#075985"
+            fill="#0369a1"
             d="M0,160L48,144C96,128,192,96,288,106.7C384,117,480,171,576,181.3C672,192,768,160,864,133.3C960,107,1056,85,1152,90.7C1248,96,1344,128,1392,144L1440,160L1440,320L0,320Z"
           />
         </svg>
+        <svg
+          className="absolute bottom-0 left-0 w-full opacity-[0.04]"
+          viewBox="0 0 1440 320"
+          preserveAspectRatio="none"
+          style={{ height: "30%" }}
+        >
+          <path
+            fill="#0369a1"
+            d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,213.3C672,224,768,224,864,208C960,192,1056,160,1152,154.7C1248,149,1344,171,1392,181.3L1440,192L1440,320L0,320Z"
+          />
+        </svg>
       </div>
+      <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-5 py-8">
+      <div className="w-full max-w-sm">
+        {isPreview && (
+          <div className="mb-4 rounded-xl border border-amber-300/50 bg-amber-100/90 px-4 py-2 text-center shadow-sm">
+            <p className="text-xs font-medium text-amber-800">
+              Preview Mode — responses will not be saved
+            </p>
+          </div>
+        )}
 
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 py-5">
-        <div className="rounded-2xl border border-white/35 bg-white/72 p-3 shadow-md backdrop-blur">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/80">
+        <div className="text-center mb-7">
+          {workspace?.imageUrl ? (
+            <div className="mx-auto h-16 w-16 rounded-2xl overflow-hidden mb-3 shadow-lg ring-4 ring-white/40">
+              <Image
+                src={workspace.imageUrl}
+                alt={workspace.name}
+                width={64}
+                height={64}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="mx-auto h-16 w-16 rounded-2xl mb-3 shadow-lg ring-4 ring-white/40 bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <span className="text-xl font-bold text-white">
+                {(workspace?.name ?? "S")[0]?.toUpperCase()}
+              </span>
+            </div>
+          )}
+          <p className="text-2xl font-bold text-white drop-shadow-sm">
+            {workspace?.name ?? "Survey"}
+          </p>
+          <p className="text-sm text-white/75 mt-1">{survey.name}</p>
+        </div>
+
+        <div className="mb-4 rounded-xl border border-white/20 bg-white/90 p-3 shadow-md backdrop-blur">
+          <div className="h-1.5 rounded-full bg-slate-200/90 overflow-hidden">
             <div
-              className="h-full bg-linear-to-r from-cyan-500 to-sky-700 transition-all duration-300"
+              className="h-full rounded-full bg-linear-to-r from-cyan-500 to-sky-700 transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="mt-1.5 text-[11px] text-slate-600">
-            Question {eligiblePosition + 1} of {Math.max(eligibleIndexes.length, 1)}
+          <p className="text-[11px] text-slate-600 mt-1.5">
+            {eligiblePosition + 1} of {Math.max(eligibleIndexes.length, 1)}
           </p>
         </div>
 
-        <div className="mt-4 flex flex-1 flex-col justify-center">
-          <div className="rounded-3xl border border-white/35 bg-white/88 px-4 py-5 shadow-xl backdrop-blur">
-            <div className="mb-5 text-center">
+        <div
+          className="rounded-2xl border border-white/20 p-6 shadow-xl"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.88) 100%)",
+            backdropFilter: "blur(20px)",
+          }}
+        >
+          <div className="space-y-5">
+            <div className="text-center">
             {workspace?.imageUrl ? (
               <Image
                 src={workspace.imageUrl}
@@ -492,17 +536,18 @@ export default function PublicSurveyPage() {
                 {workspace?.name?.[0]?.toUpperCase() ?? "S"}
               </div>
             )}
-            <p className="mt-2 text-xs text-slate-500">
-              {workspace?.name ?? "Survey"}
-            </p>
-            <h1 className="mt-2 text-xl font-semibold leading-tight text-slate-900">
+            <h1 className="mt-3 text-xl font-semibold leading-tight text-slate-900">
               {question?.text}
             </h1>
+            {question?.required && (
+              <p className="mt-1 text-[10px] text-rose-500">Required</p>
+            )}
           </div>
 
           <div className="space-y-2.5">
             {question?.type === "nps" && (
-              <div className="grid grid-cols-6 md:grid-cols-11 gap-2">
+              <div>
+                <div className="grid grid-cols-6 md:grid-cols-11 gap-2">
                 {Array.from({ length: 11 }).map((_, i) => (
                   <button
                     key={i}
@@ -514,11 +559,16 @@ export default function PublicSurveyPage() {
                         answerNumber: i,
                       })
                     }
-                    className="h-11 rounded-xl border border-sky-100 bg-white/95 text-sm font-medium text-slate-700 shadow-sm active:scale-[0.98] disabled:opacity-60"
+                    className="h-10 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300 active:scale-[0.98] disabled:opacity-60"
                   >
                     {i}
                   </button>
                 ))}
+                </div>
+                <div className="mt-2 flex justify-between">
+                  <span className="text-[10px] text-slate-500">Not likely</span>
+                  <span className="text-[10px] text-slate-500">Very likely</span>
+                </div>
               </div>
             )}
 
@@ -535,9 +585,9 @@ export default function PublicSurveyPage() {
                         answerNumber: i,
                       })
                     }
-                    className="rounded-xl bg-white/95 p-2.5 shadow-sm active:scale-[0.98] disabled:opacity-60"
+                    className="rounded-xl p-2.5 transition-transform hover:scale-105 active:scale-[0.98] disabled:opacity-60"
                   >
-                    <Star className="h-8 w-8 fill-amber-400 text-amber-400" />
+                    <Star className="h-8 w-8 fill-amber-400 text-amber-400 drop-shadow-sm" />
                   </button>
                 ))}
               </div>
@@ -555,7 +605,7 @@ export default function PublicSurveyPage() {
                       answerNumber: 10,
                     })
                   }
-                  className="h-11 rounded-xl border border-emerald-200 bg-white/95 text-sm font-medium text-slate-800 shadow-sm active:scale-[0.98] disabled:opacity-60"
+                  className="h-12 rounded-xl border border-emerald-300 bg-emerald-50 text-sm font-medium text-emerald-700 shadow-sm active:scale-[0.98] disabled:opacity-60"
                 >
                   Yes
                 </button>
@@ -569,7 +619,7 @@ export default function PublicSurveyPage() {
                       answerNumber: 0,
                     })
                   }
-                  className="h-11 rounded-xl border border-rose-200 bg-white/95 text-sm font-medium text-slate-800 shadow-sm active:scale-[0.98] disabled:opacity-60"
+                  className="h-12 rounded-xl border border-rose-300 bg-rose-50 text-sm font-medium text-rose-700 shadow-sm active:scale-[0.98] disabled:opacity-60"
                 >
                   No
                 </button>
@@ -589,7 +639,7 @@ export default function PublicSurveyPage() {
                         answerChoice: opt,
                       })
                     }
-                    className="w-full rounded-xl border border-sky-100 bg-white/95 px-4 py-3 text-left text-sm text-slate-800 shadow-sm active:scale-[0.99] disabled:opacity-60"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99] disabled:opacity-60"
                   >
                     {opt}
                   </button>
@@ -604,13 +654,13 @@ export default function PublicSurveyPage() {
                   onChange={(e) => setFreeTextDraft(e.target.value)}
                   rows={4}
                   placeholder="Type your answer..."
-                  className="w-full rounded-xl border border-sky-100 bg-white/95 px-3 py-2.5 text-sm text-slate-800 outline-none shadow-sm"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none shadow-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
                 />
                 <button
                   type="button"
                   onClick={completeFreeText}
                   disabled={!freeTextDraft.trim() || submitting || completing}
-                  className="h-11 w-full rounded-xl bg-sky-700 text-sm font-medium text-white shadow-sm disabled:opacity-60"
+                  className="h-11 w-full rounded-xl bg-teal-600 text-sm font-medium text-white shadow-sm hover:bg-teal-700 disabled:opacity-60"
                 >
                   {submitting || completing ? "Saving..." : "Continue"}
                 </button>
@@ -618,10 +668,11 @@ export default function PublicSurveyPage() {
             )}
           </div>
           </div>
-          <p className="pt-4 text-center text-[10px] tracking-wide text-white/80">
-            SurfBloom
-          </p>
         </div>
+        <p className="text-center text-[10px] text-white/40 mt-8">
+          Powered by SurfBloom
+        </p>
+      </div>
       </div>
     </main>
   );

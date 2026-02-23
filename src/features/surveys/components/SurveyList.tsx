@@ -54,7 +54,7 @@ type DeleteSurveyResult = {
   status?: "archived" | "deleted" | string;
 };
 
-export function SurveyList() {
+export function SurveyList({ basePath }: { basePath: string }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<SurveyStatusFilter>(undefined);
 
@@ -102,9 +102,10 @@ export function SurveyList() {
         </Button>
       </AppHeader>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Status pills */}
-        <div className="flex gap-1.5">
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-3xl mx-auto space-y-6">
+          {/* Status pills */}
+          <div className="flex gap-1.5">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.label}
@@ -119,17 +120,17 @@ export function SurveyList() {
               {f.label}
             </button>
           ))}
-        </div>
-
-        {isLoading && (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-        )}
 
-        {!isLoading && surveys && surveys.length > 0 && (
-          <div className="space-y-3">
-            {surveys.map((survey: any) => {
+          {isLoading && (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {!isLoading && surveys && surveys.length > 0 && (
+            <div className="space-y-3">
+              {surveys.map((survey: any) => {
               const config =
                 STATUS_CONFIG[survey.status] || STATUS_CONFIG.draft;
 
@@ -143,7 +144,7 @@ export function SurveyList() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <Link
-                          href={`/index/surveys/${survey.id}`}
+                          href={`${basePath}/${survey.id}`}
                           className="text-sm font-medium hover:text-teal-600 transition-colors truncate"
                         >
                           {survey.name}
@@ -225,35 +226,40 @@ export function SurveyList() {
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
+              })}
+            </div>
+          )}
 
-        {!isLoading && (!surveys || surveys.length === 0) && (
-          <div className="flex flex-col items-center py-16 text-center">
-            <ClipboardList className="h-10 w-10 text-muted-foreground/30 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">
-              {statusFilter ? `No ${statusFilter} surveys` : "No surveys yet"}
-            </p>
-            <p className="text-xs text-muted-foreground/60 mt-1 max-w-xs">
-              Create a survey to collect customer feedback, measure NPS, and
-              route happy customers to leave reviews
-            </p>
-            {!statusFilter && (
-              <Button
-                size="sm"
-                className="mt-4"
-                onClick={() => setCreateOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-1.5" />
-                Create First Survey
-              </Button>
-            )}
-          </div>
-        )}
+          {!isLoading && (!surveys || surveys.length === 0) && (
+            <div className="flex flex-col items-center py-16 text-center">
+              <ClipboardList className="h-10 w-10 text-muted-foreground/30 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">
+                {statusFilter ? `No ${statusFilter} surveys` : "No surveys yet"}
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-1 max-w-xs">
+                Create a survey to collect customer feedback, measure NPS, and
+                route happy customers to leave reviews
+              </p>
+              {!statusFilter && (
+                <Button
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setCreateOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Create First Survey
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      <SurveyCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <SurveyCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        detailBasePath={basePath}
+      />
     </div>
   );
 }
