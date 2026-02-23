@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  ArrowLeft,
   Plus,
   Loader2,
   MessageSquareText,
@@ -11,6 +12,7 @@ import {
   PowerOff,
   Copy,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -33,7 +35,14 @@ import {
 import { KeywordDialog } from "./KeywordDialog";
 import { QRCodeDialog } from "./QRCodeDialog";
 
-export function KeywordManager({ workspaceId }: { workspaceId?: string }) {
+export function KeywordManager({
+  workspaceId,
+  basePath,
+}: {
+  workspaceId?: string;
+  basePath?: string;
+}) {
+  const resolvedBasePath = basePath || (workspaceId ? `/workspaces/${workspaceId}` : "/index");
   const [dialogOpen, setDialogOpen] = useState(false);
   const { data: keywords, isLoading } = useKeywords(workspaceId);
   const updateKeyword = useUpdateKeyword();
@@ -69,7 +78,14 @@ export function KeywordManager({ workspaceId }: { workspaceId?: string }) {
   return (
     <div className="h-full flex flex-col">
       <AppHeader>
-        <AppHeaderTitle title="Text-to-Join Keywords" />
+        <div className="flex items-center gap-2 flex-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+            <Link href={`${resolvedBasePath}/campaigns`}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <AppHeaderTitle title="Text-to-Join Keywords" />
+        </div>
       </AppHeader>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
