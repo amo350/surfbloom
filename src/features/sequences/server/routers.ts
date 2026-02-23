@@ -130,10 +130,17 @@ export const sequenceRouter = createTRPCRouter({
       const where: any = { workspaceId: { in: workspaceIds } };
       if (input.status) where.status = input.status;
 
-      return prisma.campaignSequence.findMany({
+      const sequencesRaw = await prisma.campaignSequence.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          status: true,
+          triggerType: true,
+          triggerValue: true,
+          createdAt: true,
           workspace: { select: { id: true, name: true } },
           _count: {
             select: {
@@ -143,6 +150,67 @@ export const sequenceRouter = createTRPCRouter({
           },
         },
       });
+
+      const sequenceIds = sequencesRaw.map((sequence) => sequence.id);
+
+      const enrollmentCounts =
+        sequenceIds.length === 0
+          ? []
+          : await prisma.campaignSequenceEnrollment.groupBy({
+              by: ["sequenceId", "status"],
+              where: { sequenceId: { in: sequenceIds } },
+              _count: true,
+            });
+
+      const statsMap = new Map<
+        string,
+        { active: number; completed: number; stopped: number; optedOut: number }
+      >();
+
+      for (const row of enrollmentCounts) {
+        const existing = statsMap.get(row.sequenceId) || {
+          active: 0,
+          completed: 0,
+          stopped: 0,
+          optedOut: 0,
+        };
+
+        switch (row.status) {
+          case "active":
+            existing.active = row._count;
+            break;
+          case "completed":
+            existing.completed = row._count;
+            break;
+          case "stopped":
+            existing.stopped = row._count;
+            break;
+          case "opted_out":
+            existing.optedOut = row._count;
+            break;
+        }
+
+        statsMap.set(row.sequenceId, existing);
+      }
+
+      const sequences = sequencesRaw.map((sequence) => {
+        const stats = statsMap.get(sequence.id) || {
+          active: 0,
+          completed: 0,
+          stopped: 0,
+          optedOut: 0,
+        };
+
+        return {
+          ...sequence,
+          enrollmentStats: {
+            ...stats,
+            total: stats.active + stats.completed + stats.stopped + stats.optedOut,
+          },
+        };
+      });
+
+      return sequences;
     }),
 
   getSequence: protectedProcedure

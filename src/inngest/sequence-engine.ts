@@ -352,50 +352,45 @@ async function evaluateCondition(
 ): Promise<boolean> {
   switch (conditionType) {
     case "replied": {
-      const replyLog = await prisma.campaignSequenceStepLog.findFirst({
+      // Check if any sent step in this enrollment has been replied to.
+      const repliedLog = await prisma.campaignSequenceStepLog.findFirst({
         where: {
           enrollmentId,
-          status: "sent",
-          messageId: { not: null },
-        },
-        select: { messageId: true },
-      });
-
-      if (!replyLog?.messageId) return false;
-
-      const inboundMessage = await prisma.smsMessage.findFirst({
-        where: {
-          chatRoom: { contactId },
-          direction: "inbound",
-          createdAt: {
-            gte: replyLog.messageId
-              ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-              : new Date(),
-          },
+          repliedAt: { not: null },
         },
         select: { id: true },
       });
 
-      return !!inboundMessage;
+      return !!repliedLog;
     }
 
     case "clicked": {
       const stepLogs = await prisma.campaignSequenceStepLog.findMany({
-        where: { enrollmentId, status: "sent" },
+        where: {
+          enrollmentId,
+          status: { in: ["sent", "delivered"] },
+          channel: "email",
+        },
         select: { messageId: true },
       });
 
       if (stepLogs.length === 0) return false;
 
-      const emailClicks = await prisma.emailSend.findFirst({
+      const messageIds = stepLogs
+        .map((log) => log.messageId)
+        .filter(Boolean) as string[];
+
+      if (messageIds.length === 0) return false;
+
+      const clickedEmail = await prisma.emailSend.findFirst({
         where: {
-          contactId,
+          id: { in: messageIds },
           clickCount: { gt: 0 },
         },
         select: { id: true },
       });
 
-      return !!emailClicks;
+      return !!clickedEmail;
     }
 
     case "no_reply": {

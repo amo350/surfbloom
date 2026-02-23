@@ -229,6 +229,33 @@ export async function POST(req: NextRequest) {
 
     const { roomId: savedRoomId, contactId } = roomId;
 
+    // ─── Mark sequence logs replied for condition evaluation ───
+    if (contactId) {
+      const activeEnrollments = await prisma.campaignSequenceEnrollment.findMany({
+        where: {
+          contactId,
+          status: "active",
+        },
+        select: { id: true },
+      });
+
+      if (activeEnrollments.length > 0) {
+        await (prisma.campaignSequenceStepLog as any)
+          .updateMany({
+            where: {
+              enrollmentId: { in: activeEnrollments.map((e) => e.id) },
+              status: { in: ["sent", "delivered"] },
+              channel: "sms",
+              repliedAt: null,
+            },
+            data: {
+              repliedAt: new Date(),
+            },
+          })
+          .catch(() => {});
+      }
+    }
+
     // ─── Campaign reply detection ───────────────────────
     try {
       if (contactId) {

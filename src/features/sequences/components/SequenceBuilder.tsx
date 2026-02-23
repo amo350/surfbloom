@@ -16,7 +16,12 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import Link from "next/link";
 import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
-import { useSequence, useUpdateSequence, useDeleteStep } from "../hooks/use-sequences";
+import {
+  useSequence,
+  useUpdateSequence,
+  useDeleteStep,
+  useReorderSteps,
+} from "../hooks/use-sequences";
 import { StepCard } from "./StepCard";
 import { StepEditor } from "./StepEditor";
 import { SequenceSettings } from "./SequenceSettings";
@@ -44,6 +49,7 @@ export function SequenceBuilder({
   const { data: keywords } = useKeywords(workspaceId);
   const updateSequence = useUpdateSequence();
   const deleteStep = useDeleteStep();
+  const reorderSteps = useReorderSteps();
 
   const isActive = sequence?.status === "active";
   const isDraft = sequence?.status === "draft";
@@ -81,6 +87,35 @@ export function SequenceBuilder({
       {
         onSuccess: () => toast.success("Step deleted"),
         onError: (err) => toast.error(err?.message || "Failed"),
+      },
+    );
+  };
+
+  const handleMoveStep = (stepOrder: number, direction: "up" | "down") => {
+    if (!sequence) return;
+
+    const steps = [...sequence.steps].sort((a, b) => a.order - b.order);
+    const currentIndex = steps.findIndex((step) => step.order === stepOrder);
+
+    if (currentIndex < 0) return;
+    if (direction === "up" && currentIndex === 0) return;
+    if (direction === "down" && currentIndex === steps.length - 1) return;
+
+    const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const newOrder = steps.map((step) => step.id);
+
+    [newOrder[currentIndex], newOrder[swapIndex]] = [
+      newOrder[swapIndex],
+      newOrder[currentIndex],
+    ];
+
+    reorderSteps.mutate(
+      {
+        sequenceId: sequence.id,
+        stepIds: newOrder,
+      },
+      {
+        onError: (err) => toast.error(err?.message || "Failed to reorder steps"),
       },
     );
   };
@@ -232,20 +267,26 @@ export function SequenceBuilder({
                   </span>
                 </div>
 
-                {sequence.steps.map((step: any) => (
+                {[...sequence.steps]
+                  .sort((a, b) => a.order - b.order)
+                  .map((step: any, index: number) => (
                   <div key={step.id}>
                     <TimelineConnector delayMinutes={step.delayMinutes} />
                     <StepCard
                       step={step}
-                      isActive={isActive}
+                      isFirst={index === 0}
+                      isLast={index === sequence.steps.length - 1}
+                      isPaused={sequence.status !== "active"}
                       onEdit={() => {
                         setEditStep(step);
                         setEditorOpen(true);
                       }}
                       onDelete={() => handleDeleteStep(step.id)}
+                      onMoveUp={() => handleMoveStep(step.order, "up")}
+                      onMoveDown={() => handleMoveStep(step.order, "down")}
                     />
                   </div>
-                ))}
+                  ))}
 
                 {!isActive && (
                   <>

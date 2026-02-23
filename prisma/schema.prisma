@@ -953,6 +953,7 @@ model CampaignSequenceStepLog {
   messageId      String? // Twilio SID or email provider ID
   sentAt         DateTime?
   deliveredAt    DateTime?
+  repliedAt      DateTime?
   failedAt       DateTime?
   errorMessage   String?
   skippedReason  String?

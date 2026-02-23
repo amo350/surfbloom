@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/features/contacts/server/log-activity";
-import { autoEnrollOnContactCreated } from "@/features/sequences/server/auto-enroll";
+import {
+  autoEnrollOnContactCreated,
+  autoEnrollOnStageChange,
+} from "@/features/sequences/server/auto-enroll";
 
 export async function POST(
   req: NextRequest,
@@ -53,7 +56,6 @@ export async function POST(
     updated: 0,
     errors: [] as string[],
   };
-  const createdContacts: { id: string }[] = [];
 
   for (const contact of contacts) {
     try {
@@ -72,6 +74,9 @@ export async function POST(
         });
 
         if (existing) {
+          const nextStage = contact.stage || existing.stage;
+          const didStageChange = !!contact.stage && contact.stage !== existing.stage;
+
           // Update existing
           await prisma.chatContact.update({
             where: { id: existing.id },
@@ -80,7 +85,7 @@ export async function POST(
               lastName: contact.lastName?.trim() || existing.lastName,
               email: email || existing.email,
               notes: contact.notes?.trim() || existing.notes,
-              stage: contact.stage || existing.stage,
+              stage: nextStage,
               isContact: true,
             },
           });
@@ -97,6 +102,12 @@ export async function POST(
             // best-effort, don't fail the import
           }
 
+          if (didStageChange) {
+            autoEnrollOnStageChange(workspaceId, existing.id, nextStage).catch(
+              (err) => console.error("Webhook auto-enroll error:", err),
+            );
+          }
+
           results.updated++;
           continue;
         }
@@ -109,6 +120,9 @@ export async function POST(
         });
 
         if (existing) {
+          const nextStage = contact.stage || existing.stage;
+          const didStageChange = !!contact.stage && contact.stage !== existing.stage;
+
           await prisma.chatContact.update({
             where: { id: existing.id },
             data: {
@@ -116,7 +130,7 @@ export async function POST(
               lastName: contact.lastName?.trim() || existing.lastName,
               phone: phone || existing.phone,
               notes: contact.notes?.trim() || existing.notes,
-              stage: contact.stage || existing.stage,
+              stage: nextStage,
               isContact: true,
             },
           });
@@ -131,6 +145,12 @@ export async function POST(
             });
           } catch {
             // best-effort, don't fail the import
+          }
+
+          if (didStageChange) {
+            autoEnrollOnStageChange(workspaceId, existing.id, nextStage).catch(
+              (err) => console.error("Webhook auto-enroll error:", err),
+            );
           }
 
           results.updated++;
@@ -165,17 +185,14 @@ export async function POST(
         // best-effort, don't fail the import
       }
 
+      autoEnrollOnContactCreated(workspaceId, newContact.id).catch((err) =>
+        console.error("Webhook auto-enroll error:", err),
+      );
+
       results.created++;
-      createdContacts.push({ id: newContact.id });
     } catch (err: any) {
       results.errors.push(err.message || "Unknown error");
     }
-  }
-
-  for (const contact of createdContacts) {
-    autoEnrollOnContactCreated(workspaceId, contact.id).catch((err) =>
-      console.error("Sequence auto-enroll error:", err),
-    );
   }
 
   return NextResponse.json({

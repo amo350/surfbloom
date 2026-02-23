@@ -8,6 +8,8 @@ import {
   Trash2,
   GitBranch,
   Clock,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,9 +38,13 @@ interface StepCardProps {
     sendWindowEnd: string | null;
     _count?: { stepLogs: number };
   };
-  isActive: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  isPaused: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   dragHandleProps?: any;
 }
 
@@ -57,9 +63,13 @@ const ACTION_LABELS: Record<string, string> = {
 
 export function StepCard({
   step,
-  isActive,
+  isFirst,
+  isLast,
+  isPaused,
   onEdit,
   onDelete,
+  onMoveUp,
+  onMoveDown,
   dragHandleProps,
 }: StepCardProps) {
   const isEmail = step.channel === "email";
@@ -68,7 +78,7 @@ export function StepCard({
   return (
     <div className="border rounded-lg bg-white hover:shadow-sm transition-shadow group">
       <div className="flex items-center gap-2 px-3 py-2.5 border-b bg-muted/5">
-        {!isActive && (
+        {isPaused && (
           <div
             {...dragHandleProps}
             className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground"
@@ -109,8 +119,28 @@ export function StepCard({
           )}
         </div>
 
-        {!isActive && (
+        {isPaused && (
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex flex-col gap-0.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={onMoveUp}
+                disabled={isFirst}
+              >
+                <ChevronUp className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={onMoveDown}
+                disabled={isLast}
+              >
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </div>
             <Button
               variant="ghost"
               size="icon"

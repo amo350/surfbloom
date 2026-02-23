@@ -27,6 +27,20 @@ const RECIPIENT_PRIORITY: Record<string, number> = {
   opted_out: 3,
 };
 
+function normalizeStatus(twilioStatus: string): string {
+  switch (twilioStatus.toLowerCase()) {
+    case "delivered":
+      return "delivered";
+    case "sent":
+      return "sent";
+    case "failed":
+    case "undelivered":
+      return "failed";
+    default:
+      return twilioStatus.toLowerCase();
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -145,6 +159,42 @@ export async function POST(req: NextRequest) {
             await updateCampaignStats(recipient.campaignId);
           }
         }
+      }
+    }
+
+    // ─── Also update sequence step logs when message is from sequence ───
+    if (messageSid && status) {
+      const normalizedStatus = normalizeStatus(status);
+
+      if (normalizedStatus === "delivered") {
+        await prisma.campaignSequenceStepLog
+          .updateMany({
+            where: {
+              messageId: messageSid,
+              status: "sent",
+            },
+            data: {
+              status: "delivered",
+              deliveredAt: new Date(),
+            },
+          })
+          .catch(() => {});
+      }
+
+      if (normalizedStatus === "failed" || normalizedStatus === "undelivered") {
+        await prisma.campaignSequenceStepLog
+          .updateMany({
+            where: {
+              messageId: messageSid,
+              status: { in: ["sent", "delivered"] },
+            },
+            data: {
+              status: "failed",
+              failedAt: new Date(),
+              errorMessage: `Twilio status: ${status}${errorCode ? ` (${errorCode})` : ""}`,
+            },
+          })
+          .catch(() => {});
       }
     }
 
