@@ -27,7 +27,9 @@ const QUESTION_TYPES = [
   { value: "multiple_choice", label: "Multiple Choice" },
   { value: "free_text", label: "Free Text" },
   { value: "yes_no", label: "Yes / No" },
-];
+] as const;
+
+type QuestionType = (typeof QUESTION_TYPES)[number]["value"];
 
 interface QuestionEditorProps {
   open: boolean;
@@ -35,10 +37,10 @@ interface QuestionEditorProps {
   surveyId: string;
   question?: {
     id: string;
-    type: string;
+    type: QuestionType;
     text: string;
     required: boolean;
-    options: any;
+    options: string[] | null;
   } | null;
 }
 
@@ -50,7 +52,7 @@ export function QuestionEditor({
 }: QuestionEditorProps) {
   const isEditing = !!question;
 
-  const [type, setType] = useState("nps");
+  const [type, setType] = useState<QuestionType>("nps");
   const [text, setText] = useState("");
   const [required, setRequired] = useState(true);
   const [options, setOptions] = useState<string[]>([]);
@@ -67,7 +69,7 @@ export function QuestionEditor({
       setType(question.type);
       setText(question.text);
       setRequired(question.required);
-      setOptions((question.options as string[]) || []);
+      setOptions(question.options || []);
     } else {
       setType("nps");
       setText("");
@@ -111,7 +113,7 @@ export function QuestionEditor({
       updateQuestion.mutate(
         {
           id: question.id,
-          type: type as any,
+          type,
           text: text.trim(),
           required,
           options: type === "multiple_choice" ? options : null,
@@ -128,7 +130,7 @@ export function QuestionEditor({
       addQuestion.mutate(
         {
           surveyId,
-          type: type as any,
+          type,
           text: text.trim(),
           required,
           options: type === "multiple_choice" ? options : undefined,
@@ -207,7 +209,7 @@ export function QuestionEditor({
               <div className="space-y-1.5">
                 {options.map((opt, i) => (
                   <div
-                    key={i}
+                    key={opt}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/20 border"
                   >
                     <span className="text-sm flex-1">{opt}</span>

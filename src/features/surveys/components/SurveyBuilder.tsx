@@ -127,8 +127,34 @@ export function SurveyBuilder({ surveyId }: SurveyBuilderProps) {
   const copyLink = () => {
     if (!survey) return;
     const url = `${window.location.origin}/s/${survey.slug}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Survey link copied");
+    const fallbackCopy = () => {
+      const textarea = document.createElement("textarea");
+      textarea.value = url;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "absolute";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return copied;
+    };
+
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => toast.success("Survey link copied"))
+        .catch(() => {
+          const copied = fallbackCopy();
+          if (copied) toast.success("Survey link copied");
+          else toast.error("Unable to copy survey link");
+        });
+      return;
+    }
+
+    const copied = fallbackCopy();
+    if (copied) toast.success("Survey link copied");
+    else toast.error("Unable to copy survey link");
   };
 
   if (isLoading) {
@@ -259,7 +285,7 @@ export function SurveyBuilder({ surveyId }: SurveyBuilderProps) {
         {tab === "Questions" && (
           <div className="space-y-3 max-w-2xl">
             {survey.questions.length > 0 ? (
-              survey.questions
+              [...survey.questions]
                 .sort((a: any, b: any) => a.order - b.order)
                 .map((question: any, index: number) => (
                   <QuestionCard

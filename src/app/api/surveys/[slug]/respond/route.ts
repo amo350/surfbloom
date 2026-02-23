@@ -87,7 +87,7 @@ export async function POST(
     },
   });
 
-  if (!survey || survey.status !== "active") {
+  if (!survey) {
     return NextResponse.json({ error: "Survey not found" }, { status: 404 });
   }
 
@@ -114,8 +114,31 @@ export async function POST(
   }
 
   const enrollment = await prisma.$transaction(async (tx) => {
+    const upsertResponse = async (enrollmentId: string) => {
+      await tx.surveyResponse.upsert({
+        where: {
+          enrollmentId_questionId: {
+            enrollmentId,
+            questionId: body.questionId,
+          },
+        },
+        create: {
+          enrollmentId,
+          questionId: body.questionId,
+          answerText: body.answerText,
+          answerNumber: body.answerNumber,
+          answerChoice: body.answerChoice,
+        },
+        update: {
+          answerText: body.answerText,
+          answerNumber: body.answerNumber,
+          answerChoice: body.answerChoice,
+        },
+      });
+    };
+
     if (body.campaignId) {
-      return tx.surveyEnrollment.upsert({
+      const enrollmentRow = await tx.surveyEnrollment.upsert({
         where: {
           surveyId_contactId_campaignId: {
             surveyId: survey.id,
@@ -134,6 +157,8 @@ export async function POST(
           status: "in_progress",
         },
       });
+      await upsertResponse(enrollmentRow.id);
+      return enrollmentRow;
     }
 
     const existing = await tx.surveyEnrollment.findFirst({
@@ -146,13 +171,15 @@ export async function POST(
     });
 
     if (existing) {
-      return tx.surveyEnrollment.update({
+      const enrollmentRow = await tx.surveyEnrollment.update({
         where: { id: existing.id },
         data: { status: "in_progress" },
       });
+      await upsertResponse(enrollmentRow.id);
+      return enrollmentRow;
     }
 
-    return tx.surveyEnrollment.create({
+    const enrollmentRow = await tx.surveyEnrollment.create({
       data: {
         surveyId: survey.id,
         contactId: body.contactId,
@@ -161,27 +188,8 @@ export async function POST(
         status: "in_progress",
       },
     });
-  });
-
-  await prisma.surveyResponse.upsert({
-    where: {
-      enrollmentId_questionId: {
-        enrollmentId: enrollment.id,
-        questionId: body.questionId,
-      },
-    },
-    create: {
-      enrollmentId: enrollment.id,
-      questionId: body.questionId,
-      answerText: body.answerText,
-      answerNumber: body.answerNumber,
-      answerChoice: body.answerChoice,
-    },
-    update: {
-      answerText: body.answerText,
-      answerNumber: body.answerNumber,
-      answerChoice: body.answerChoice,
-    },
+    await upsertResponse(enrollmentRow.id);
+    return enrollmentRow;
   });
 
   return NextResponse.json({ success: true, enrollmentId: enrollment.id });

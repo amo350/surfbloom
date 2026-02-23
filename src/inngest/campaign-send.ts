@@ -91,6 +91,18 @@ function resolveTemplate(
   });
 }
 
+function buildSurveyUrl(
+  appUrl: string,
+  surveySlug: string | null,
+  contactId: string | null,
+  workspaceId: string,
+  campaignId: string,
+): string {
+  const baseUrl = appUrl.replace(/\/$/, "");
+  if (!surveySlug || !contactId || !baseUrl) return "";
+  return `${baseUrl}/s/${surveySlug}?c=${contactId}&w=${workspaceId}&cam=${campaignId}`;
+}
+
 export const sendCampaign = inngest.createFunction(
   {
     id: "send-campaign",
@@ -490,11 +502,22 @@ export const sendCampaign = inngest.createFunction(
                     },
                   );
 
-                const baseUrl = appUrl.replace(/\/$/, "");
-                const surveyUrl =
-                  campaign.surveySlug && recipient.contact.id
-                    ? `${baseUrl}/s/${campaign.surveySlug}?c=${recipient.contact.id}&w=${campaign.workspaceId}&cam=${campaign.id}`
-                    : "";
+                const surveyUrl = buildSurveyUrl(
+                  appUrl,
+                  campaign.surveySlug,
+                  recipient.contact.id,
+                  campaign.workspaceId,
+                  campaign.id,
+                );
+                if (
+                  !surveyUrl &&
+                  (resolvedSubject.includes("{survey_link}") ||
+                    resolvedHtml.includes("{survey_link}"))
+                ) {
+                  console.warn(
+                    `[CampaignSend] {survey_link} requested but no survey configured for campaign ${campaign.id}`,
+                  );
+                }
                 const subjectWithSurvey = resolvedSubject.replace(
                   /\{survey_link\}/g,
                   surveyUrl,
@@ -576,11 +599,18 @@ export const sendCampaign = inngest.createFunction(
                 });
 
                 if (message.includes("{survey_link}")) {
-                  const baseUrl = appUrl.replace(/\/$/, "");
-                  const surveyUrl =
-                    campaign.surveySlug && recipient.contact.id
-                      ? `${baseUrl}/s/${campaign.surveySlug}?c=${recipient.contact.id}&w=${campaign.workspaceId}&cam=${campaign.id}`
-                      : "";
+                  const surveyUrl = buildSurveyUrl(
+                    appUrl,
+                    campaign.surveySlug,
+                    recipient.contact.id,
+                    campaign.workspaceId,
+                    campaign.id,
+                  );
+                  if (!surveyUrl) {
+                    console.warn(
+                      `[CampaignSend] {survey_link} requested but no survey configured for campaign ${campaign.id}`,
+                    );
+                  }
                   message = message.replace(/\{survey_link\}/g, surveyUrl);
                 }
 

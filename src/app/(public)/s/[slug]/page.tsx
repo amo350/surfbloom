@@ -79,7 +79,8 @@ export default function PublicSurveyPage() {
         const json = await res.json();
         setSurvey(json.survey);
         setWorkspace(json.workspace ?? null);
-      } catch {
+      } catch (err) {
+        console.error("[PublicSurveyPage] Failed to load survey", err);
         setSurveyError("Unable to load survey right now.");
       } finally {
         setLoadingSurvey(false);
@@ -164,8 +165,11 @@ export default function PublicSurveyPage() {
         setCurrentIndex((i) => i + 1);
         setFreeTextDraft("");
       }
-    } catch {
-      setSurveyError("We couldn't save that response. Please try again.");
+    } catch (err) {
+      console.error("[PublicSurveyPage] Failed to save response", err);
+      const detail =
+        err instanceof Error && err.message ? ` (${err.message})` : "";
+      setSurveyError(`We couldn't save that response. Please try again.${detail}`);
     } finally {
       setSubmitting(false);
       setCompleting(false);
@@ -410,7 +414,7 @@ export default function PublicSurveyPage() {
 
           <div className="space-y-2.5">
             {question?.type === "nps" && (
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-6 md:grid-cols-11 gap-2">
                 {Array.from({ length: 11 }).map((_, i) => (
                   <button
                     key={i}

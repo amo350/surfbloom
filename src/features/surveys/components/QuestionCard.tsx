@@ -67,7 +67,7 @@ interface QuestionCardProps {
     type: string;
     text: string;
     required: boolean;
-    options: any;
+    options: string[] | null;
   };
   isFirst: boolean;
   isLast: boolean;
@@ -149,9 +149,9 @@ export function QuestionCard({
             options &&
             options.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {options.map((opt, i) => (
+                {options.map((opt) => (
                   <span
-                    key={i}
+                    key={opt}
                     className="px-2 py-0.5 rounded-full text-[10px] bg-purple-50 text-purple-600 border border-purple-100"
                   >
                     {opt}

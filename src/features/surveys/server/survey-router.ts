@@ -31,6 +31,12 @@ async function getOwnedQuestionOrThrow(questionId: string, userId: string) {
       id: true,
       surveyId: true,
       order: true,
+      type: true,
+      _count: {
+        select: {
+          responses: true,
+        },
+      },
       survey: {
         select: {
           organizationId: true,
@@ -195,16 +201,31 @@ export const surveyRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const slug = nanoid(10);
+      const maxAttempts = 5;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          return await prisma.survey.create({
+            data: {
+              organizationId: ctx.auth.user.id,
+              name: input.name,
+              description: input.description,
+              slug: nanoid(10),
+              status: "draft",
+            },
+          });
+        } catch (error) {
+          const isUniqueSlugCollision =
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002";
+          if (!isUniqueSlugCollision || attempt === maxAttempts - 1) {
+            throw error;
+          }
+        }
+      }
 
-      return prisma.survey.create({
-        data: {
-          organizationId: ctx.auth.user.id,
-          name: input.name,
-          description: input.description,
-          slug,
-          status: "draft",
-        },
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unable to create survey",
       });
     }),
 
@@ -337,6 +358,7 @@ export const surveyRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       const question = await getOwnedQuestionOrThrow(id, ctx.auth.user.id);
+      const effectiveType = data.type ?? question.type;
 
       if (question.survey.status === "active") {
         throw new TRPCError({
@@ -344,10 +366,7 @@ export const surveyRouter = createTRPCRouter({
           message: "Archive or set to draft before editing questions",
         });
       }
-      if (
-        data.type === "multiple_choice" &&
-        (!data.options || data.options.length < 2)
-      ) {
+      if (effectiveType === "multiple_choice" && (!data.options || data.options.length < 2)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Multiple choice questions require at least 2 options",
@@ -376,6 +395,13 @@ export const surveyRouter = createTRPCRouter({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Archive or set to draft before editing questions",
+        });
+      }
+      if (question._count.responses > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "This question already has responses and cannot be deleted. Archive the survey instead.",
         });
       }
 
@@ -542,9 +568,11 @@ export const surveyRouter = createTRPCRouter({
               }
             }
 
+            const numericResponses = responses.filter((r) => r.answerNumber != null);
             const avg =
-              total > 0
-                ? responses.reduce((s, r) => s + (r.answerNumber || 0), 0) / total
+              numericResponses.length > 0
+                ? numericResponses.reduce((s, r) => s + (r.answerNumber ?? 0), 0) /
+                  numericResponses.length
                 : null;
 
             return {
@@ -569,9 +597,11 @@ export const surveyRouter = createTRPCRouter({
               }
             }
 
+            const numericResponses = responses.filter((r) => r.answerNumber != null);
             const avg =
-              total > 0
-                ? responses.reduce((s, r) => s + (r.answerNumber || 0), 0) / total
+              numericResponses.length > 0
+                ? numericResponses.reduce((s, r) => s + (r.answerNumber ?? 0), 0) /
+                  numericResponses.length
                 : null;
 
             return {

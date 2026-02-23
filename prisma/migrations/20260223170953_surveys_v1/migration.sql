@@ -93,13 +93,13 @@ ALTER TABLE "survey_question" ADD CONSTRAINT "survey_question_surveyId_fkey" FOR
 ALTER TABLE "survey_enrollment" ADD CONSTRAINT "survey_enrollment_surveyId_fkey" FOREIGN KEY ("surveyId") REFERENCES "survey"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "survey_enrollment" ADD CONSTRAINT "survey_enrollment_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "chat_contact"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "survey_enrollment" ADD CONSTRAINT "survey_enrollment_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "chat_contact"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "survey_enrollment" ADD CONSTRAINT "survey_enrollment_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "workspace"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "survey_enrollment" ADD CONSTRAINT "survey_enrollment_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "workspace"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "survey_response" ADD CONSTRAINT "survey_response_enrollmentId_fkey" FOREIGN KEY ("enrollmentId") REFERENCES "survey_enrollment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "survey_response" ADD CONSTRAINT "survey_response_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "survey_question"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "survey_response" ADD CONSTRAINT "survey_response_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "survey_question"("id") ON DELETE CASCADE ON UPDATE CASCADE;
