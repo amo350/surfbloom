@@ -204,7 +204,7 @@ export function SurveyCreateDialog({
                       No templates yet
                     </SelectItem>
                   ) : (
-                    templates.map((template: any) => (
+                    templates.map((template) => (
                       <SelectItem key={template.id} value={template.id}>
                         {template.name} (
                         {Array.isArray(template.questions)

@@ -659,6 +659,7 @@ model SurveyTemplate {
   createdAt   DateTime @default(now())
 
   @@index([createdBy])
+  @@map("survey_template")
 }
 
 model SurveyQuestion {
@@ -1290,6 +1291,7 @@ model ChatRoom {
   @@index([workspaceId])
   @@index([contactId])
   @@index([domainId, createdAt])
+  @@unique([workspaceId, contactId, channel])
   @@map("chat_room")
 }
 

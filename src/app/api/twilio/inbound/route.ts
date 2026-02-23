@@ -212,7 +212,14 @@ export async function POST(req: NextRequest) {
             status: "DELIVERED",
           },
         })
-        .catch(() => {});
+        .catch((error) => {
+          console.error("[Inbound SMS] Failed to upsert inbound survey smsMessage", {
+            messageSid,
+            workspaceId,
+            surveyRoomId,
+            error,
+          });
+        });
 
       if (surveyResult.replyMessage) {
         const surveyReply = await sendSms({
@@ -239,7 +246,14 @@ export async function POST(req: NextRequest) {
                 status: "SENT",
               },
             })
-            .catch(() => {});
+            .catch((error) => {
+              console.error("[Inbound SMS] Failed to store outbound survey reply", {
+                messageSid: surveyReply.sid,
+                workspaceId,
+                surveyRoomId,
+                error,
+              });
+            });
         }
       }
 
@@ -248,7 +262,13 @@ export async function POST(req: NextRequest) {
           where: { id: surveyRoomId },
           data: { updatedAt: new Date() },
         })
-        .catch(() => {});
+        .catch((error) => {
+          console.error("[Inbound SMS] Failed to touch survey chat room", {
+            workspaceId,
+            surveyRoomId,
+            error,
+          });
+        });
 
       return NextResponse.json({ success: true, handled: true, survey: true });
     }
@@ -348,7 +368,14 @@ export async function POST(req: NextRequest) {
               repliedAt: new Date(),
             },
           })
-          .catch(() => {});
+          .catch((error: unknown) => {
+            console.error("[Inbound SMS] Failed to mark step logs replied", {
+              workspaceId,
+              contactId,
+              messageSid,
+              error,
+            });
+          });
       }
     }
 
@@ -489,21 +516,18 @@ async function findOrCreateSmsRoom(
   contactId: string,
   domainId?: string,
 ): Promise<string> {
-  const existing = await prisma.chatRoom.findFirst({
+  const room = await prisma.chatRoom.upsert({
     where: {
-      workspaceId,
-      contactId,
-      channel: "sms",
+      workspaceId_contactId_channel: {
+        workspaceId,
+        contactId,
+        channel: "sms",
+      },
     },
-    select: { id: true },
-  });
-
-  if (existing) {
-    return existing.id;
-  }
-
-  const room = await prisma.chatRoom.create({
-    data: {
+    update: {
+      domainId: domainId ?? undefined,
+    },
+    create: {
       workspaceId,
       contactId,
       domainId,

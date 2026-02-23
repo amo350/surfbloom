@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Loader2, Star } from "lucide-react";
 import Image from "next/image";
+import {
+  evaluateDisplayCondition,
+  type DisplayCondition,
+  type DisplayConditionAnswer,
+} from "@/features/surveys/shared/display-conditions";
 
 type SurveyQuestion = {
   id: string;
@@ -12,11 +17,7 @@ type SurveyQuestion = {
   text: string;
   required: boolean;
   options: unknown;
-  displayCondition?: {
-    questionId: string;
-    operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "in";
-    value: number | string | string[];
-  } | null;
+  displayCondition?: DisplayCondition | null;
 };
 
 type SurveyData = {
@@ -44,64 +45,15 @@ type CompletionResult = {
   reviewRedirect: string | null;
 };
 
-type AnsweredResponse = {
-  answerNumber?: number | null;
-  answerChoice?: string | null;
-  answerText?: string | null;
-};
+type AnsweredResponse = DisplayConditionAnswer;
 
 function shouldShowQuestion(
   question: SurveyQuestion,
   answeredResponses: Map<string, AnsweredResponse>,
 ): boolean {
   if (!question.displayCondition) return true;
-
-  const { questionId, operator, value } = question.displayCondition;
-  const answer = answeredResponses.get(questionId);
-  if (!answer) return false;
-
-  const answerValue = answer.answerNumber ?? answer.answerChoice ?? answer.answerText;
-  if (answerValue == null) return false;
-
-  const answerNumber =
-    typeof answerValue === "number"
-      ? answerValue
-      : Number.isFinite(Number(answerValue))
-        ? Number(answerValue)
-        : null;
-  const conditionNumber =
-    typeof value === "number"
-      ? value
-      : Number.isFinite(Number(value))
-        ? Number(value)
-        : null;
-
-  switch (operator) {
-    case "eq":
-      return answerValue == (value as number | string);
-    case "neq":
-      return answerValue != (value as number | string);
-    case "gt":
-      return answerNumber != null && conditionNumber != null
-        ? answerNumber > conditionNumber
-        : false;
-    case "gte":
-      return answerNumber != null && conditionNumber != null
-        ? answerNumber >= conditionNumber
-        : false;
-    case "lt":
-      return answerNumber != null && conditionNumber != null
-        ? answerNumber < conditionNumber
-        : false;
-    case "lte":
-      return answerNumber != null && conditionNumber != null
-        ? answerNumber <= conditionNumber
-        : false;
-    case "in":
-      return Array.isArray(value) && value.includes(String(answerValue));
-    default:
-      return true;
-  }
+  const answer = answeredResponses.get(question.displayCondition.questionId);
+  return evaluateDisplayCondition(question.displayCondition, answer);
 }
 
 function getEligibleQuestionIndexes(
@@ -194,7 +146,7 @@ export default function PublicSurveyPage() {
     }
     const nextEligible = getNextEligibleQuestionIndex(
       survey.questions,
-      currentIndex - 1,
+      Math.max(0, currentIndex - 1),
       answeredResponses,
     );
     if (nextEligible != null) {
