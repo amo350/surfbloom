@@ -12,6 +12,7 @@ import { ExportButton } from "./ExportButton";
 import { HeroMetrics } from "./HeroMetrics";
 import { SendsChart } from "./SendsChart";
 import { SequenceSummary } from "./SequenceSummary";
+import { SurveySummaryCard } from "./SurveySummaryCard";
 import { TopCampaignsTable } from "./TopCampaignsTable";
 
 const DAY_OPTIONS = [7, 30, 60, 90];
@@ -101,7 +102,10 @@ export function ReportingPage({
           days={days}
           channel={channel}
         />
-        <SequenceSummary workspaceId={workspaceId} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SequenceSummary workspaceId={workspaceId} />
+          <SurveySummaryCard workspaceId={workspaceId} days={days} />
+        </div>
 
         {!workspaceId && locationStats?.locations?.length ? (
           <div className="rounded-lg border bg-white p-4">

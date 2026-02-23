@@ -83,6 +83,8 @@ function resolveTemplate(
         return workspace.name;
       case "location_phone":
         return workspace.twilioPhone;
+      case "survey_link":
+        return "{survey_link}";
       default:
         return "";
     }
@@ -123,6 +125,7 @@ export const sendCampaign = inngest.createFunction(
           channel: true,
           messageTemplate: true,
           subject: true,
+          surveyId: true,
           variantB: true,
           variantSplit: true,
           audienceType: true,
@@ -143,6 +146,11 @@ export const sendCampaign = inngest.createFunction(
               twilioPhoneNumber: {
                 select: { phoneNumber: true },
               },
+            },
+          },
+          survey: {
+            select: {
+              slug: true,
             },
           },
         },
@@ -168,6 +176,8 @@ export const sendCampaign = inngest.createFunction(
         channel: c.channel,
         messageTemplate: c.messageTemplate,
         subject: c.subject,
+        surveyId: c.surveyId,
+        surveySlug: c.survey?.slug || null,
         variantB: c.variantB,
         variantSplit: c.variantSplit,
         audienceType: c.audienceType,
@@ -480,13 +490,27 @@ export const sendCampaign = inngest.createFunction(
                     },
                   );
 
+                const baseUrl = appUrl.replace(/\/$/, "");
+                const surveyUrl =
+                  campaign.surveySlug && recipient.contact.id
+                    ? `${baseUrl}/s/${campaign.surveySlug}?c=${recipient.contact.id}&w=${campaign.workspaceId}&cam=${campaign.id}`
+                    : "";
+                const subjectWithSurvey = resolvedSubject.replace(
+                  /\{survey_link\}/g,
+                  surveyUrl,
+                );
+                const htmlWithSurvey = resolvedHtml.replace(
+                  /\{survey_link\}/g,
+                  surveyUrl,
+                );
+
                 let unsubscribeUrl: string | undefined;
                 if (campaign.unsubscribeLink && appUrl && !isLocal) {
                   const token = generateUnsubscribeToken(recipient.contact.id);
                   unsubscribeUrl = `${appUrl}/u/${token}`;
                 }
 
-                let finalHtml = resolvedHtml;
+                let finalHtml = htmlWithSurvey;
                 if (hasLinkReplacements) {
                   finalHtml = replaceUrls(finalHtml, replacementMap);
                 }
@@ -499,7 +523,7 @@ export const sendCampaign = inngest.createFunction(
 
                 const emailResult = await sendEmail({
                   to: recipient.contact.email,
-                  subject: resolvedSubject,
+                  subject: subjectWithSurvey,
                   html: wrappedHtml,
                   text: plainText,
                   fromEmail: emailConfig.fromEmail,
@@ -550,6 +574,15 @@ export const sendCampaign = inngest.createFunction(
                   name: campaign.workspaceName,
                   twilioPhone: campaign.twilioPhone,
                 });
+
+                if (message.includes("{survey_link}")) {
+                  const baseUrl = appUrl.replace(/\/$/, "");
+                  const surveyUrl =
+                    campaign.surveySlug && recipient.contact.id
+                      ? `${baseUrl}/s/${campaign.surveySlug}?c=${recipient.contact.id}&w=${campaign.workspaceId}&cam=${campaign.id}`
+                      : "";
+                  message = message.replace(/\{survey_link\}/g, surveyUrl);
+                }
 
                 if (hasLinkReplacements) {
                   message = replaceUrls(message, replacementMap);

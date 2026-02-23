@@ -91,6 +91,23 @@ async function buildAudienceWhere(
   return where;
 }
 
+async function assertSurveyAccess(surveyId: string, userId: string) {
+  const survey = await prisma.survey.findFirst({
+    where: {
+      id: surveyId,
+      organizationId: userId,
+      status: "active",
+    },
+    select: { id: true },
+  });
+  if (!survey) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Invalid survey selection",
+    });
+  }
+}
+
 export const campaignsRouter = createTRPCRouter({
   // ─── LIST ─────────────────────────────────────────────
   getCampaigns: protectedProcedure
@@ -280,6 +297,13 @@ export const campaignsRouter = createTRPCRouter({
               twilioPhoneNumber: { select: { phoneNumber: true } },
             },
           },
+          survey: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
           autoReply: {
             select: {
               enabled: true,
@@ -380,6 +404,7 @@ export const campaignsRouter = createTRPCRouter({
           subject: z.string().trim().max(200).optional(),
           templateId: z.string().optional(),
           segmentId: z.string().optional(),
+          surveyId: z.string().optional(),
           variantB: z.string().max(1600).optional(),
           variantSplit: z.number().int().min(10).max(90).optional(),
           recurringType: z.enum(["weekly", "monthly"]).optional(),
@@ -434,6 +459,10 @@ export const campaignsRouter = createTRPCRouter({
       });
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
 
+      if (input.surveyId) {
+        await assertSurveyAccess(input.surveyId, ctx.auth.user.id);
+      }
+
       if (input.channel === "sms") {
         // Verify workspace has a Twilio number for SMS campaigns
         const workspace = await prisma.workspace.findUnique({
@@ -467,6 +496,7 @@ export const campaignsRouter = createTRPCRouter({
             subject: input.subject || null,
             templateId: input.templateId || null,
             segmentId: input.segmentId || null,
+            surveyId: input.surveyId || null,
             variantB: input.variantB || null,
             variantSplit: input.variantB ? (input.variantSplit ?? 50) : 50,
             recurringType: input.recurringType || null,
@@ -517,6 +547,7 @@ export const campaignsRouter = createTRPCRouter({
           subject: z.string().trim().max(200).optional(),
           templateId: z.string().optional(),
           segmentId: z.string().optional(),
+          surveyId: z.string().optional(),
           variantB: z.string().max(1600).optional(),
           variantSplit: z.number().int().min(10).max(90).optional(),
           recurringType: z.enum(["weekly", "monthly"]).optional(),
@@ -584,6 +615,10 @@ export const campaignsRouter = createTRPCRouter({
         });
       }
 
+      if (input.surveyId) {
+        await assertSurveyAccess(input.surveyId, ctx.auth.user.id);
+      }
+
       if (input.channel === "sms") {
         const workspaces = await prisma.workspace.findMany({
           where: { id: { in: workspaceIds } },
@@ -630,6 +665,7 @@ export const campaignsRouter = createTRPCRouter({
                 subject: input.subject || null,
                 templateId: input.templateId || null,
                 segmentId: input.segmentId || null,
+                surveyId: input.surveyId || null,
                 variantB: input.variantB || null,
                 variantSplit: input.variantB ? (input.variantSplit ?? 50) : 50,
                 recurringType: input.recurringType || null,
@@ -746,6 +782,7 @@ export const campaignsRouter = createTRPCRouter({
         id: z.string(),
         name: z.string().trim().min(1).max(100).optional(),
         messageTemplate: z.string().trim().min(1).max(1600).optional(),
+        surveyId: z.string().nullable().optional(),
         audienceType: z.enum(AUDIENCE_TYPES).optional(),
         audienceStage: z.string().nullable().optional(),
         audienceCategoryId: z.string().nullable().optional(),
@@ -778,6 +815,10 @@ export const campaignsRouter = createTRPCRouter({
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
 
       const { id, ...data } = input;
+
+      if (data.surveyId) {
+        await assertSurveyAccess(data.surveyId, ctx.auth.user.id);
+      }
 
       // If scheduledAt is being set, update status
       if (data.scheduledAt !== undefined) {
@@ -1169,6 +1210,7 @@ export const campaignsRouter = createTRPCRouter({
           frequencyCapDays: true,
           templateId: true,
           segmentId: true,
+          surveyId: true,
           variantB: true,
           variantSplit: true,
           sendWindowStart: true,
@@ -1209,6 +1251,7 @@ export const campaignsRouter = createTRPCRouter({
             frequencyCapDays: campaign.frequencyCapDays,
             templateId: campaign.templateId,
             segmentId: campaign.segmentId,
+            surveyId: campaign.surveyId,
             variantB: campaign.variantB,
             variantSplit: campaign.variantSplit,
             sendWindowStart: campaign.sendWindowStart,

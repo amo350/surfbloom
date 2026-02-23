@@ -39,6 +39,7 @@ import {
   useStages,
 } from "@/features/contacts/hooks/use-contacts";
 import { EmailTemplatePicker } from "@/features/email/components/EmailTemplatePicker";
+import { useSurveys } from "@/features/surveys/hooks/use-surveys";
 import { useTRPC } from "@/trpc/client";
 import {
   useAudiencePreview,
@@ -136,6 +137,7 @@ export function CampaignBuilder({
 
   // Step 3: Message
   const [messageTemplate, setMessageTemplate] = useState("");
+  const [surveyId, setSurveyId] = useState("");
   const [templateId, setTemplateId] = useState<string | undefined>(undefined);
   // A/B testing
   const [enableAB, setEnableAB] = useState(false);
@@ -170,6 +172,7 @@ export function CampaignBuilder({
   // Data
   const { data: stages } = useStages();
   const { data: categories } = useCategories(primaryWorkspaceId);
+  const { data: surveys } = useSurveys("active");
 
   const { data: audiencePreview } = useAudiencePreview({
     workspaceId: primaryWorkspaceId,
@@ -205,7 +208,8 @@ export function CampaignBuilder({
     (audienceType === "inactive" && audienceInactiveDays);
   const canStep4 =
     channel === "sms"
-      ? messageTemplate.trim().length > 0
+      ? messageTemplate.trim().length > 0 &&
+        (!messageTemplate.includes("{survey_link}") || !!surveyId)
       : emailSubject.trim().length > 0 && emailHtmlBody.trim().length > 0;
   const canLaunch = canStep2 && canStep3 && canStep4;
   const canSubmit =
@@ -237,6 +241,10 @@ export function CampaignBuilder({
       }),
       templateId: channel === "sms" ? templateId : emailTemplateId,
       segmentId,
+      surveyId:
+        channel === "sms" && messageTemplate.includes("{survey_link}")
+          ? surveyId || undefined
+          : undefined,
       variantB: enableAB ? variantB.trim() : undefined,
       variantSplit: enableAB ? variantSplit : undefined,
       audienceType: audienceType as any,
@@ -751,6 +759,29 @@ export function CampaignBuilder({
                   ))}
                 </div>
               </div>
+
+              {messageTemplate.includes("{survey_link}") && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Survey
+                  </label>
+                  <Select value={surveyId} onValueChange={setSurveyId}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select a survey..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(surveys || []).map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Required when using {"{survey_link}"}.
+                  </p>
+                </div>
+              )}
 
               {/* A/B toggle */}
               <div className="border-t pt-4">
