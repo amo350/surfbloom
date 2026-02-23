@@ -5,6 +5,15 @@ import { AccountRole } from "@/generated/prisma/enums";
 import { polarClient } from "./polar";
 import { prisma } from "./prisma";
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+if (!googleClientId || !googleClientSecret) {
+  throw new Error(
+    "Missing required Google OAuth env vars: GOOGLE_CLIENT_ID and/or GOOGLE_CLIENT_SECRET",
+  );
+}
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
@@ -15,8 +24,8 @@ export const auth = betterAuth({
   },
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
     },
   },
   plugins: [

@@ -26,7 +26,7 @@ export function TopCampaignsTable({
   const [sortBy, setSortBy] = useState<
     "sent" | "delivered" | "replied" | "reply_rate"
   >("sent");
-  const { data, isLoading } = useReportingTopCampaigns({
+  const { data, isLoading, isError, refetch } = useReportingTopCampaigns({
     workspaceId,
     days,
     channel,
@@ -61,9 +61,26 @@ export function TopCampaignsTable({
         </div>
       </div>
 
-      {isLoading || !data ? (
+      {isLoading ? (
         <div className="py-12 flex justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : isError ? (
+        <div className="py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            Failed to load top campaigns.
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="mt-2 text-xs font-medium text-foreground underline underline-offset-2"
+          >
+            Retry
+          </button>
+        </div>
+      ) : !data ? (
+        <div className="py-10 text-center text-sm text-muted-foreground">
+          No campaign data available.
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">

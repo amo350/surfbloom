@@ -34,14 +34,14 @@ export function DeliveryFunnel({
     );
   }
 
-  const total = data.sent || 1;
   const stages = [
-    { key: "sent", label: "Sent", value: data.sent },
-    { key: "delivered", label: "Delivered", value: data.delivered },
-    { key: "opened", label: "Opened", value: data.opened },
-    { key: "clicked", label: "Clicked", value: data.clicked },
-    { key: "replied", label: "Replied", value: data.replied },
+    { key: "sent", label: "Sent", value: data.sent ?? 0 },
+    { key: "delivered", label: "Delivered", value: data.delivered ?? 0 },
+    { key: "opened", label: "Opened", value: data.opened ?? 0 },
+    { key: "clicked", label: "Clicked", value: data.clicked ?? 0 },
+    { key: "replied", label: "Replied", value: data.replied ?? 0 },
   ];
+  const total = Math.max(1, stages[0].value);
 
   return (
     <div className="rounded-lg border bg-white p-4">

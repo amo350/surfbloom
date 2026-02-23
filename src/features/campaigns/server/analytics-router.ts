@@ -20,7 +20,7 @@ const topCampaignSortInput = z.enum([
 
 function startOfDay(date: Date) {
   const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
+  d.setUTCHours(0, 0, 0, 0);
   return d;
 }
 
@@ -109,10 +109,10 @@ export const analyticsRouter = createTRPCRouter({
       );
 
       const currentStart = startOfDay(new Date());
-      currentStart.setDate(currentStart.getDate() - input.days);
+      currentStart.setUTCDate(currentStart.getUTCDate() - input.days);
 
       const previousStart = new Date(currentStart);
-      previousStart.setDate(previousStart.getDate() - input.days);
+      previousStart.setUTCDate(previousStart.getUTCDate() - input.days);
 
       const now = new Date();
 
@@ -164,7 +164,7 @@ export const analyticsRouter = createTRPCRouter({
         input.workspaceId,
       );
       const since = startOfDay(new Date());
-      since.setDate(since.getDate() - input.days);
+      since.setUTCDate(since.getUTCDate() - input.days);
       const until = new Date();
 
       const recipients = await prisma.campaignRecipient.findMany({
@@ -240,7 +240,7 @@ export const analyticsRouter = createTRPCRouter({
             replied: 0,
           },
         );
-        cursor.setDate(cursor.getDate() + 1);
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
       }
 
       return result;
@@ -259,7 +259,7 @@ export const analyticsRouter = createTRPCRouter({
         input.workspaceId,
       );
       const since = startOfDay(new Date());
-      since.setDate(since.getDate() - input.days);
+      since.setUTCDate(since.getUTCDate() - input.days);
 
       const campaigns = await prisma.campaign.findMany({
         where: {
@@ -307,7 +307,7 @@ export const analyticsRouter = createTRPCRouter({
         input.workspaceId,
       );
       const since = startOfDay(new Date());
-      since.setDate(since.getDate() - input.days);
+      since.setUTCDate(since.getUTCDate() - input.days);
 
       const campaigns = await prisma.campaign.findMany({
         where: {
@@ -394,7 +394,7 @@ export const analyticsRouter = createTRPCRouter({
         input.workspaceId,
       );
       const since = startOfDay(new Date());
-      since.setDate(since.getDate() - input.days);
+      since.setUTCDate(since.getUTCDate() - input.days);
 
       const orderBy =
         input.sortBy === "sent"
@@ -413,7 +413,7 @@ export const analyticsRouter = createTRPCRouter({
           status: { in: ["sending", "completed", "cancelled", "paused"] },
         },
         orderBy,
-        take: input.sortBy === "reply_rate" ? 100 : input.limit,
+        ...(input.sortBy === "reply_rate" ? {} : { take: input.limit }),
         select: {
           id: true,
           name: true,
@@ -463,7 +463,7 @@ export const analyticsRouter = createTRPCRouter({
         input.workspaceId,
       );
       const since = startOfDay(new Date());
-      since.setDate(since.getDate() - input.days);
+      since.setUTCDate(since.getUTCDate() - input.days);
 
       const campaigns = await prisma.campaign.findMany({
         where: {

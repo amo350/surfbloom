@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ChevronRight as ChevronRightSmall,
   Copy,
+  Link2,
   Mail,
   Megaphone,
   MessageSquare,
@@ -14,10 +15,9 @@ import {
   Send,
   Sparkles,
   Users,
-  Link2,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useCampaigns, useCloneCampaign } from "../hooks/use-campaigns";
@@ -39,9 +39,9 @@ export function CampaignsList({
   search?: string;
 }) {
   const [status, setStatus] = useState<string | undefined>(undefined);
-  const [channelFilter, setChannelFilter] = useState<"sms" | "email" | undefined>(
-    undefined,
-  );
+  const [channelFilter, setChannelFilter] = useState<
+    "sms" | "email" | undefined
+  >(undefined);
   const [page, setPage] = useState(1);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
@@ -56,9 +56,7 @@ export function CampaignsList({
   });
   const cloneCampaign = useCloneCampaign();
 
-  const basePath = workspaceId
-    ? `/workspaces/${workspaceId}`
-    : "/index";
+  const basePath = workspaceId ? `/workspaces/${workspaceId}` : "/index";
 
   const STATUS_FILTERS = [
     { value: undefined, label: "All" },
@@ -78,6 +76,12 @@ export function CampaignsList({
   ];
 
   const searchTerm = search.trim().toLowerCase();
+  useEffect(() => {
+    if (search !== undefined) {
+      setPage(1);
+    }
+  }, [search]);
+
   const visibleItems = data?.items.filter((item: any) => {
     if (!searchTerm) return true;
     return [
@@ -95,44 +99,44 @@ export function CampaignsList({
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="space-y-2">
-          <div className="flex items-center gap-1.5">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.label}
-                type="button"
-                onClick={() => {
-                  setStatus(f.value);
-                  setPage(1);
-                }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                  status === f.value
-                    ? "bg-foreground/10 text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-1.5">
-            {CHANNEL_FILTERS.map((f) => (
-              <button
-                key={f.label}
-                type="button"
-                onClick={() => {
-                  setChannelFilter(f.value);
-                  setPage(1);
-                }}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                  channelFilter === f.value
-                    ? "bg-slate-900 text-white"
-                    : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center gap-1.5">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.label}
+              type="button"
+              onClick={() => {
+                setStatus(f.value);
+                setPage(1);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                status === f.value
+                  ? "bg-foreground/10 text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1.5">
+          {CHANNEL_FILTERS.map((f) => (
+            <button
+              key={f.label}
+              type="button"
+              onClick={() => {
+                setChannelFilter(f.value);
+                setPage(1);
+              }}
+              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                channelFilter === f.value
+                  ? "bg-slate-900 text-white"
+                  : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
@@ -314,7 +318,8 @@ export function CampaignsList({
                         cloneCampaign.mutate(
                           { id: item.id },
                           {
-                            onSuccess: () => toast.success("Campaign duplicated"),
+                            onSuccess: () =>
+                              toast.success("Campaign duplicated"),
                             onError: (err) =>
                               toast.error(err?.message || "Failed"),
                           },

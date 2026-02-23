@@ -27,10 +27,17 @@ export function ExportButton({
       const blob = new Blob([csvData], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = `surfbloom-campaign-report-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      try {
+        a.href = url;
+        a.download = `surfbloom-campaign-report-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+      } finally {
+        if (a.parentNode) {
+          a.parentNode.removeChild(a);
+        }
+        URL.revokeObjectURL(url);
+      }
     } catch (error: any) {
       toast.error(error?.message || "Failed to export CSV");
     }

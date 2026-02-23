@@ -25,18 +25,6 @@ const AUDIENCE_LABELS: Record<string, string> = {
   inactive: "Inactive contacts",
 };
 
-type Segment = {
-  id: string;
-  name: string;
-  audienceType: string;
-  audienceStage: string | null;
-  audienceInactiveDays: number | null;
-  frequencyCapDays: number | null;
-  _count?: {
-    campaigns?: number;
-  };
-};
-
 export function SegmentManager({ workspaceId }: { workspaceId?: string }) {
   const basePath = workspaceId ? `/workspaces/${workspaceId}` : "/index";
   const { data: segments, isLoading } = useSegments();
@@ -79,7 +67,7 @@ export function SegmentManager({ workspaceId }: { workspaceId?: string }) {
 
         {!isLoading && (segments?.length ?? 0) > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {(segments as Segment[]).map((segment) => (
+            {segments?.map((segment) => (
               <div key={segment.id} className="border rounded-lg p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>

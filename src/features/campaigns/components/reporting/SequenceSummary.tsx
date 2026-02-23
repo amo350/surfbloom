@@ -12,6 +12,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export function SequenceSummary({ workspaceId }: { workspaceId?: string }) {
   const { data, isLoading } = useReportingSequences(workspaceId);
+  type SequenceItem = NonNullable<typeof data>[number];
 
   return (
     <div className="rounded-lg border bg-white p-4">
@@ -32,7 +33,7 @@ export function SequenceSummary({ workspaceId }: { workspaceId?: string }) {
         </div>
       ) : (
         <div className="space-y-2.5">
-          {data.slice(0, 8).map((seq: any) => {
+          {data.slice(0, 8).map((seq: SequenceItem) => {
             const total = seq.enrollmentStats?.total || 0;
             const completed = seq.enrollmentStats?.completed || 0;
             const completionRate = total > 0 ? (completed / total) * 100 : 0;

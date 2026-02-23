@@ -2,6 +2,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FcGoogle } from "react-icons/fc";
 import { toast } from "sonner";
@@ -34,6 +35,7 @@ type SignUpProps = z.infer<typeof signUpSchema>;
 
 const SignUpForm = () => {
   const router = useRouter();
+  const [oauthPending, setOauthPending] = useState(false);
   const form = useForm<SignUpProps>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -63,6 +65,7 @@ const SignUpForm = () => {
   };
 
   const signInGoogle = async () => {
+    setOauthPending(true);
     await authClient.signIn.social(
       {
         provider: "google",
@@ -70,9 +73,11 @@ const SignUpForm = () => {
       },
       {
         onSuccess: () => {
+          setOauthPending(false);
           router.push("/index/locations");
         },
         onError: () => {
+          setOauthPending(false);
           toast.error("Something went wrong");
         },
       },
@@ -98,7 +103,7 @@ const SignUpForm = () => {
                   variant="outline"
                   className="w-full shadow-md"
                   type="button"
-                  disabled={isPending}
+                  disabled={isPending || oauthPending}
                   onClick={signInGoogle}
                 >
                   <FcGoogle className="mr-2 h-5 w-5" />

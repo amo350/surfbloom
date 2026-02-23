@@ -44,7 +44,10 @@ export function ChannelDonut({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4 items-center">
           <ChartContainer
-            config={{ sms: { label: "SMS", color: COLORS[0] } }}
+            config={{
+              sms: { label: "SMS", color: COLORS[0] },
+              email: { label: "Email", color: COLORS[1] },
+            }}
             className="h-[200px] w-[200px]"
           >
             <PieChart>
