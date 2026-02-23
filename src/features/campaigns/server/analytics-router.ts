@@ -520,4 +520,89 @@ export const analyticsRouter = createTRPCRouter({
 
       return `${header}${rows}`;
     }),
+
+  getSurveySummary: protectedProcedure
+    .input(
+      z.object({
+        workspaceId: z.string().optional(),
+        days: z.number().int().min(7).max(90).default(30),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const workspaceIds = await resolveWorkspaceIds(
+        ctx.auth.user.id,
+        input.workspaceId,
+      );
+      const since = startOfDay(new Date());
+      since.setUTCDate(since.getUTCDate() - input.days);
+
+      const [statusCounts, avgScore, npsCounts, activeSurveyRows] =
+        await Promise.all([
+          prisma.surveyEnrollment.groupBy({
+            by: ["status"],
+            where: {
+              workspaceId: { in: workspaceIds },
+              createdAt: { gte: since },
+            },
+            _count: true,
+          }),
+          prisma.surveyEnrollment.aggregate({
+            where: {
+              workspaceId: { in: workspaceIds },
+              createdAt: { gte: since },
+              status: "completed",
+              score: { not: null },
+            },
+            _avg: { score: true },
+          }),
+          prisma.surveyEnrollment.groupBy({
+            by: ["npsCategory"],
+            where: {
+              workspaceId: { in: workspaceIds },
+              createdAt: { gte: since },
+              status: "completed",
+              npsCategory: { not: null },
+            },
+            _count: true,
+          }),
+          prisma.surveyEnrollment.findMany({
+            where: {
+              workspaceId: { in: workspaceIds },
+              survey: { status: "active" },
+            },
+            distinct: ["surveyId"],
+            select: { surveyId: true },
+          }),
+        ]);
+
+      const statusMap = new Map(statusCounts.map((s) => [s.status, s._count]));
+      const npsMap = new Map(npsCounts.map((n) => [n.npsCategory, n._count]));
+
+      const completed = statusMap.get("completed") || 0;
+      const total =
+        (statusMap.get("completed") || 0) +
+        (statusMap.get("in_progress") || 0) +
+        (statusMap.get("pending") || 0) +
+        (statusMap.get("timed_out") || 0);
+
+      const promoters = npsMap.get("promoter") || 0;
+      const passives = npsMap.get("passive") || 0;
+      const detractors = npsMap.get("detractor") || 0;
+      const npsTotal = promoters + passives + detractors;
+
+      return {
+        activeSurveys: activeSurveyRows.length,
+        totalSent: total,
+        completed,
+        completionRate: total > 0 ? (completed / total) * 100 : 0,
+        avgScore: avgScore._avg.score,
+        nps:
+          npsTotal > 0
+            ? Math.round(((promoters - detractors) / npsTotal) * 100)
+            : null,
+        promoters,
+        passives,
+        detractors,
+      };
+    }),
 });

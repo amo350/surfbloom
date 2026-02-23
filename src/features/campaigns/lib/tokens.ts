@@ -4,6 +4,7 @@ export const TOKENS = [
   { key: "full_name", label: "Full Name", example: "John Doe" },
   { key: "location_name", label: "Location Name", example: "Acme Dental" },
   { key: "location_phone", label: "Location Phone", example: "+1 555-0100" },
+  { key: "survey_link", label: "Survey Link", example: "https://app.example.com/s/abc123" },
 ] as const;
 
 export function resolveTemplate(

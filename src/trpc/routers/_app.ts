@@ -23,6 +23,7 @@ import { webhookRouter } from "@/features/webhooks/server/webhook-router";
 import { workflowsRouter } from "@/features/workflows/server/routers";
 import { workspacesRouter } from "@/features/workspaces/server/routers";
 import { createTRPCRouter } from "../init";
+import { surveyRouter } from "@/features/surveys/server/survey-router";
 
 export const appRouter = createTRPCRouter({
   executions: executionsRouter,
@@ -49,6 +50,7 @@ export const appRouter = createTRPCRouter({
   webhooks: webhookRouter,
   sequences: sequenceRouter,
   analytics: analyticsRouter,
+  surveys: surveyRouter,
 });
 //CRITICAL: Do not remove this line - required for tRPC type inference
 export type AppRouter = typeof appRouter;

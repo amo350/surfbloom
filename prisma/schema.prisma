@@ -33,22 +33,22 @@ model User {
   accountMembers User[]  @relation("AccountMembers")
 
   // ... existing relations
-  sessions         Session[]
-  accounts         Account[]
-  workspaces       Workspace[]   @relation("CreatedWorkspaces")
-  createdWorkflows Workflow[]
-  members          Member[]
-  sentInvitations  Invitation[]  @relation("SentInvitations")
-  mainWorkspace    Workspace?    @relation("MainWorkspace", fields: [mainWorkspaceId], references: [id], onDelete: SetNull)
-  assignedTasks    Task[]
-  assignedContacts ChatContact[] @relation("AssignedContacts")
-  domains          Domain[]
-  twilioConfig     TwilioConfig?
-  stages           Stage[]
-  campaigns        Campaign[]
+  sessions          Session[]
+  accounts          Account[]
+  workspaces        Workspace[]        @relation("CreatedWorkspaces")
+  createdWorkflows  Workflow[]
+  members           Member[]
+  sentInvitations   Invitation[]       @relation("SentInvitations")
+  mainWorkspace     Workspace?         @relation("MainWorkspace", fields: [mainWorkspaceId], references: [id], onDelete: SetNull)
+  assignedTasks     Task[]
+  assignedContacts  ChatContact[]      @relation("AssignedContacts")
+  domains           Domain[]
+  twilioConfig      TwilioConfig?
+  stages            Stage[]
+  campaigns         Campaign[]
   campaignSequences CampaignSequence[]
-  emailTemplates   EmailTemplate[]
-  campaignGroups   CampaignGroup[]
+  emailTemplates    EmailTemplate[]
+  campaignGroups    CampaignGroup[]
   campaignTemplates CampaignTemplate[]
   savedSegments     SavedSegment[]
 
@@ -106,14 +106,14 @@ model Verification {
 }
 
 model Workspace {
-  id             String   @id @default(cuid())
-  name           String
-  imageUrl       String?
-  inviteCode     String   @unique
-  webhookSecret  String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  userId     String // original creator/owner
+  id            String   @id @default(cuid())
+  name          String
+  imageUrl      String?
+  inviteCode    String   @unique
+  webhookSecret String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String // original creator/owner
 
   // Google Business Profile data
   googlePlaceId       String?
@@ -154,15 +154,16 @@ model Workspace {
   feedbackVisits FeedbackVisit[]
 
   // Chatbot relations (conversations routed to workspace)
-  chatContacts ChatContact[]
-  chatRooms    ChatRoom[]
-  domains      Domain[]
-  categories   Category[]
-  activities   Activity[]
-  campaigns    Campaign[]
-  sequences    CampaignSequence[]
+  chatContacts       ChatContact[]
+  chatRooms          ChatRoom[]
+  domains            Domain[]
+  categories         Category[]
+  activities         Activity[]
+  campaigns          Campaign[]
+  sequences          CampaignSequence[]
+  surveyEnrollments  SurveyEnrollment[]
   textToJoinKeywords TextToJoinKeyword[]
-  webhookEndpoints WebhookEndpoint[]
+  webhookEndpoints   WebhookEndpoint[]
 
   twilioPhoneNumber TwilioPhoneNumber?
   smsMessages       SmsMessage[]
@@ -176,14 +177,14 @@ model Workspace {
 }
 
 model Stage {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  slug        String
-  color       String    @default("slate")
-  order       Int       @default(0)
-  createdAt   DateTime  @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  slug      String
+  color     String   @default("slate")
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 
   @@unique([userId, slug])
   @@map("stage")
@@ -411,11 +412,11 @@ model Task {
   updatedAt   DateTime  @updatedAt
   reviewId    String?
 
-  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  column    TaskColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  assignee  User?      @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  column    TaskColumn   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  assignee  User?        @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
   contact   ChatContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  review    Review?    @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+  review    Review?      @relation(fields: [reviewId], references: [id], onDelete: SetNull)
 
   @@unique([workspaceId, taskNumber])
   @@index([workspaceId])
@@ -578,7 +579,7 @@ model FilterQuestion {
 }
 
 model ChatContact {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   workspaceId String
   domainId    String?
 
@@ -601,101 +602,190 @@ model ChatContact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  domain    Domain?   @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  assignedTo User?    @relation("AssignedContacts", fields: [assignedToId], references: [id], onDelete: SetNull)
-  responses ChatContactResponse[]
-  chatRooms ChatRoom[]
-  categories ContactCategory[]
-  activities Activity[]
-  tasks      Task[]
+  workspace          Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  domain             Domain?                      @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  assignedTo         User?                        @relation("AssignedContacts", fields: [assignedToId], references: [id], onDelete: SetNull)
+  responses          ChatContactResponse[]
+  chatRooms          ChatRoom[]
+  categories         ContactCategory[]
+  activities         Activity[]
+  tasks              Task[]
   campaignRecipients CampaignRecipient[]
-  enrollments CampaignSequenceEnrollment[]
+  enrollments        CampaignSequenceEnrollment[]
+  surveyEnrollments  SurveyEnrollment[]
 
-  @@index([workspaceId])
   @@unique([workspaceId, phone])
+  @@index([workspaceId])
   @@index([workspaceId, email])
   @@index([workspaceId, stage])
   @@index([assignedToId])
   @@map("chat_contact")
 }
 
+model Survey {
+  id              String  @id @default(cuid())
+  organizationId  String // index-level owner identifier (account/user ID)
+  name            String
+  slug            String  @unique
+  description     String?
+  status          String  @default("draft") // draft, active, archived
+  thankYouMessage String  @default("Thank you for your feedback!")
+
+  // Completion action
+  reviewThreshold Int     @default(8) // score >= this -> review CTA
+  taskThreshold   Int     @default(5) // score <= this -> create task
+  reviewUrl       String? // Google review URL (or /r/[slug])
+  taskAssigneeId  String? // default assignee for low-score tasks
+
+  questions   SurveyQuestion[]
+  enrollments SurveyEnrollment[]
+  campaigns   Campaign[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("survey")
+}
+
+model SurveyQuestion {
+  id       String  @id @default(cuid())
+  surveyId String
+  survey   Survey  @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  order    Int
+  type     String // nps, star, multiple_choice, free_text, yes_no
+  text     String // "How was your experience today?"
+  required Boolean @default(true)
+  options  Json? // For multiple_choice: ["Staff", "Speed", "Quality", "Cleanliness"]
+
+  responses SurveyResponse[]
+
+  @@index([surveyId, order])
+  @@map("survey_question")
+}
+
+model SurveyEnrollment {
+  id          String      @id @default(cuid())
+  surveyId    String
+  survey      Survey      @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     ChatContact @relation(fields: [contactId], references: [id])
+  workspaceId String // which location sent the survey
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id])
+  campaignId  String? // which campaign distributed it
+
+  status      String           @default("pending") // pending, in_progress, completed, timed_out
+  score       Float? // computed overall score (NPS answer or average stars)
+  npsCategory String? // promoter, passive, detractor
+  completedAt DateTime?
+  responses   SurveyResponse[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([surveyId, contactId, campaignId]) // one enrollment per contact per campaign send
+  @@index([surveyId])
+  @@index([contactId])
+  @@index([workspaceId])
+  @@map("survey_enrollment")
+}
+
+model SurveyResponse {
+  id           String           @id @default(cuid())
+  enrollmentId String
+  enrollment   SurveyEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  questionId   String
+  question     SurveyQuestion   @relation(fields: [questionId], references: [id])
+
+  answerText   String? // free text, yes/no text
+  answerNumber Float? // NPS (0-10), star (1-5)
+  answerChoice String? // selected option for multiple choice
+
+  createdAt DateTime @default(now())
+
+  @@unique([enrollmentId, questionId]) // one answer per question per enrollment
+  @@index([enrollmentId])
+  @@map("survey_response")
+}
+
 model Campaign {
-  id                  String    @id @default(cuid())
-  workspaceId         String
-  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdById         String
-  createdBy           User      @relation(fields: [createdById], references: [id])
-  groupId             String?
-  group               CampaignGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  name                String
-  channel             String    @default("sms")
-  messageTemplate     String
-  subject             String?
+  id              String         @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User           @relation(fields: [createdById], references: [id])
+  groupId         String?
+  group           CampaignGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  name            String
+  channel         String         @default("sms")
+  messageTemplate String
+  subject         String?
 
   // V2: Template + Segment links
-  templateId          String?
-  template            CampaignTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  segmentId           String?
-  segment             SavedSegment?     @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  templateId String?
+  template   CampaignTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  segmentId  String?
+  segment    SavedSegment?     @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  surveyId   String?
+  survey     Survey?           @relation(fields: [surveyId], references: [id], onDelete: SetNull)
 
   // Audience config
-  audienceType        String    @default("all") // all, stage, category, inactive
-  audienceStage       String?
-  audienceCategoryId  String?
+  audienceType         String  @default("all") // all, stage, category, inactive
+  audienceStage        String?
+  audienceCategoryId   String?
   audienceInactiveDays Int?
-  frequencyCapDays    Int?      // skip contacts messaged in last X days
+  frequencyCapDays     Int? // skip contacts messaged in last X days
 
-  status              String    @default("draft") // draft, scheduled, sending, paused, completed, cancelled
-  scheduledAt         DateTime?
-  startedAt           DateTime?
-  completedAt         DateTime?
+  status      String    @default("draft") // draft, scheduled, sending, paused, completed, cancelled
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
 
   // Stats
-  totalRecipients     Int       @default(0)
-  sentCount           Int       @default(0)
-  deliveredCount      Int       @default(0)
-  failedCount         Int       @default(0)
-  repliedCount        Int       @default(0)
-  variantB            String?   @db.Text
-  variantSplit        Int       @default(50)
-  variantASent        Int       @default(0)
-  variantADelivered   Int       @default(0)
-  variantAReplied     Int       @default(0)
-  variantBSent        Int       @default(0)
-  variantBDelivered   Int       @default(0)
-  variantBReplied     Int       @default(0)
+  totalRecipients   Int     @default(0)
+  sentCount         Int     @default(0)
+  deliveredCount    Int     @default(0)
+  failedCount       Int     @default(0)
+  repliedCount      Int     @default(0)
+  variantB          String? @db.Text
+  variantSplit      Int     @default(50)
+  variantASent      Int     @default(0)
+  variantADelivered Int     @default(0)
+  variantAReplied   Int     @default(0)
+  variantBSent      Int     @default(0)
+  variantBDelivered Int     @default(0)
+  variantBReplied   Int     @default(0)
 
   // V2: Recurring
-  recurringType       String?
-  recurringDay        Int?
-  recurringTime       String?
-  recurringEndAt      DateTime?
-  lastRecurredAt      DateTime?
+  recurringType  String?
+  recurringDay   Int?
+  recurringTime  String?
+  recurringEndAt DateTime?
+  lastRecurredAt DateTime?
 
   // V3: Recurring parent link
-  parentCampaignId    String?
-  parentCampaign      Campaign?  @relation("RecurringChildren", fields: [parentCampaignId], references: [id], onDelete: SetNull)
-  childCampaigns      Campaign[] @relation("RecurringChildren")
-  autoReply           CampaignAutoReply?
-  autoReplyLogs       CampaignAutoReplyLog[]
-  links               CampaignLink[]
-  unsubscribeLink     Boolean    @default(false)
+  parentCampaignId String?
+  parentCampaign   Campaign?              @relation("RecurringChildren", fields: [parentCampaignId], references: [id], onDelete: SetNull)
+  childCampaigns   Campaign[]             @relation("RecurringChildren")
+  autoReply        CampaignAutoReply?
+  autoReplyLogs    CampaignAutoReplyLog[]
+  links            CampaignLink[]
+  unsubscribeLink  Boolean                @default(false)
 
   // V2: Business hours
-  sendWindowStart     String?
-  sendWindowEnd       String?
+  sendWindowStart String?
+  sendWindowEnd   String?
 
-  recipients          CampaignRecipient[]
-  emailSends          EmailSend[]
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  recipients CampaignRecipient[]
+  emailSends EmailSend[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
   @@index([workspaceId])
   @@index([createdById])
   @@index([groupId])
   @@index([templateId])
   @@index([segmentId])
+  @@index([surveyId])
   @@index([recurringType])
   @@index([parentCampaignId])
   @@index([status])
@@ -703,33 +793,33 @@ model Campaign {
 }
 
 model CampaignAutoReply {
-  id          String   @id @default(cuid())
-  campaignId  String
-  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
-  enabled     Boolean  @default(false)
-  tone        String   @default("friendly")
-  context     String?  @db.Text
-  maxReplies  Int      @default(1)
+  enabled    Boolean @default(false)
+  tone       String  @default("friendly")
+  context    String? @db.Text
+  maxReplies Int     @default(1)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([campaignId])
   @@map("campaign_auto_reply")
 }
 
 model CampaignLink {
-  id          String   @id @default(cuid())
-  campaignId  String
-  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   originalUrl String
-  shortCode   String   @unique
-  clickCount  Int      @default(0)
+  shortCode   String @unique
+  clickCount  Int    @default(0)
 
-  clicks      CampaignLinkClick[]
-  createdAt   DateTime @default(now())
+  clicks    CampaignLinkClick[]
+  createdAt DateTime            @default(now())
 
   @@index([campaignId])
   @@map("campaign_link")
@@ -742,9 +832,9 @@ model CampaignLinkClick {
   recipientId String?
   recipient   CampaignRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
 
-  ip          String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
 
   @@index([linkId])
   @@index([recipientId])
@@ -752,18 +842,18 @@ model CampaignLinkClick {
 }
 
 model CampaignAutoReplyLog {
-  id             String            @id @default(cuid())
-  recipientId    String
-  recipient      CampaignRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
-  campaignId     String
-  campaign       Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contactId      String
+  id          String            @id @default(cuid())
+  recipientId String
+  recipient   CampaignRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  campaignId  String
+  campaign    Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId   String
 
-  inboundMessage String            @db.Text
-  aiResponse     String            @db.Text
+  inboundMessage String @db.Text
+  aiResponse     String @db.Text
   tone           String
 
-  createdAt      DateTime          @default(now())
+  createdAt DateTime @default(now())
 
   @@index([recipientId])
   @@index([campaignId])
@@ -784,20 +874,20 @@ model CampaignGroup {
 }
 
 model CampaignTemplate {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name      String
-  category  String   @default("custom")
-  channel   String   @default("sms")
+  category  String  @default("custom")
+  channel   String  @default("sms")
   subject   String?
-  body      String   @db.Text
-  isLibrary Boolean  @default(false)
+  body      String  @db.Text
+  isLibrary Boolean @default(false)
 
   campaigns Campaign[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@index([userId])
   @@index([category])
@@ -806,46 +896,46 @@ model CampaignTemplate {
 }
 
 model SavedSegment {
-  id                   String   @id @default(cuid())
-  userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name                 String
-  audienceType         String   @default("all")
+  audienceType         String  @default("all")
   audienceStage        String?
   audienceCategoryId   String?
   audienceInactiveDays Int?
   frequencyCapDays     Int?
 
-  campaigns            Campaign[]
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  campaigns Campaign[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@index([userId])
   @@map("saved_segment")
 }
 
 model CampaignRecipient {
-  id           String      @id @default(cuid())
-  campaignId   String
-  campaign     Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contactId    String
-  contact      ChatContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  id         String      @id @default(cuid())
+  campaignId String
+  campaign   Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId  String
+  contact    ChatContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  status       String    @default("pending") // pending, sent, delivered, failed, replied, opted_out
-  sentAt       DateTime?
-  deliveredAt  DateTime?
-  failedAt     DateTime?
-  repliedAt    DateTime?
-  errorMessage String?
-  smsMessageId String?
-  variant      String?
-  aiRepliesSent Int       @default(0)
+  status        String                 @default("pending") // pending, sent, delivered, failed, replied, opted_out
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  failedAt      DateTime?
+  repliedAt     DateTime?
+  errorMessage  String?
+  smsMessageId  String?
+  variant       String?
+  aiRepliesSent Int                    @default(0)
   linkClicks    CampaignLinkClick[]
   autoReplyLogs CampaignAutoReplyLog[]
   emailSends    EmailSend[]
 
-  createdAt    DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([campaignId, contactId])
   @@index([campaignId, status])
@@ -854,32 +944,32 @@ model CampaignRecipient {
 }
 
 model CampaignSequence {
-  id                  String     @id @default(cuid())
-  workspaceId         String
-  workspace           Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdById         String
-  createdBy           User       @relation(fields: [createdById], references: [id])
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
 
-  name                String
-  description         String?    @db.Text
-  status              String     @default("draft") // draft, active, paused, archived
+  name        String
+  description String? @db.Text
+  status      String  @default("draft") // draft, active, paused, archived
 
   // Audience (same pattern as campaigns)
-  audienceType        String     @default("all")
-  audienceStage       String?
-  audienceCategoryId  String?
+  audienceType         String  @default("all")
+  audienceStage        String?
+  audienceCategoryId   String?
   audienceInactiveDays Int?
-  frequencyCapDays    Int?
+  frequencyCapDays     Int?
 
   // Trigger
-  triggerType         String     @default("manual") // manual, contact_created, keyword_join, stage_change
-  triggerValue        String? // e.g. keyword id, stage slug
+  triggerType  String  @default("manual") // manual, contact_created, keyword_join, stage_change
+  triggerValue String? // e.g. keyword id, stage slug
 
-  steps               CampaignSequenceStep[]
-  enrollments         CampaignSequenceEnrollment[]
+  steps       CampaignSequenceStep[]
+  enrollments CampaignSequenceEnrollment[]
 
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([workspaceId])
   @@index([status])
@@ -887,52 +977,52 @@ model CampaignSequence {
 }
 
 model CampaignSequenceStep {
-  id               String           @id @default(cuid())
-  sequenceId       String
-  sequence         CampaignSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  id         String           @id @default(cuid())
+  sequenceId String
+  sequence   CampaignSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
 
-  order            Int
-  channel          String           @default("sms") // sms, email
-  subject          String? // email only
-  body             String           @db.Text
-  templateId       String?
+  order      Int
+  channel    String  @default("sms") // sms, email
+  subject    String? // email only
+  body       String  @db.Text
+  templateId String?
 
   // Delay before this step (from previous step or enrollment)
-  delayMinutes     Int              @default(0)
+  delayMinutes Int @default(0)
 
   // Conditions to skip/branch
-  conditionType    String? // replied, clicked, no_reply, opted_out
-  conditionAction  String           @default("continue") // continue, skip, stop
+  conditionType   String? // replied, clicked, no_reply, opted_out
+  conditionAction String  @default("continue") // continue, skip, stop
 
   // Business hours
-  sendWindowStart  String?
-  sendWindowEnd    String?
+  sendWindowStart String?
+  sendWindowEnd   String?
 
-  stepLogs         CampaignSequenceStepLog[]
+  stepLogs CampaignSequenceStepLog[]
 
-  createdAt        DateTime         @default(now())
+  createdAt DateTime @default(now())
 
   @@index([sequenceId, order])
   @@map("campaign_sequence_step")
 }
 
 model CampaignSequenceEnrollment {
-  id              String                 @id @default(cuid())
-  sequenceId      String
-  sequence        CampaignSequence       @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
-  contactId       String
-  contact         ChatContact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  id         String           @id @default(cuid())
+  sequenceId String
+  sequence   CampaignSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  contactId  String
+  contact    ChatContact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  status          String                 @default("active") // active, completed, stopped, opted_out
-  currentStep     Int                    @default(0)
-  nextStepAt      DateTime?
+  status      String    @default("active") // active, completed, stopped, opted_out
+  currentStep Int       @default(0)
+  nextStepAt  DateTime?
 
-  enrolledAt      DateTime               @default(now())
-  completedAt     DateTime?
-  stoppedAt       DateTime?
-  stoppedReason   String?
+  enrolledAt    DateTime  @default(now())
+  completedAt   DateTime?
+  stoppedAt     DateTime?
+  stoppedReason String?
 
-  stepLogs        CampaignSequenceStepLog[]
+  stepLogs CampaignSequenceStepLog[]
 
   @@unique([sequenceId, contactId])
   @@index([sequenceId, status])
@@ -942,23 +1032,23 @@ model CampaignSequenceEnrollment {
 }
 
 model CampaignSequenceStepLog {
-  id             String                     @id @default(cuid())
-  enrollmentId   String
-  enrollment     CampaignSequenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  stepId         String
-  step           CampaignSequenceStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  id           String                     @id @default(cuid())
+  enrollmentId String
+  enrollment   CampaignSequenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  stepId       String
+  step         CampaignSequenceStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
 
-  status         String // sent, delivered, failed, skipped
-  channel        String
-  messageId      String? // Twilio SID or email provider ID
-  sentAt         DateTime?
-  deliveredAt    DateTime?
-  repliedAt      DateTime?
-  failedAt       DateTime?
-  errorMessage   String?
-  skippedReason  String?
+  status        String // sent, delivered, failed, skipped
+  channel       String
+  messageId     String? // Twilio SID or email provider ID
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  repliedAt     DateTime?
+  failedAt      DateTime?
+  errorMessage  String?
+  skippedReason String?
 
-  createdAt      DateTime                   @default(now())
+  createdAt DateTime @default(now())
 
   @@index([enrollmentId])
   @@index([stepId])
@@ -966,19 +1056,19 @@ model CampaignSequenceStepLog {
 }
 
 model EmailTemplate {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  name         String
-  subject      String
-  htmlBody     String   @db.Text
-  textBody     String?  @db.Text // plain text fallback
-  category     String   @default("custom")
-  isLibrary    Boolean  @default(false)
+  name      String
+  subject   String
+  htmlBody  String  @db.Text
+  textBody  String? @db.Text // plain text fallback
+  category  String  @default("custom")
+  isLibrary Boolean @default(false)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, name])
   @@index([userId, category])
@@ -986,30 +1076,30 @@ model EmailTemplate {
 }
 
 model EmailSend {
-  id           String              @id @default(cuid())
-  campaignId   String?
-  campaign     Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  recipientId  String?
-  recipient    CampaignRecipient?  @relation(fields: [recipientId], references: [id], onDelete: SetNull)
-  contactId    String
-  workspaceId  String
+  id          String             @id @default(cuid())
+  campaignId  String?
+  campaign    Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  recipientId String?
+  recipient   CampaignRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  contactId   String
+  workspaceId String
 
-  toEmail      String
-  fromEmail    String
-  fromName     String?
-  subject      String
-  providerId   String? // Resend message ID
+  toEmail    String
+  fromEmail  String
+  fromName   String?
+  subject    String
+  providerId String? // Resend message ID
 
-  status       String   @default("pending") // pending, sent, delivered, opened, clicked, bounced, complained
-  openCount    Int      @default(0)
-  clickCount   Int      @default(0)
+  status     String @default("pending") // pending, sent, delivered, opened, clicked, bounced, complained
+  openCount  Int    @default(0)
+  clickCount Int    @default(0)
 
-  sentAt       DateTime?
-  deliveredAt  DateTime?
-  openedAt     DateTime?
-  bouncedAt    DateTime?
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  openedAt    DateTime?
+  bouncedAt   DateTime?
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([campaignId])
   @@index([contactId])
@@ -1019,45 +1109,45 @@ model EmailSend {
 }
 
 model WebhookEndpoint {
-  id           String            @id @default(cuid())
-  workspaceId  String
-  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  url          String
-  secret       String // HMAC signing secret
-  events       String[] // campaign.sent, contact.replied, etc.
-  active       Boolean           @default(true)
+  url    String
+  secret String // HMAC signing secret
+  events String[] // campaign.sent, contact.replied, etc.
+  active Boolean  @default(true)
 
-  lastStatus   Int? // last HTTP status code
-  lastError    String?
-  lastFiredAt  DateTime?
-  failCount    Int               @default(0)
+  lastStatus  Int? // last HTTP status code
+  lastError   String?
+  lastFiredAt DateTime?
+  failCount   Int       @default(0)
 
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  deliveries   WebhookDelivery[]
+  deliveries WebhookDelivery[]
 
   @@index([workspaceId])
   @@map("webhook_endpoint")
 }
 
 model WebhookDelivery {
-  id            String          @id @default(cuid())
-  endpointId    String
-  endpoint      WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  id         String          @id @default(cuid())
+  endpointId String
+  endpoint   WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
-  event         String
-  payload       String          @db.Text // JSON
-  status        Int? // HTTP response code
-  responseBody  String?         @db.Text
-  duration      Int? // ms
-  error         String?
+  event        String
+  payload      String  @db.Text // JSON
+  status       Int? // HTTP response code
+  responseBody String? @db.Text
+  duration     Int? // ms
+  error        String?
 
-  attemptCount  Int             @default(1)
-  nextRetryAt   DateTime?
+  attemptCount Int       @default(1)
+  nextRetryAt  DateTime?
 
-  createdAt     DateTime        @default(now())
+  createdAt DateTime @default(now())
 
   @@index([endpointId])
   @@index([nextRetryAt])
@@ -1065,21 +1155,21 @@ model WebhookDelivery {
 }
 
 model TextToJoinKeyword {
-  id           String    @id @default(cuid())
-  workspaceId  String
-  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  keyword      String
-  autoReply    String    @db.Text
-  stage        String    @default("new_lead")
-  categoryId   String?
-  source       String    @default("text_to_join")
+  keyword    String
+  autoReply  String  @db.Text
+  stage      String  @default("new_lead")
+  categoryId String?
+  source     String  @default("text_to_join")
 
-  contactCount Int       @default(0)
-  active       Boolean   @default(true)
+  contactCount Int     @default(0)
+  active       Boolean @default(true)
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([workspaceId, keyword])
   @@index([workspaceId])
@@ -1087,7 +1177,7 @@ model TextToJoinKeyword {
 }
 
 model Category {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   workspaceId String
   name        String
   color       String?
