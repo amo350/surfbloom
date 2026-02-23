@@ -30,17 +30,31 @@ const QUESTION_TYPES = [
 ] as const;
 
 type QuestionType = (typeof QUESTION_TYPES)[number]["value"];
+type ConditionOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "in";
+
+type DisplayCondition = {
+  questionId: string;
+  operator: ConditionOperator;
+  value: number | string | string[];
+};
 
 interface QuestionEditorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   surveyId: string;
+  surveyQuestions: Array<{
+    id: string;
+    order: number;
+    text: string;
+  }>;
   question?: {
     id: string;
+    order: number;
     type: QuestionType;
     text: string;
     required: boolean;
     options: string[] | null;
+    displayCondition?: DisplayCondition | null;
   } | null;
 }
 
@@ -48,6 +62,7 @@ export function QuestionEditor({
   open,
   onOpenChange,
   surveyId,
+  surveyQuestions,
   question,
 }: QuestionEditorProps) {
   const isEditing = !!question;
@@ -57,9 +72,14 @@ export function QuestionEditor({
   const [required, setRequired] = useState(true);
   const [options, setOptions] = useState<string[]>([]);
   const [newOption, setNewOption] = useState("");
+  const [hasCondition, setHasCondition] = useState(false);
+  const [condition, setCondition] = useState<DisplayCondition | null>(null);
 
   const addQuestion = useAddQuestion();
   const updateQuestion = useUpdateQuestion();
+  const previousQuestions = surveyQuestions
+    .filter((q) => q.order < (question?.order ?? Number.POSITIVE_INFINITY))
+    .sort((a, b) => a.order - b.order);
 
   // Populate when editing
   
@@ -70,11 +90,15 @@ export function QuestionEditor({
       setText(question.text);
       setRequired(question.required);
       setOptions(question.options || []);
+      setHasCondition(!!question.displayCondition);
+      setCondition((question.displayCondition as DisplayCondition | null) ?? null);
     } else {
       setType("nps");
       setText("");
       setRequired(true);
       setOptions([]);
+      setHasCondition(false);
+      setCondition(null);
     }
     setNewOption("");
   }, [question, open]);
@@ -109,6 +133,35 @@ export function QuestionEditor({
       return;
     }
 
+    if (hasCondition) {
+      const conditionQuestionId = condition?.questionId?.trim() || "";
+      if (!conditionQuestionId) {
+        toast.error("Pick a question for the display condition");
+        return;
+      }
+      if (condition?.value == null || condition.value === "") {
+        toast.error("Enter a value for the display condition");
+        return;
+      }
+    }
+
+    const formattedCondition =
+      hasCondition && condition
+        ? {
+            questionId: condition.questionId,
+            operator: condition.operator,
+            value:
+              condition.operator === "in"
+                ? Array.isArray(condition.value)
+                  ? condition.value
+                  : String(condition.value)
+                      .split(",")
+                      .map((v) => v.trim())
+                      .filter(Boolean)
+                : condition.value,
+          }
+        : null;
+
     if (isEditing && question) {
       updateQuestion.mutate(
         {
@@ -117,6 +170,7 @@ export function QuestionEditor({
           text: text.trim(),
           required,
           options: type === "multiple_choice" ? options : null,
+          displayCondition: formattedCondition,
         },
         {
           onSuccess: () => {
@@ -134,6 +188,7 @@ export function QuestionEditor({
           text: text.trim(),
           required,
           options: type === "multiple_choice" ? options : undefined,
+          displayCondition: formattedCondition,
         },
         {
           onSuccess: () => {
@@ -163,7 +218,10 @@ export function QuestionEditor({
             <label className="text-xs font-medium text-muted-foreground">
               Question Type
             </label>
-            <Select value={type} onValueChange={setType}>
+            <Select
+              value={type}
+              onValueChange={(value) => setType(value as QuestionType)}
+            >
               <SelectTrigger className="h-9">
                 <SelectValue />
               </SelectTrigger>
@@ -255,6 +313,121 @@ export function QuestionEditor({
               Required
             </label>
             <Switch checked={required} onCheckedChange={setRequired} />
+          </div>
+
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground">
+                Display Condition
+              </label>
+              <Switch
+                checked={hasCondition}
+                onCheckedChange={(checked) => {
+                  setHasCondition(checked);
+                  if (!checked) {
+                    setCondition(null);
+                    return;
+                  }
+                  setCondition((prev) => {
+                    if (prev) return prev;
+                    return {
+                      questionId: previousQuestions[0]?.id || "",
+                      operator: "gte",
+                      value: "",
+                    };
+                  });
+                }}
+              />
+            </div>
+
+            {hasCondition && (
+              <div className="space-y-2 p-3 rounded-lg bg-muted/10 border">
+                <p className="text-[10px] text-muted-foreground">
+                  Only show this question when:
+                </p>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <Select
+                    value={condition?.questionId || ""}
+                    onValueChange={(value) =>
+                      setCondition((prev) => ({
+                        ...(prev || {
+                          questionId: "",
+                          operator: "gte",
+                          value: "",
+                        }),
+                        questionId: value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Question..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {previousQuestions.map((q) => (
+                        <SelectItem key={q.id} value={q.id}>
+                          {`Q${q.order}: ${q.text.slice(0, 30)}${q.text.length > 30 ? "..." : ""}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={condition?.operator || "gte"}
+                    onValueChange={(value) =>
+                      setCondition((prev) => ({
+                        ...(prev || {
+                          questionId: "",
+                          operator: "gte",
+                          value: "",
+                        }),
+                        operator: value as ConditionOperator,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="eq">equals</SelectItem>
+                      <SelectItem value="neq">not equals</SelectItem>
+                      <SelectItem value="gt">greater than</SelectItem>
+                      <SelectItem value="gte">at least</SelectItem>
+                      <SelectItem value="lt">less than</SelectItem>
+                      <SelectItem value="lte">at most</SelectItem>
+                      <SelectItem value="in">is one of</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Input
+                    value={
+                      Array.isArray(condition?.value)
+                        ? condition?.value.join(", ")
+                        : (condition?.value ?? "")
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const parsed = /^\d+$/.test(raw) ? parseInt(raw, 10) : raw;
+                      setCondition((prev) => ({
+                        ...(prev || {
+                          questionId: "",
+                          operator: "gte",
+                          value: "",
+                        }),
+                        value: parsed,
+                      }));
+                    }}
+                    placeholder="Value..."
+                    className="h-8 text-xs"
+                  />
+                </div>
+                {previousQuestions.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Add earlier questions first to set conditions.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Type hint */}

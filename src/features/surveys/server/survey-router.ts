@@ -5,6 +5,12 @@ import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { Prisma } from "@/generated/prisma/client";
 
+const displayConditionSchema = z.object({
+  questionId: z.string().min(1),
+  operator: z.enum(["eq", "neq", "gt", "gte", "lt", "lte", "in"]),
+  value: z.union([z.number(), z.string(), z.array(z.string())]),
+});
+
 async function getOwnedSurveyOrThrow(surveyId: string, userId: string) {
   const survey = await prisma.survey.findFirst({
     where: {
@@ -61,6 +67,34 @@ function pickQuestionMeta(q: {
 }) {
   return { id: q.id, order: q.order, type: q.type, text: q.text };
 }
+
+type TemplateQuestion = {
+  sourceQuestionId?: string;
+  type: "nps" | "star" | "multiple_choice" | "free_text" | "yes_no";
+  text: string;
+  required?: boolean;
+  options?: string[] | null;
+  displayCondition?: unknown;
+};
+
+function isTemplateQuestion(value: unknown): value is TemplateQuestion {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const v = value as Record<string, unknown>;
+  const validTypes = new Set([
+    "nps",
+    "star",
+    "multiple_choice",
+    "free_text",
+    "yes_no",
+  ]);
+  return (
+    typeof v.type === "string" &&
+    validTypes.has(v.type) &&
+    typeof v.text === "string"
+  );
+}
+
+const prismaSurveyTemplate = (prisma as unknown as { surveyTemplate: any }).surveyTemplate;
 
 export const surveyRouter = createTRPCRouter({
   getSurveys: protectedProcedure
@@ -178,6 +212,7 @@ export const surveyRouter = createTRPCRouter({
               text: true,
               required: true,
               options: true,
+              displayCondition: true,
             },
           },
           _count: {
@@ -290,6 +325,161 @@ export const surveyRouter = createTRPCRouter({
       return prisma.survey.delete({ where: { id: input.id } });
     }),
 
+  saveAsTemplate: protectedProcedure
+    .input(
+      z.object({
+        surveyId: z.string(),
+        name: z.string().min(1).max(100),
+        description: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await getOwnedSurveyOrThrow(input.surveyId, ctx.auth.user.id);
+
+      const questions = await prisma.surveyQuestion.findMany({
+        where: { surveyId: input.surveyId },
+        orderBy: { order: "asc" },
+        select: {
+          id: true,
+          type: true,
+          text: true,
+          required: true,
+          options: true,
+          displayCondition: true,
+        },
+      });
+
+      const serializedQuestions: TemplateQuestion[] = questions.map((q) => ({
+        sourceQuestionId: q.id,
+        type: q.type as TemplateQuestion["type"],
+        text: q.text,
+        required: q.required,
+        options: Array.isArray(q.options) ? (q.options as string[]) : null,
+        displayCondition: q.displayCondition,
+      }));
+
+      return prismaSurveyTemplate.create({
+        data: {
+          createdBy: ctx.auth.user.id,
+          name: input.name,
+          description: input.description,
+          questions: serializedQuestions as unknown as Prisma.JsonArray,
+        },
+      });
+    }),
+
+  getTemplates: protectedProcedure.query(async ({ ctx }) => {
+    return prismaSurveyTemplate.findMany({
+      where: { createdBy: ctx.auth.user.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        questions: true,
+        createdAt: true,
+      },
+    });
+  }),
+
+  createFromTemplate: protectedProcedure
+    .input(
+      z.object({
+        templateId: z.string(),
+        name: z.string().min(1).max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const template = await prismaSurveyTemplate.findFirst({
+        where: { id: input.templateId, createdBy: ctx.auth.user.id },
+      });
+
+      if (!template) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      const survey = await prisma.survey.create({
+        data: {
+          organizationId: ctx.auth.user.id,
+          name: input.name,
+          slug: nanoid(10),
+          status: "draft",
+        },
+      });
+
+      const questionsRaw: unknown[] = Array.isArray(template.questions)
+        ? template.questions
+        : [];
+      const questions: TemplateQuestion[] = questionsRaw.filter(isTemplateQuestion);
+
+      if (questions.length > 0) {
+        const sourceToNewId = new Map<string, string>();
+        const createdQuestionIds: string[] = [];
+
+        for (const [index, q] of questions.entries()) {
+          const created = await prisma.surveyQuestion.create({
+            data: {
+              surveyId: survey.id,
+              order: index + 1,
+              type: q.type,
+              text: q.text,
+              required: q.required ?? true,
+              options:
+                q.options == null
+                  ? Prisma.JsonNull
+                  : (q.options as Prisma.InputJsonValue),
+              displayCondition: Prisma.JsonNull,
+            },
+            select: { id: true },
+          });
+
+          createdQuestionIds.push(created.id);
+          if (q.sourceQuestionId) {
+            sourceToNewId.set(q.sourceQuestionId, created.id);
+          }
+        }
+
+        for (const [index, q] of questions.entries()) {
+          const parsedCondition = displayConditionSchema.safeParse(q.displayCondition);
+          if (!parsedCondition.success) continue;
+
+          const mappedQuestionId = sourceToNewId.get(parsedCondition.data.questionId);
+          if (!mappedQuestionId) continue;
+
+          await prisma.surveyQuestion.update({
+            where: { id: createdQuestionIds[index] },
+            data: {
+              displayCondition: {
+                ...parsedCondition.data,
+                questionId: mappedQuestionId,
+              } as Prisma.InputJsonValue,
+            },
+          });
+        }
+      }
+
+      return survey;
+    }),
+
+  deleteTemplate: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const template = await prismaSurveyTemplate.findUnique({
+        where: { id: input.id },
+        select: { createdBy: true },
+      });
+
+      if (!template) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      if (template.createdBy !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      return prismaSurveyTemplate.delete({ where: { id: input.id } });
+    }),
+
   addQuestion: protectedProcedure
     .input(
       z.object({
@@ -298,6 +488,7 @@ export const surveyRouter = createTRPCRouter({
         text: z.string().min(1).max(500),
         required: z.boolean().default(true),
         options: z.array(z.string()).optional(),
+        displayCondition: displayConditionSchema.nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -339,6 +530,10 @@ export const surveyRouter = createTRPCRouter({
           text: input.text,
           required: input.required,
           options: input.options,
+          displayCondition:
+            input.displayCondition === undefined
+              ? undefined
+              : input.displayCondition ?? Prisma.JsonNull,
         },
       });
     }),
@@ -353,6 +548,7 @@ export const surveyRouter = createTRPCRouter({
           .optional(),
         required: z.boolean().optional(),
         options: z.array(z.string()).optional().nullable(),
+        displayCondition: displayConditionSchema.nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -381,6 +577,9 @@ export const surveyRouter = createTRPCRouter({
           ...(data.required !== undefined ? { required: data.required } : {}),
           ...(data.options !== undefined
             ? { options: data.options ?? Prisma.JsonNull }
+            : {}),
+          ...(data.displayCondition !== undefined
+            ? { displayCondition: data.displayCondition ?? Prisma.JsonNull }
             : {}),
         },
       });
@@ -765,5 +964,253 @@ export const surveyRouter = createTRPCRouter({
         passives,
         detractors,
       };
+    }),
+
+  getNpsTrend: protectedProcedure
+    .input(
+      z.object({
+        surveyId: z.string().optional(),
+        workspaceId: z.string().optional(),
+        days: z.number().int().min(14).max(365).default(90),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (input.surveyId) {
+        await getOwnedSurveyOrThrow(input.surveyId, ctx.auth.user.id);
+      }
+
+      const since = new Date();
+      since.setDate(since.getDate() - input.days);
+
+      const memberships = await prisma.member.findMany({
+        where: { userId: ctx.auth.user.id },
+        select: { workspaceId: true },
+      });
+      const memberWorkspaceIds = memberships.map((m) => m.workspaceId);
+
+      if (input.workspaceId && !memberWorkspaceIds.includes(input.workspaceId)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        });
+      }
+
+      const where: Prisma.SurveyEnrollmentWhereInput = {
+        status: "completed",
+        npsCategory: { not: null },
+        completedAt: { gte: since },
+        workspaceId: input.workspaceId
+          ? input.workspaceId
+          : { in: memberWorkspaceIds },
+        ...(input.surveyId ? { surveyId: input.surveyId } : {}),
+      };
+
+      const enrollments = await prisma.surveyEnrollment.findMany({
+        where,
+        select: {
+          npsCategory: true,
+          completedAt: true,
+        },
+        orderBy: { completedAt: "asc" },
+      });
+
+      const weeks = new Map<
+        string,
+        { promoters: number; passives: number; detractors: number }
+      >();
+
+      for (const enrollment of enrollments) {
+        if (!enrollment.completedAt || !enrollment.npsCategory) continue;
+
+        const d = new Date(enrollment.completedAt);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.setDate(diff));
+        const weekKey = monday.toISOString().slice(0, 10);
+
+        const bucket = weeks.get(weekKey) || {
+          promoters: 0,
+          passives: 0,
+          detractors: 0,
+        };
+
+        if (enrollment.npsCategory === "promoter") bucket.promoters++;
+        else if (enrollment.npsCategory === "passive") bucket.passives++;
+        else if (enrollment.npsCategory === "detractor") bucket.detractors++;
+
+        weeks.set(weekKey, bucket);
+      }
+
+      return Array.from(weeks.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([week, counts]) => {
+          const total = counts.promoters + counts.passives + counts.detractors;
+          const nps =
+            total > 0
+              ? Math.round(((counts.promoters - counts.detractors) / total) * 100)
+              : 0;
+
+          return {
+            week,
+            nps,
+            responses: total,
+            ...counts,
+          };
+        });
+    }),
+
+  getLocationNps: protectedProcedure
+    .input(
+      z.object({
+        surveyId: z.string().optional(),
+        days: z.number().int().min(7).max(365).default(90),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (input.surveyId) {
+        await getOwnedSurveyOrThrow(input.surveyId, ctx.auth.user.id);
+      }
+
+      const since = new Date();
+      since.setDate(since.getDate() - input.days);
+
+      const memberships = await prisma.member.findMany({
+        where: { userId: ctx.auth.user.id },
+        select: { workspaceId: true },
+      });
+      const workspaceIds = memberships.map((m) => m.workspaceId);
+
+      const where: Prisma.SurveyEnrollmentWhereInput = {
+        status: "completed",
+        npsCategory: { not: null },
+        completedAt: { gte: since },
+        workspaceId: { in: workspaceIds },
+        ...(input.surveyId ? { surveyId: input.surveyId } : {}),
+      };
+
+      const grouped = await prisma.surveyEnrollment.groupBy({
+        by: ["workspaceId", "npsCategory"],
+        where,
+        _count: true,
+      });
+
+      const statsMap = new Map<
+        string,
+        { promoters: number; passives: number; detractors: number }
+      >();
+
+      for (const row of grouped) {
+        if (!row.npsCategory) continue;
+
+        const existing = statsMap.get(row.workspaceId) || {
+          promoters: 0,
+          passives: 0,
+          detractors: 0,
+        };
+
+        if (row.npsCategory === "promoter") existing.promoters = row._count;
+        else if (row.npsCategory === "passive") existing.passives = row._count;
+        else if (row.npsCategory === "detractor") existing.detractors = row._count;
+
+        statsMap.set(row.workspaceId, existing);
+      }
+
+      const workspaces = await prisma.workspace.findMany({
+        where: { id: { in: Array.from(statsMap.keys()) } },
+        select: { id: true, name: true },
+      });
+      const nameMap = new Map(workspaces.map((workspace) => [workspace.id, workspace.name]));
+
+      return Array.from(statsMap.entries())
+        .map(([workspaceId, counts]) => {
+          const total = counts.promoters + counts.passives + counts.detractors;
+          const nps =
+            total > 0
+              ? Math.round(((counts.promoters - counts.detractors) / total) * 100)
+              : 0;
+
+          return {
+            workspaceId,
+            workspaceName: nameMap.get(workspaceId) || "Unknown",
+            nps,
+            responses: total,
+            ...counts,
+          };
+        })
+        .sort((a, b) => b.nps - a.nps);
+    }),
+
+  generateSummary: protectedProcedure
+    .input(z.object({ surveyId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await getOwnedSurveyOrThrow(input.surveyId, ctx.auth.user.id);
+
+      const freeTextQuestions = await prisma.surveyQuestion.findMany({
+        where: { surveyId: input.surveyId, type: "free_text" },
+        select: {
+          id: true,
+          text: true,
+          responses: {
+            where: {
+              answerText: { not: null },
+              enrollment: { status: "completed" },
+            },
+            select: { answerText: true },
+            take: 200,
+          },
+        },
+      });
+
+      if (freeTextQuestions.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No free-text questions in this survey",
+        });
+      }
+
+      const totalResponses = freeTextQuestions.reduce(
+        (sum, question) => sum + question.responses.length,
+        0,
+      );
+
+      if (totalResponses === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No free-text responses to summarize",
+        });
+      }
+
+      const responseBlocks = freeTextQuestions
+        .map((question) => {
+          const answers = question.responses
+            .map((response) => `- ${response.answerText}`)
+            .join("\n");
+          return `Question: "${question.text}"\nResponses:\n${answers}`;
+        })
+        .join("\n\n");
+
+      const { default: Anthropic } = await import("@anthropic-ai/sdk");
+      const client = new Anthropic();
+
+      const message = await client.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 500,
+        system:
+          "You are analyzing customer survey responses for a local business. Provide a concise summary (3-5 bullet points) identifying the main themes, common praises, common complaints, and any actionable insights. Be specific - quote patterns, not individual responses. Keep it under 150 words.",
+        messages: [
+          {
+            role: "user",
+            content: `Here are ${totalResponses} free-text survey responses:\n\n${responseBlocks}`,
+          },
+        ],
+      });
+
+      const summary = message.content
+        .map((block) => (block.type === "text" ? block.text : ""))
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+
+      return { summary, responsesAnalyzed: totalResponses };
     }),
 });

@@ -51,6 +51,7 @@ model User {
   campaignGroups    CampaignGroup[]
   campaignTemplates CampaignTemplate[]
   savedSegments     SavedSegment[]
+  surveyTemplates   SurveyTemplate[]
 
   @@unique([email])
   @@index([accountOwnerId])
@@ -648,6 +649,18 @@ model Survey {
   @@map("survey")
 }
 
+model SurveyTemplate {
+  id          String   @id @default(cuid())
+  createdBy   String
+  user        User     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  questions   Json
+  createdAt   DateTime @default(now())
+
+  @@index([createdBy])
+}
+
 model SurveyQuestion {
   id       String  @id @default(cuid())
   surveyId String
@@ -657,6 +670,7 @@ model SurveyQuestion {
   text     String // "How was your experience today?"
   required Boolean @default(true)
   options  Json? // For multiple_choice: ["Staff", "Speed", "Quality", "Cleanliness"]
+  displayCondition Json?
 
   responses SurveyResponse[]
 

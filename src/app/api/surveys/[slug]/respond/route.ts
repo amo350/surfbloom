@@ -39,6 +39,7 @@ export async function GET(
           text: true,
           required: true,
           options: true,
+          displayCondition: true,
         },
       },
     },
