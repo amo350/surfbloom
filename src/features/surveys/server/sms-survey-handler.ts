@@ -14,6 +14,28 @@ interface ParseResult {
   nudgeMessage?: string;
 }
 
+interface DisplayCondition {
+  questionId: string;
+  operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "in";
+  value: number | string | string[];
+}
+
+type SurveyQuestionForFlow = {
+  id: string;
+  order: number;
+  type: string;
+  text: string;
+  options: unknown;
+  displayCondition?: unknown;
+};
+
+type SurveyResponseForFlow = {
+  questionId: string;
+  answerText: string | null;
+  answerNumber: number | null;
+  answerChoice: string | null;
+};
+
 const MAX_RETRIES = 2;
 const DEFAULT_TIMEOUT_HOURS = 72;
 
@@ -38,7 +60,12 @@ export async function handleSurveyResponse(
         },
       },
       responses: {
-        select: { questionId: true },
+        select: {
+          questionId: true,
+          answerText: true,
+          answerNumber: true,
+          answerChoice: true,
+        },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -58,7 +85,15 @@ export async function handleSurveyResponse(
   }
 
   if (enrollment.currentStep <= 0) {
-    const firstQuestion = [...questions].sort((a, b) => a.order - b.order)[0];
+    const firstQuestion = getNextDisplayableQuestion(
+      questions,
+      0,
+      enrollment.responses,
+    );
+    if (!firstQuestion) {
+      return completeSurvey(enrollment.id);
+    }
+
     const timeoutAt = new Date(Date.now() + DEFAULT_TIMEOUT_HOURS * 60 * 60 * 1000);
 
     await prisma.surveyEnrollment.update({
@@ -78,7 +113,20 @@ export async function handleSurveyResponse(
 
   const currentQuestion = questions.find((q) => q.order === enrollment.currentStep);
   if (!currentQuestion) {
-    return completeSurvey(enrollment.id);
+    return advanceToNextQuestion(
+      enrollment.id,
+      questions,
+      enrollment.currentStep,
+      enrollment.responses,
+    );
+  }
+  if (!shouldShowQuestion(currentQuestion, enrollment.responses)) {
+    return advanceToNextQuestion(
+      enrollment.id,
+      questions,
+      enrollment.currentStep,
+      enrollment.responses,
+    );
   }
 
   const parsed = parseResponse((messageBody || "").trim(), currentQuestion);
@@ -90,7 +138,12 @@ export async function handleSurveyResponse(
         data: { retryCount: 0 },
       });
 
-      return advanceToNextQuestion(enrollment.id, questions, enrollment.currentStep);
+      return advanceToNextQuestion(
+        enrollment.id,
+        questions,
+        enrollment.currentStep,
+        enrollment.responses,
+      );
     }
 
     await prisma.surveyEnrollment.update({
@@ -136,17 +189,31 @@ export async function handleSurveyResponse(
     },
   });
 
-  return advanceToNextQuestion(enrollment.id, questions, enrollment.currentStep);
+  const responses = await prisma.surveyResponse.findMany({
+    where: { enrollmentId: enrollment.id },
+    select: {
+      questionId: true,
+      answerText: true,
+      answerNumber: true,
+      answerChoice: true,
+    },
+  });
+
+  return advanceToNextQuestion(
+    enrollment.id,
+    questions,
+    enrollment.currentStep,
+    responses,
+  );
 }
 
 async function advanceToNextQuestion(
   enrollmentId: string,
-  questions: Array<{ id: string; order: number; type: string; text: string; options: unknown }>,
+  questions: SurveyQuestionForFlow[],
   currentStep: number,
+  responses: SurveyResponseForFlow[],
 ): Promise<SurveyHandlerResult> {
-  const nextQuestion = [...questions]
-    .filter((q) => q.order > currentStep)
-    .sort((a, b) => a.order - b.order)[0];
+  const nextQuestion = getNextDisplayableQuestion(questions, currentStep, responses);
 
   if (!nextQuestion) {
     return completeSurvey(enrollmentId);
@@ -166,6 +233,119 @@ async function advanceToNextQuestion(
     handled: true,
     replyMessage: formatQuestionAsSms(nextQuestion, questions.length),
   };
+}
+
+function getNextDisplayableQuestion(
+  questions: SurveyQuestionForFlow[],
+  currentStep: number,
+  responses: SurveyResponseForFlow[],
+): SurveyQuestionForFlow | null {
+  return (
+    [...questions]
+      .filter((q) => q.order > currentStep)
+      .sort((a, b) => a.order - b.order)
+      .find((q) => shouldShowQuestion(q, responses)) || null
+  );
+}
+
+function shouldShowQuestion(
+  question: { displayCondition?: unknown } & Record<string, unknown>,
+  responses: SurveyResponseForFlow[],
+): boolean {
+  const condition = parseDisplayCondition(question.displayCondition);
+  if (!condition) return true;
+
+  return evaluateDisplayCondition(condition, { responses });
+}
+
+function parseDisplayCondition(raw: unknown): DisplayCondition | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+
+  const maybe = raw as Record<string, unknown>;
+  const questionId =
+    typeof maybe.questionId === "string" ? maybe.questionId.trim() : "";
+  const operator =
+    typeof maybe.operator === "string" ? maybe.operator.trim() : "";
+  const value = maybe.value;
+
+  const validOperators = new Set(["eq", "neq", "gt", "gte", "lt", "lte", "in"]);
+  if (!questionId || !validOperators.has(operator)) {
+    return null;
+  }
+
+  if (operator === "in") {
+    if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+      return null;
+    }
+  } else if (typeof value !== "number" && typeof value !== "string") {
+    return null;
+  }
+
+  return {
+    questionId,
+    operator: operator as DisplayCondition["operator"],
+    value: value as DisplayCondition["value"],
+  };
+}
+
+function evaluateDisplayCondition(
+  condition: DisplayCondition | null,
+  enrollment: { responses: SurveyResponseForFlow[] },
+): boolean {
+  if (!condition) return true;
+
+  const { questionId, operator, value } = condition;
+  const response = enrollment.responses.find((r) => r.questionId === questionId);
+
+  if (!response) return false;
+
+  const answerValue =
+    response.answerNumber ?? response.answerChoice ?? response.answerText;
+  if (answerValue == null) return false;
+
+  const answerNumber = toNumber(answerValue);
+  const conditionNumber = toNumber(value);
+
+  switch (operator) {
+    case "eq":
+      // Use loose equality to allow numeric/string comparisons.
+      return answerValue == (value as number | string);
+    case "neq":
+      return answerValue != (value as number | string);
+    case "gt":
+      return answerNumber != null && conditionNumber != null
+        ? answerNumber > conditionNumber
+        : false;
+    case "gte":
+      return answerNumber != null && conditionNumber != null
+        ? answerNumber >= conditionNumber
+        : false;
+    case "lt":
+      return answerNumber != null && conditionNumber != null
+        ? answerNumber < conditionNumber
+        : false;
+    case "lte":
+      return answerNumber != null && conditionNumber != null
+        ? answerNumber <= conditionNumber
+        : false;
+    case "in":
+      return Array.isArray(value) && value.includes(String(answerValue));
+    default:
+      return true;
+  }
+}
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function parseResponse(

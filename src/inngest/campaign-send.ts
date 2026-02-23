@@ -17,6 +17,7 @@ import { inngest } from "./client";
 
 const BATCH_SIZE = 50;
 const THROTTLE_MS = 1100; // just over 1/sec for Twilio
+const SURVEY_TIMEOUT_HOURS = 72;
 
 function isWithinSendWindow(
   windowStart: string | null,
@@ -101,6 +102,48 @@ function buildSurveyUrl(
   const baseUrl = appUrl.replace(/\/$/, "");
   if (!surveySlug || !contactId || !baseUrl) return "";
   return `${baseUrl}/s/${surveySlug}?c=${contactId}&w=${workspaceId}&cam=${campaignId}`;
+}
+
+function formatFirstQuestionSms(
+  introMessage: string,
+  firstQuestion: {
+    text: string;
+    type: string;
+    options: unknown;
+  },
+  totalQuestions: number,
+): string {
+  let text = introMessage.trim();
+  text += `\n\n(1/${totalQuestions}) ${firstQuestion.text}`;
+
+  switch (firstQuestion.type) {
+    case "nps":
+      text += "\n\nReply 0-10";
+      break;
+    case "star":
+      text += "\n\nReply 1-5";
+      break;
+    case "multiple_choice": {
+      const options = Array.isArray(firstQuestion.options)
+        ? (firstQuestion.options as string[])
+        : [];
+      if (options.length > 0) {
+        const formatted = options
+          .map((opt, i) => `${String.fromCharCode(65 + i)}) ${opt}`)
+          .join("\n");
+        text += `\n\n${formatted}`;
+      }
+      break;
+    }
+    case "yes_no":
+      text += "\n\nReply Yes or No";
+      break;
+    case "free_text":
+    default:
+      break;
+  }
+
+  return text;
 }
 
 export const sendCampaign = inngest.createFunction(
@@ -460,6 +503,52 @@ export const sendCampaign = inngest.createFunction(
           let batchSent = 0;
           const replacementMap = new Map(Object.entries(linkReplacements));
           const hasLinkReplacements = replacementMap.size > 0;
+          let smsSurveyConfig:
+            | {
+                surveyId: string;
+                totalQuestions: number;
+                firstQuestion: {
+                  id: string;
+                  type: string;
+                  text: string;
+                  options: unknown;
+                };
+              }
+            | null = null;
+
+          if (campaign.channel === "sms" && campaign.surveyId) {
+            const survey = await prisma.survey.findUnique({
+              where: { id: campaign.surveyId },
+              select: {
+                id: true,
+                status: true,
+                _count: { select: { questions: true } },
+                questions: {
+                  orderBy: { order: "asc" },
+                  take: 1,
+                  select: {
+                    id: true,
+                    type: true,
+                    text: true,
+                    options: true,
+                  },
+                },
+              },
+            });
+
+            if (
+              survey &&
+              survey.status === "active" &&
+              survey.questions.length > 0 &&
+              survey._count.questions > 0
+            ) {
+              smsSurveyConfig = {
+                surveyId: survey.id,
+                totalQuestions: survey._count.questions,
+                firstQuestion: survey.questions[0],
+              };
+            }
+          }
 
           for (const recipient of recipients) {
             try {
@@ -616,6 +705,46 @@ export const sendCampaign = inngest.createFunction(
 
                 if (hasLinkReplacements) {
                   message = replaceUrls(message, replacementMap);
+                }
+
+                if (smsSurveyConfig) {
+                  const timeoutAt = new Date(
+                    Date.now() + SURVEY_TIMEOUT_HOURS * 60 * 60 * 1000,
+                  );
+
+                  await prisma.surveyEnrollment.upsert({
+                    where: {
+                      surveyId_contactId_campaignId: {
+                        surveyId: smsSurveyConfig.surveyId,
+                        contactId: recipient.contact.id,
+                        campaignId: campaign.id,
+                      },
+                    },
+                    create: {
+                      surveyId: smsSurveyConfig.surveyId,
+                      contactId: recipient.contact.id,
+                      workspaceId: campaign.workspaceId,
+                      campaignId: campaign.id,
+                      channel: "sms",
+                      status: "in_progress",
+                      currentStep: 1,
+                      lastMessageAt: new Date(),
+                      timeoutAt,
+                    },
+                    update: {
+                      status: "in_progress",
+                      currentStep: 1,
+                      lastMessageAt: new Date(),
+                      timeoutAt,
+                      retryCount: 0,
+                    },
+                  });
+
+                  message = formatFirstQuestionSms(
+                    message,
+                    smsSurveyConfig.firstQuestion,
+                    smsSurveyConfig.totalQuestions,
+                  );
                 }
 
                 if (campaign.unsubscribeLink && appUrl && !isLocal) {

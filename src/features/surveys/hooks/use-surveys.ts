@@ -65,6 +65,35 @@ export const useDeleteSurvey = () => {
   );
 };
 
+export const useTemplates = () => {
+  const trpc = useTRPC();
+  return useQuery(trpc.surveys.getTemplates.queryOptions());
+};
+
+export const useSaveAsTemplate = () => {
+  const trpc = useTRPC();
+  const qc = useQueryClient();
+  return useMutation(
+    trpc.surveys.saveAsTemplate.mutationOptions({
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: trpc.surveys.getTemplates.queryKey() });
+      },
+    }),
+  );
+};
+
+export const useCreateFromTemplate = () => {
+  const trpc = useTRPC();
+  const qc = useQueryClient();
+  return useMutation(
+    trpc.surveys.createFromTemplate.mutationOptions({
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: trpc.surveys.getSurveys.queryKey() });
+      },
+    }),
+  );
+};
+
 // ─── Question CRUD ──────────────────────────────────────
 
 export const useAddQuestion = () => {
@@ -155,4 +184,20 @@ export const useScoreDistribution = (surveyId: string | null) => {
     ...trpc.surveys.getScoreDistribution.queryOptions({ surveyId: surveyId ?? "" }),
     enabled: !!surveyId,
   });
+};
+
+export const useNpsTrend = (
+  surveyId?: string,
+  workspaceId?: string,
+  days?: number,
+) => {
+  const trpc = useTRPC();
+  return useQuery(
+    trpc.surveys.getNpsTrend.queryOptions({ surveyId, workspaceId, days }),
+  );
+};
+
+export const useLocationNps = (surveyId?: string, days?: number) => {
+  const trpc = useTRPC();
+  return useQuery(trpc.surveys.getLocationNps.queryOptions({ surveyId, days }));
 };

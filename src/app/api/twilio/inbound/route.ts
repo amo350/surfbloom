@@ -181,16 +181,75 @@ export async function POST(req: NextRequest) {
       body || "",
     );
     if (surveyResult.handled) {
+      const surveyRoomId = await findOrCreateSmsRoom(
+        workspaceId,
+        surveyContact.id,
+        workspaceDomainId ?? undefined,
+      );
+
+      await prisma.smsMessage
+        .upsert({
+          where: { twilioSid: messageSid },
+          update: {
+            workspaceId,
+            chatRoomId: surveyRoomId,
+            direction: "inbound",
+            from,
+            to,
+            body: body || "",
+            mediaUrl,
+            status: "DELIVERED",
+          },
+          create: {
+            workspaceId,
+            chatRoomId: surveyRoomId,
+            direction: "inbound",
+            from,
+            to,
+            body: body || "",
+            mediaUrl,
+            twilioSid: messageSid,
+            status: "DELIVERED",
+          },
+        })
+        .catch(() => {});
+
       if (surveyResult.replyMessage) {
-        await sendSms({
+        const surveyReply = await sendSms({
           userId: workspaceUserId,
           to: from,
           from: to,
           body: surveyResult.replyMessage,
         }).catch((err) => {
           console.error("[Inbound SMS] Survey reply send failed:", err);
+          return null;
         });
+
+        if (surveyReply?.sid) {
+          await prisma.smsMessage
+            .create({
+              data: {
+                workspaceId,
+                chatRoomId: surveyRoomId,
+                direction: "outbound",
+                from: to,
+                to: from,
+                body: surveyResult.replyMessage,
+                twilioSid: surveyReply.sid,
+                status: "SENT",
+              },
+            })
+            .catch(() => {});
+        }
       }
+
+      await prisma.chatRoom
+        .update({
+          where: { id: surveyRoomId },
+          data: { updatedAt: new Date() },
+        })
+        .catch(() => {});
+
       return NextResponse.json({ success: true, handled: true, survey: true });
     }
 
@@ -423,4 +482,35 @@ export async function POST(req: NextRequest) {
       headers: { "Content-Type": "text/xml" },
     });
   }
+}
+
+async function findOrCreateSmsRoom(
+  workspaceId: string,
+  contactId: string,
+  domainId?: string,
+): Promise<string> {
+  const existing = await prisma.chatRoom.findFirst({
+    where: {
+      workspaceId,
+      contactId,
+      channel: "sms",
+    },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return existing.id;
+  }
+
+  const room = await prisma.chatRoom.create({
+    data: {
+      workspaceId,
+      contactId,
+      domainId,
+      channel: "sms",
+    },
+    select: { id: true },
+  });
+
+  return room.id;
 }

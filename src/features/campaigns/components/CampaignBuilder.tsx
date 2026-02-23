@@ -177,11 +177,10 @@ export function CampaignBuilder({
   const hasSurveyToken = messageTemplate.includes("{survey_link}");
 
   useEffect(() => {
-    if (!hasSurveyToken) return;
     if (surveyOptions.length === 0 && surveyId) {
       setSurveyId("");
     }
-  }, [hasSurveyToken, surveyId, surveyOptions.length]);
+  }, [surveyId, surveyOptions.length]);
 
   const { data: audiencePreview } = useAudiencePreview({
     workspaceId: primaryWorkspaceId,
@@ -250,10 +249,7 @@ export function CampaignBuilder({
       }),
       templateId: channel === "sms" ? templateId : emailTemplateId,
       segmentId,
-      surveyId:
-        channel === "sms" && messageTemplate.includes("{survey_link}")
-          ? surveyId || undefined
-          : undefined,
+      surveyId: channel === "sms" ? surveyId || undefined : undefined,
       variantB: enableAB ? variantB.trim() : undefined,
       variantSplit: enableAB ? variantSplit : undefined,
       audienceType: audienceType as any,
@@ -769,7 +765,7 @@ export function CampaignBuilder({
                 </div>
               </div>
 
-              {hasSurveyToken && (
+              {channel === "sms" && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">
                     Survey
@@ -805,8 +801,19 @@ export function CampaignBuilder({
                   <p className="text-[11px] text-muted-foreground">
                     {surveyOptions.length === 0
                       ? "Create and activate a survey first, then select it here."
-                      : `Required when using {"{survey_link}"}.`}
+                      : hasSurveyToken
+                        ? `Required when using {"{survey_link}"}.`
+                        : "Optional: attach a survey to turn this campaign into an SMS survey flow."}
                   </p>
+                  {channel === "sms" && surveyId && (
+                    <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
+                      <p className="text-xs text-blue-700">
+                        Your message will be sent as the intro, followed by the
+                        first survey question. Replies automatically advance
+                        through the survey.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

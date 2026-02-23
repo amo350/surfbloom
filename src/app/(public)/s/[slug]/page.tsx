@@ -12,6 +12,11 @@ type SurveyQuestion = {
   text: string;
   required: boolean;
   options: unknown;
+  displayCondition?: {
+    questionId: string;
+    operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "in";
+    value: number | string | string[];
+  } | null;
 };
 
 type SurveyData = {
@@ -39,6 +44,90 @@ type CompletionResult = {
   reviewRedirect: string | null;
 };
 
+type AnsweredResponse = {
+  answerNumber?: number | null;
+  answerChoice?: string | null;
+  answerText?: string | null;
+};
+
+function shouldShowQuestion(
+  question: SurveyQuestion,
+  answeredResponses: Map<string, AnsweredResponse>,
+): boolean {
+  if (!question.displayCondition) return true;
+
+  const { questionId, operator, value } = question.displayCondition;
+  const answer = answeredResponses.get(questionId);
+  if (!answer) return false;
+
+  const answerValue = answer.answerNumber ?? answer.answerChoice ?? answer.answerText;
+  if (answerValue == null) return false;
+
+  const answerNumber =
+    typeof answerValue === "number"
+      ? answerValue
+      : Number.isFinite(Number(answerValue))
+        ? Number(answerValue)
+        : null;
+  const conditionNumber =
+    typeof value === "number"
+      ? value
+      : Number.isFinite(Number(value))
+        ? Number(value)
+        : null;
+
+  switch (operator) {
+    case "eq":
+      return answerValue == (value as number | string);
+    case "neq":
+      return answerValue != (value as number | string);
+    case "gt":
+      return answerNumber != null && conditionNumber != null
+        ? answerNumber > conditionNumber
+        : false;
+    case "gte":
+      return answerNumber != null && conditionNumber != null
+        ? answerNumber >= conditionNumber
+        : false;
+    case "lt":
+      return answerNumber != null && conditionNumber != null
+        ? answerNumber < conditionNumber
+        : false;
+    case "lte":
+      return answerNumber != null && conditionNumber != null
+        ? answerNumber <= conditionNumber
+        : false;
+    case "in":
+      return Array.isArray(value) && value.includes(String(answerValue));
+    default:
+      return true;
+  }
+}
+
+function getEligibleQuestionIndexes(
+  questions: SurveyQuestion[],
+  answeredResponses: Map<string, AnsweredResponse>,
+): number[] {
+  return questions
+    .map((question, index) =>
+      shouldShowQuestion(question, answeredResponses) ? index : -1,
+    )
+    .filter((index) => index >= 0);
+}
+
+function getNextEligibleQuestionIndex(
+  questions: SurveyQuestion[],
+  currentIndex: number,
+  answeredResponses: Map<string, AnsweredResponse>,
+): number | null {
+  for (let i = currentIndex + 1; i < questions.length; i++) {
+    if (shouldShowQuestion(questions[i], answeredResponses)) {
+      return i;
+    }
+  }
+  return null;
+}
+
 export default function PublicSurveyPage() {
   const { slug } = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
@@ -58,6 +147,9 @@ export default function PublicSurveyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [completion, setCompletion] = useState<CompletionResult | null>(null);
+  const [answeredResponses, setAnsweredResponses] = useState<
+    Map<string, AnsweredResponse>
+  >(new Map());
 
   const [freeTextDraft, setFreeTextDraft] = useState("");
 
@@ -79,6 +171,10 @@ export default function PublicSurveyPage() {
         const json = await res.json();
         setSurvey(json.survey);
         setWorkspace(json.workspace ?? null);
+        setCurrentIndex(0);
+        setAnsweredResponses(new Map());
+        setCompletion(null);
+        setEnrollmentId(null);
       } catch (err) {
         console.error("[PublicSurveyPage] Failed to load survey", err);
         setSurveyError("Unable to load survey right now.");
@@ -90,11 +186,35 @@ export default function PublicSurveyPage() {
     run();
   }, [slug, workspaceId]);
 
+  useEffect(() => {
+    if (!survey || completion) return;
+    const currentQuestion = survey.questions[currentIndex];
+    if (!currentQuestion || shouldShowQuestion(currentQuestion, answeredResponses)) {
+      return;
+    }
+    const nextEligible = getNextEligibleQuestionIndex(
+      survey.questions,
+      currentIndex - 1,
+      answeredResponses,
+    );
+    if (nextEligible != null) {
+      setCurrentIndex(nextEligible);
+    }
+  }, [survey, completion, currentIndex, answeredResponses]);
+
   const question = survey?.questions[currentIndex] ?? null;
+  const eligibleIndexes = useMemo(
+    () => (survey ? getEligibleQuestionIndexes(survey.questions, answeredResponses) : []),
+    [survey, answeredResponses],
+  );
+  const eligiblePosition = useMemo(
+    () => Math.max(0, eligibleIndexes.indexOf(currentIndex)),
+    [eligibleIndexes, currentIndex],
+  );
   const progress = useMemo(() => {
-    if (!survey || survey.questions.length === 0) return 0;
-    return ((currentIndex + 1) / survey.questions.length) * 100;
-  }, [survey, currentIndex]);
+    if (eligibleIndexes.length === 0) return 0;
+    return ((eligiblePosition + 1) / eligibleIndexes.length) * 100;
+  }, [eligibleIndexes, eligiblePosition]);
 
   const isInvalidLink = !isPreview && (!contactId || !workspaceId);
 
@@ -105,10 +225,21 @@ export default function PublicSurveyPage() {
     answerChoice?: string | null;
   }) => {
     if (!survey) return;
+    const nextResponses = new Map(answeredResponses);
+    nextResponses.set(payload.questionId, {
+      answerNumber: payload.answerNumber,
+      answerChoice: payload.answerChoice,
+      answerText: payload.answerText,
+    });
 
     if (isPreview) {
-      const lastQuestion = currentIndex >= survey.questions.length - 1;
-      if (lastQuestion) {
+      setAnsweredResponses(nextResponses);
+      const nextQuestionIndex = getNextEligibleQuestionIndex(
+        survey.questions,
+        currentIndex,
+        nextResponses,
+      );
+      if (nextQuestionIndex == null) {
         setCompletion({
           success: true,
           score: null,
@@ -116,7 +247,7 @@ export default function PublicSurveyPage() {
           reviewRedirect: null,
         });
       } else {
-        setCurrentIndex((i) => i + 1);
+        setCurrentIndex(nextQuestionIndex);
         setFreeTextDraft("");
       }
       return;
@@ -146,8 +277,13 @@ export default function PublicSurveyPage() {
         setEnrollmentId(data.enrollmentId);
       }
 
-      const lastQuestion = currentIndex >= survey.questions.length - 1;
-      if (lastQuestion) {
+      setAnsweredResponses(nextResponses);
+      const nextQuestionIndex = getNextEligibleQuestionIndex(
+        survey.questions,
+        currentIndex,
+        nextResponses,
+      );
+      if (nextQuestionIndex == null) {
         const completeRes = await fetch(`/api/surveys/${survey.slug}/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -162,7 +298,7 @@ export default function PublicSurveyPage() {
         const completionData = (await completeRes.json()) as CompletionResult;
         setCompletion(completionData);
       } else {
-        setCurrentIndex((i) => i + 1);
+        setCurrentIndex(nextQuestionIndex);
         setFreeTextDraft("");
       }
     } catch (err) {
@@ -384,7 +520,7 @@ export default function PublicSurveyPage() {
             />
           </div>
           <p className="mt-1.5 text-[11px] text-slate-600">
-            Question {currentIndex + 1} of {survey.questions.length}
+            Question {eligiblePosition + 1} of {Math.max(eligibleIndexes.length, 1)}
           </p>
         </div>
 

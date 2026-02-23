@@ -10,7 +10,11 @@ import {
   CheckSquare,
   AlignLeft,
   ThumbsUp,
+  GitBranch,
 } from "lucide-react";
+import type { DraggableAttributes } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -68,6 +72,7 @@ interface QuestionCardProps {
     text: string;
     required: boolean;
     options: string[] | null;
+    displayCondition?: unknown;
   };
   isFirst: boolean;
   isLast: boolean;
@@ -76,6 +81,10 @@ interface QuestionCardProps {
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  dragHandleProps?: {
+    attributes: DraggableAttributes;
+    listeners: Record<string, Function> | undefined;
+  };
 }
 
 export function QuestionCard({
@@ -87,6 +96,7 @@ export function QuestionCard({
   onDelete,
   onMoveUp,
   onMoveDown,
+  dragHandleProps,
 }: QuestionCardProps) {
   const config = TYPE_CONFIG[question.type] || TYPE_CONFIG.free_text;
   const options = question.options as string[] | null;
@@ -95,7 +105,11 @@ export function QuestionCard({
     <div className="border rounded-lg bg-white hover:shadow-sm transition-shadow group">
       <div className="px-4 py-3 flex items-start gap-3">
         {/* Order badge */}
-        <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
+        <div
+          className="flex flex-col items-center gap-1 shrink-0 pt-0.5"
+          {...(dragHandleProps?.attributes || {})}
+          {...(dragHandleProps?.listeners || {})}
+        >
           <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted/40 text-xs font-bold text-muted-foreground">
             {question.order}
           </div>
@@ -136,6 +150,12 @@ export function QuestionCard({
               {config.icon}
               {config.label}
             </span>
+            {Boolean(question.displayCondition) && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-600">
+                <GitBranch className="h-2.5 w-2.5" />
+                Conditional
+              </span>
+            )}
 
             {question.required && (
               <span className="text-[10px] text-red-400 font-medium">
@@ -205,6 +225,35 @@ export function QuestionCard({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface SortableQuestionCardProps extends QuestionCardProps {
+  id: string;
+}
+
+export function SortableQuestionCard({
+  id,
+  ...props
+}: SortableQuestionCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className={isDragging ? "z-20" : undefined}>
+      <QuestionCard
+        {...props}
+        dragHandleProps={{
+          attributes,
+          listeners,
+        }}
+      />
     </div>
   );
 }
