@@ -765,57 +765,55 @@ export function CampaignBuilder({
                 </div>
               </div>
 
-              {channel === "sms" && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    Survey
-                  </label>
-                  <Select
-                    value={surveyId}
-                    onValueChange={setSurveyId}
-                    disabled={surveyOptions.length === 0}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue
-                        placeholder={
-                          surveyOptions.length === 0
-                            ? "No active surveys"
-                            : "Select a survey..."
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {surveyOptions.length === 0 ? (
-                        <SelectItem value="__none" disabled>
-                          No active surveys
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Survey
+                </label>
+                <Select
+                  value={surveyId}
+                  onValueChange={setSurveyId}
+                  disabled={surveyOptions.length === 0}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue
+                      placeholder={
+                        surveyOptions.length === 0
+                          ? "No active surveys"
+                          : "Select a survey..."
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {surveyOptions.length === 0 ? (
+                      <SelectItem value="__none" disabled>
+                        No active surveys
+                      </SelectItem>
+                    ) : (
+                      surveyOptions.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
                         </SelectItem>
-                      ) : (
-                        surveyOptions.map((s: any) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-muted-foreground">
-                    {surveyOptions.length === 0
-                      ? "Create and activate a survey first, then select it here."
-                      : hasSurveyToken
-                        ? `Required when using {"{survey_link}"}.`
-                        : "Optional: attach a survey to turn this campaign into an SMS survey flow."}
-                  </p>
-                  {channel === "sms" && surveyId && (
-                    <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
-                      <p className="text-xs text-blue-700">
-                        Your message will be sent as the intro, followed by the
-                        first survey question. Replies automatically advance
-                        through the survey.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  {surveyOptions.length === 0
+                    ? "Create and activate a survey first, then select it here."
+                    : hasSurveyToken
+                      ? `Required when using {"{survey_link}"}.`
+                      : "Optional: attach a survey to turn this campaign into an SMS survey flow."}
+                </p>
+                {surveyId && (
+                  <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
+                    <p className="text-xs text-blue-700">
+                      Your message will be sent as the intro, followed by the
+                      first survey question. Replies automatically advance
+                      through the survey.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               {/* A/B toggle */}
               <div className="border-t pt-4">

@@ -133,13 +133,28 @@ export function QuestionEditor({
       return;
     }
 
+    const inConditionValues =
+      condition?.operator === "in"
+        ? (Array.isArray(condition.value)
+            ? condition.value
+            : String(condition?.value ?? "")
+                .split(",")
+                .map((v) => v.trim())
+                .filter(Boolean))
+        : null;
+
     if (hasCondition) {
       const conditionQuestionId = condition?.questionId?.trim() || "";
       if (!conditionQuestionId) {
         toast.error("Pick a question for the display condition");
         return;
       }
-      if (condition?.value == null || condition.value === "") {
+      if (
+        condition?.value == null ||
+        condition.value === "" ||
+        (condition?.operator === "in" &&
+          (!inConditionValues || inConditionValues.length === 0))
+      ) {
         toast.error("Enter a value for the display condition");
         return;
       }
@@ -152,12 +167,7 @@ export function QuestionEditor({
             operator: condition.operator,
             value:
               condition.operator === "in"
-                ? Array.isArray(condition.value)
-                  ? condition.value
-                  : String(condition.value)
-                      .split(",")
-                      .map((v) => v.trim())
-                      .filter(Boolean)
+                ? inConditionValues ?? []
                 : condition.value,
           }
         : null;

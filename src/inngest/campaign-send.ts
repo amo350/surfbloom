@@ -708,38 +708,6 @@ export const sendCampaign = inngest.createFunction(
                 }
 
                 if (smsSurveyConfig) {
-                  const timeoutAt = new Date(
-                    Date.now() + SURVEY_TIMEOUT_HOURS * 60 * 60 * 1000,
-                  );
-
-                  await prisma.surveyEnrollment.upsert({
-                    where: {
-                      surveyId_contactId_campaignId: {
-                        surveyId: smsSurveyConfig.surveyId,
-                        contactId: recipient.contact.id,
-                        campaignId: campaign.id,
-                      },
-                    },
-                    create: {
-                      surveyId: smsSurveyConfig.surveyId,
-                      contactId: recipient.contact.id,
-                      workspaceId: campaign.workspaceId,
-                      campaignId: campaign.id,
-                      channel: "sms",
-                      status: "in_progress",
-                      currentStep: 1,
-                      lastMessageAt: new Date(),
-                      timeoutAt,
-                    },
-                    update: {
-                      status: "in_progress",
-                      currentStep: 1,
-                      lastMessageAt: new Date(),
-                      timeoutAt,
-                      retryCount: 0,
-                    },
-                  });
-
                   message = formatFirstQuestionSms(
                     message,
                     smsSurveyConfig.firstQuestion,
@@ -759,6 +727,41 @@ export const sendCampaign = inngest.createFunction(
                   body: message,
                   statusCallback: statusCallbackUrl,
                 });
+
+                if (smsSurveyConfig) {
+                  const timeoutAt = new Date(
+                    Date.now() + SURVEY_TIMEOUT_HOURS * 60 * 60 * 1000,
+                  );
+                  const now = new Date();
+
+                  await prisma.surveyEnrollment.upsert({
+                    where: {
+                      surveyId_contactId_campaignId: {
+                        surveyId: smsSurveyConfig.surveyId,
+                        contactId: recipient.contact.id,
+                        campaignId: campaign.id,
+                      },
+                    },
+                    create: {
+                      surveyId: smsSurveyConfig.surveyId,
+                      contactId: recipient.contact.id,
+                      workspaceId: campaign.workspaceId,
+                      campaignId: campaign.id,
+                      channel: "sms",
+                      status: "in_progress",
+                      currentStep: 1,
+                      lastMessageAt: now,
+                      timeoutAt,
+                    },
+                    update: {
+                      status: "in_progress",
+                      currentStep: 1,
+                      lastMessageAt: now,
+                      timeoutAt,
+                      retryCount: 0,
+                    },
+                  });
+                }
 
                 const smsMessage = await prisma.smsMessage.create({
                   data: {

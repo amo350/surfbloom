@@ -12,7 +12,10 @@ import {
   ThumbsUp,
   GitBranch,
 } from "lucide-react";
-import type { DraggableAttributes } from "@dnd-kit/core";
+import type {
+  DraggableAttributes,
+  DraggableSyntheticListeners,
+} from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
@@ -83,7 +86,7 @@ interface QuestionCardProps {
   onMoveDown: () => void;
   dragHandleProps?: {
     attributes: DraggableAttributes;
-    listeners: Record<string, Function> | undefined;
+    listeners: DraggableSyntheticListeners | undefined;
   };
 }
 

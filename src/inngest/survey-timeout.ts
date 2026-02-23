@@ -45,7 +45,7 @@ export const surveyTimeoutCheck = inngest.createFunction(
 
     const allToClose = [...timedOut, ...optedOut];
     if (allToClose.length === 0) {
-      return { timedOut: 0, optedOut: 0 };
+      return { timedOut: 0, optedOut: 0, closed: 0 };
     }
 
     const uniqueToClose = Array.from(
@@ -53,24 +53,25 @@ export const surveyTimeoutCheck = inngest.createFunction(
     );
 
     await step.run("mark-timed-out", async () => {
-      await prisma.surveyEnrollment.updateMany({
-        where: {
-          id: { in: uniqueToClose.map((enrollment) => enrollment.id) },
-        },
-        data: {
-          status: "timed_out",
-          timeoutAt: null,
-        },
-      });
-
-      await prisma.activity.createMany({
-        data: uniqueToClose.map((enrollment) => ({
-          contactId: enrollment.contactId,
-          workspaceId: enrollment.workspaceId,
-          type: "survey_timed_out",
-          description: "SMS survey timed out - no response",
-        })),
-      });
+      await prisma.$transaction([
+        prisma.surveyEnrollment.updateMany({
+          where: {
+            id: { in: uniqueToClose.map((enrollment) => enrollment.id) },
+          },
+          data: {
+            status: "timed_out",
+            timeoutAt: null,
+          },
+        }),
+        prisma.activity.createMany({
+          data: uniqueToClose.map((enrollment) => ({
+            contactId: enrollment.contactId,
+            workspaceId: enrollment.workspaceId,
+            type: "survey_timed_out",
+            description: "SMS survey timed out - no response",
+          })),
+        }),
+      ]);
     });
 
     return {

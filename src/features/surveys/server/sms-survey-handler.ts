@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  evaluateDisplayCondition,
+  parseDisplayCondition,
+} from "@/features/surveys/shared/display-conditions";
 
 interface SurveyHandlerResult {
   handled: boolean;
@@ -12,12 +16,6 @@ interface ParseResult {
   answerNumber?: number;
   answerChoice?: string;
   nudgeMessage?: string;
-}
-
-interface DisplayCondition {
-  questionId: string;
-  operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "in";
-  value: number | string | string[];
 }
 
 type SurveyQuestionForFlow = {
@@ -255,97 +253,14 @@ function shouldShowQuestion(
   const condition = parseDisplayCondition(question.displayCondition);
   if (!condition) return true;
 
-  return evaluateDisplayCondition(condition, { responses });
-}
-
-function parseDisplayCondition(raw: unknown): DisplayCondition | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return null;
-  }
-
-  const maybe = raw as Record<string, unknown>;
-  const questionId =
-    typeof maybe.questionId === "string" ? maybe.questionId.trim() : "";
-  const operator =
-    typeof maybe.operator === "string" ? maybe.operator.trim() : "";
-  const value = maybe.value;
-
-  const validOperators = new Set(["eq", "neq", "gt", "gte", "lt", "lte", "in"]);
-  if (!questionId || !validOperators.has(operator)) {
-    return null;
-  }
-
-  if (operator === "in") {
-    if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
-      return null;
-    }
-  } else if (typeof value !== "number" && typeof value !== "string") {
-    return null;
-  }
-
-  return {
-    questionId,
-    operator: operator as DisplayCondition["operator"],
-    value: value as DisplayCondition["value"],
-  };
-}
-
-function evaluateDisplayCondition(
-  condition: DisplayCondition | null,
-  enrollment: { responses: SurveyResponseForFlow[] },
-): boolean {
-  if (!condition) return true;
-
-  const { questionId, operator, value } = condition;
-  const response = enrollment.responses.find((r) => r.questionId === questionId);
-
+  const response = responses.find((r) => r.questionId === condition.questionId);
   if (!response) return false;
 
-  const answerValue =
-    response.answerNumber ?? response.answerChoice ?? response.answerText;
-  if (answerValue == null) return false;
-
-  const answerNumber = toNumber(answerValue);
-  const conditionNumber = toNumber(value);
-
-  switch (operator) {
-    case "eq":
-      // Use loose equality to allow numeric/string comparisons.
-      return answerValue == (value as number | string);
-    case "neq":
-      return answerValue != (value as number | string);
-    case "gt":
-      return answerNumber != null && conditionNumber != null
-        ? answerNumber > conditionNumber
-        : false;
-    case "gte":
-      return answerNumber != null && conditionNumber != null
-        ? answerNumber >= conditionNumber
-        : false;
-    case "lt":
-      return answerNumber != null && conditionNumber != null
-        ? answerNumber < conditionNumber
-        : false;
-    case "lte":
-      return answerNumber != null && conditionNumber != null
-        ? answerNumber <= conditionNumber
-        : false;
-    case "in":
-      return Array.isArray(value) && value.includes(String(answerValue));
-    default:
-      return true;
-  }
-}
-
-function toNumber(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
+  return evaluateDisplayCondition(condition, {
+    answerNumber: response.answerNumber,
+    answerChoice: response.answerChoice,
+    answerText: response.answerText,
+  });
 }
 
 function parseResponse(

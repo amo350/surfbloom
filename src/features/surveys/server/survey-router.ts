@@ -94,8 +94,6 @@ function isTemplateQuestion(value: unknown): value is TemplateQuestion {
   );
 }
 
-const prismaSurveyTemplate = (prisma as unknown as { surveyTemplate: any }).surveyTemplate;
-
 export const surveyRouter = createTRPCRouter({
   getSurveys: protectedProcedure
     .input(
@@ -358,7 +356,7 @@ export const surveyRouter = createTRPCRouter({
         displayCondition: q.displayCondition,
       }));
 
-      return prismaSurveyTemplate.create({
+      return prisma.surveyTemplate.create({
         data: {
           createdBy: ctx.auth.user.id,
           name: input.name,
@@ -369,7 +367,7 @@ export const surveyRouter = createTRPCRouter({
     }),
 
   getTemplates: protectedProcedure.query(async ({ ctx }) => {
-    return prismaSurveyTemplate.findMany({
+    return prisma.surveyTemplate.findMany({
       where: { createdBy: ctx.auth.user.id },
       orderBy: { createdAt: "desc" },
       select: {
@@ -390,7 +388,7 @@ export const surveyRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const template = await prismaSurveyTemplate.findFirst({
+      const template = await prisma.surveyTemplate.findFirst({
         where: { id: input.templateId, createdBy: ctx.auth.user.id },
       });
 
@@ -414,32 +412,45 @@ export const surveyRouter = createTRPCRouter({
 
       if (questions.length > 0) {
         const sourceToNewId = new Map<string, string>();
-        const createdQuestionIds: string[] = [];
+        await prisma.surveyQuestion.createMany({
+          data: questions.map((q, index) => ({
+            surveyId: survey.id,
+            order: index + 1,
+            type: q.type,
+            text: q.text,
+            required: q.required ?? true,
+            options:
+              q.options == null
+                ? Prisma.JsonNull
+                : (q.options as Prisma.InputJsonValue),
+            displayCondition: Prisma.JsonNull,
+          })),
+        });
+
+        const createdQuestions = await prisma.surveyQuestion.findMany({
+          where: { surveyId: survey.id },
+          select: { id: true, order: true },
+          orderBy: { order: "asc" },
+        });
+
+        const createdIdByOrder = new Map(
+          createdQuestions.map((question) => [question.order, question.id]),
+        );
+        const createdQuestionIds = questions.map((_, index) =>
+          createdIdByOrder.get(index + 1),
+        );
 
         for (const [index, q] of questions.entries()) {
-          const created = await prisma.surveyQuestion.create({
-            data: {
-              surveyId: survey.id,
-              order: index + 1,
-              type: q.type,
-              text: q.text,
-              required: q.required ?? true,
-              options:
-                q.options == null
-                  ? Prisma.JsonNull
-                  : (q.options as Prisma.InputJsonValue),
-              displayCondition: Prisma.JsonNull,
-            },
-            select: { id: true },
-          });
-
-          createdQuestionIds.push(created.id);
+          const createdId = createdQuestionIds[index];
+          if (!createdId) continue;
           if (q.sourceQuestionId) {
-            sourceToNewId.set(q.sourceQuestionId, created.id);
+            sourceToNewId.set(q.sourceQuestionId, createdId);
           }
         }
 
         for (const [index, q] of questions.entries()) {
+          const createdId = createdQuestionIds[index];
+          if (!createdId) continue;
           const parsedCondition = displayConditionSchema.safeParse(q.displayCondition);
           if (!parsedCondition.success) continue;
 
@@ -447,7 +458,7 @@ export const surveyRouter = createTRPCRouter({
           if (!mappedQuestionId) continue;
 
           await prisma.surveyQuestion.update({
-            where: { id: createdQuestionIds[index] },
+            where: { id: createdId },
             data: {
               displayCondition: {
                 ...parsedCondition.data,
@@ -464,7 +475,7 @@ export const surveyRouter = createTRPCRouter({
   deleteTemplate: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const template = await prismaSurveyTemplate.findUnique({
+      const template = await prisma.surveyTemplate.findUnique({
         where: { id: input.id },
         select: { createdBy: true },
       });
@@ -477,7 +488,7 @@ export const surveyRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      return prismaSurveyTemplate.delete({ where: { id: input.id } });
+      return prisma.surveyTemplate.delete({ where: { id: input.id } });
     }),
 
   addQuestion: protectedProcedure
@@ -1025,7 +1036,8 @@ export const surveyRouter = createTRPCRouter({
         const d = new Date(enrollment.completedAt);
         const day = d.getDay();
         const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(d.setDate(diff));
+        const monday = new Date(d);
+        monday.setDate(diff);
         const weekKey = monday.toISOString().slice(0, 10);
 
         const bucket = weeks.get(weekKey) || {
@@ -1189,8 +1201,17 @@ export const surveyRouter = createTRPCRouter({
         })
         .join("\n\n");
 
+      const anthropicApiKey = process.env.ANTHROPIC_API_KEY?.trim();
+      if (!anthropicApiKey) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            "Missing ANTHROPIC_API_KEY. Set this environment variable to enable response summaries.",
+        });
+      }
+
       const { default: Anthropic } = await import("@anthropic-ai/sdk");
-      const client = new Anthropic();
+      const client = new Anthropic({ apiKey: anthropicApiKey });
 
       const message = await client.messages.create({
         model: "claude-sonnet-4-20250514",
