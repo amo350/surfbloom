@@ -25,6 +25,7 @@ export function ReviewReceivedDialog({
   onSubmit,
   defaultValues,
 }: ReviewReceivedDialogProps) {
+  const [rangeError, setRangeError] = useState<string | null>(null);
   const [minRating, setMinRating] = useState(
     defaultValues?.minRating?.toString() || "",
   );
@@ -34,6 +35,7 @@ export function ReviewReceivedDialog({
 
   useEffect(() => {
     if (open) {
+      setRangeError(null);
       setMinRating(defaultValues?.minRating?.toString() || "");
       setMaxRating(defaultValues?.maxRating?.toString() || "");
     }
@@ -42,16 +44,27 @@ export function ReviewReceivedDialog({
   const handleSave = () => {
     const parsedMin = minRating.trim() ? Number(minRating) : undefined;
     const parsedMax = maxRating.trim() ? Number(maxRating) : undefined;
+    const normalizedMin =
+      parsedMin != null && Number.isFinite(parsedMin)
+        ? Math.max(1, Math.min(5, parsedMin))
+        : undefined;
+    const normalizedMax =
+      parsedMax != null && Number.isFinite(parsedMax)
+        ? Math.max(1, Math.min(5, parsedMax))
+        : undefined;
+
+    if (
+      normalizedMin != null &&
+      normalizedMax != null &&
+      normalizedMin > normalizedMax
+    ) {
+      setRangeError("Min rating must be less than or equal to max rating.");
+      return;
+    }
 
     onSubmit({
-      minRating:
-        parsedMin != null && Number.isFinite(parsedMin)
-          ? Math.max(1, Math.min(5, parsedMin))
-          : undefined,
-      maxRating:
-        parsedMax != null && Number.isFinite(parsedMax)
-          ? Math.max(1, Math.min(5, parsedMax))
-          : undefined,
+      minRating: normalizedMin,
+      maxRating: normalizedMax,
     });
     onOpenChange(false);
   };
@@ -66,30 +79,45 @@ export function ReviewReceivedDialog({
         <div className="space-y-3 py-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Min rating (1-5)</Label>
+              <Label htmlFor="review-received-min-rating" className="text-xs">
+                Min rating (1-5)
+              </Label>
               <Input
+                id="review-received-min-rating"
                 type="number"
                 min={1}
                 max={5}
                 value={minRating}
-                onChange={(e) => setMinRating(e.target.value)}
+                onChange={(e) => {
+                  setRangeError(null);
+                  setMinRating(e.target.value);
+                }}
                 placeholder="1"
                 className="h-9"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Max rating (1-5)</Label>
+              <Label htmlFor="review-received-max-rating" className="text-xs">
+                Max rating (1-5)
+              </Label>
               <Input
+                id="review-received-max-rating"
                 type="number"
                 min={1}
                 max={5}
                 value={maxRating}
-                onChange={(e) => setMaxRating(e.target.value)}
+                onChange={(e) => {
+                  setRangeError(null);
+                  setMaxRating(e.target.value);
+                }}
                 placeholder="5"
                 className="h-9"
               />
             </div>
           </div>
+          {rangeError && (
+            <p className="text-[10px] text-destructive">{rangeError}</p>
+          )}
 
           <p className="text-[10px] text-muted-foreground">
             Leave both empty to fire on every new review.

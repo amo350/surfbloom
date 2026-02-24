@@ -564,7 +564,7 @@ function ReviewTaskAction({
                     style={{ backgroundColor: task.column?.color ?? "#6B7280" }}
                   />
                   <span className="text-xs font-mono text-muted-foreground">
-                    #{task.taskNumber}
+                    {task.taskNumber > 0 ? `#${task.taskNumber}` : "#-"}
                   </span>
                   <span className="text-sm truncate">{task.name}</span>
                 </CommandItem>

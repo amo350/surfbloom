@@ -10,7 +10,7 @@ interface TriggerPayload {
 
 interface TriggerOptions {
   /** Which trigger node type to match */
-  triggerType: string;
+  triggerType: NodeType;
 
   /** Data passed into the workflow as initialData / context */
   payload: TriggerPayload;
@@ -50,7 +50,7 @@ export async function fireWorkflowTrigger({
     // directly, because the trigger type lives on the node.
     const triggerNodes = await prisma.node.findMany({
       where: {
-        type: triggerType as NodeType,
+        type: triggerType,
         workflow: {
           workspaceId: payload.workspaceId,
           active: true,
@@ -114,7 +114,7 @@ export async function fireWorkflowTrigger({
  * - No filter = fire for all
  */
 function matchesTriggerFilter(
-  triggerType: string,
+  triggerType: NodeType,
   nodeData: Record<string, unknown>,
   payload: TriggerPayload,
 ): boolean {
@@ -129,6 +129,9 @@ function matchesTriggerFilter(
       const minRating = nodeData.minRating as number | undefined;
       const maxRating = nodeData.maxRating as number | undefined;
       const rating = payload.rating as number | undefined;
+      if ((minRating != null || maxRating != null) && rating == null) {
+        return false;
+      }
       if (rating != null && minRating != null && rating < minRating)
         return false;
       if (rating != null && maxRating != null && rating > maxRating)

@@ -1,11 +1,7 @@
 import type { NodeExecutor } from "@/features/nodes/types";
 import { categoryAddedChannel } from "./channel";
 
-interface CategoryAddedData {
-  categoryName?: string;
-}
-
-export const categoryAddedExecutor: NodeExecutor<CategoryAddedData> = async ({
+export const categoryAddedExecutor: NodeExecutor = async ({
   nodeId,
   context,
   step,
@@ -14,6 +10,7 @@ export const categoryAddedExecutor: NodeExecutor<CategoryAddedData> = async ({
   await publish(categoryAddedChannel().status({ nodeId, status: "loading" }));
 
   try {
+    // Keep this in step.run for durable observability in Inngest traces.
     const result = await step.run("category-added-trigger", async () => {
       const safeContext = context as Record<string, unknown>;
       return {

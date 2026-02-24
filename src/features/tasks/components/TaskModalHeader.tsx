@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
 type TaskModalHeaderProps = {
-  taskNumber: number;
+  taskNumber: number | null;
   title: string;
   statusColor: string;
   creatorEmail: string;
@@ -62,7 +62,9 @@ export const TaskModalHeader = ({
       </div>
 
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span className="font-mono">#{taskNumber}</span>
+        <span className="font-mono">
+          {taskNumber != null && taskNumber > 0 ? `#${taskNumber}` : "#-"}
+        </span>
         <Separator orientation="vertical" className="h-4" />
         <span>@{creatorTag}</span>
       </div>

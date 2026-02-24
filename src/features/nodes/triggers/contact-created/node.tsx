@@ -7,7 +7,12 @@ import { memo, useState } from "react";
 import { BaseTriggerNode } from "@/features/nodes/components/BaseTriggerNode";
 import { useNodeStatus } from "@/features/nodes/hooks/use-node-status";
 import { fetchContactCreatedRealtimeToken } from "./actions";
+import { CONTACT_CREATED_CHANNEL_NAME } from "./channel";
 import { ContactCreatedDialog } from "./dialog";
+
+interface ContactCreatedNodeData {
+  source?: string;
+}
 
 export const ContactCreatedNode = memo(
   (props: NodeProps) => {
@@ -28,12 +33,12 @@ export const ContactCreatedNode = memo(
 
     const nodeStatus = useNodeStatus({
       nodeId: props.id,
-      channel: "contact-created-trigger",
+      channel: CONTACT_CREATED_CHANNEL_NAME,
       topic: "status",
       refreshToken: fetchContactCreatedRealtimeToken,
     });
 
-    const nodeData = props.data;
+    const nodeData = props.data as ContactCreatedNodeData | undefined;
     const description = nodeData?.source
       ? `Source: ${nodeData.source}`
       : "Any source";

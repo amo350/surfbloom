@@ -75,6 +75,8 @@ const SOURCES = [
   "review_campaign",
 ] as const;
 
+const CONTACT_TRIGGER_BATCH_THRESHOLD = 20;
+
 export const contactsRouter = createTRPCRouter({
   getContacts: protectedProcedure
     .input(
@@ -306,10 +308,6 @@ export const contactsRouter = createTRPCRouter({
           workspaceId: input.workspaceId,
           contactId: contact.id,
           source: contact.source,
-          firstName: contact.firstName,
-          lastName: contact.lastName,
-          email: contact.email,
-          phone: contact.phone,
           stage: contact.stage,
         },
       }).catch(() => {});
@@ -363,10 +361,6 @@ export const contactsRouter = createTRPCRouter({
           workspaceId: contact.workspaceId,
           contactId: contact.id,
           source: contact.source,
-          firstName: contact.firstName,
-          lastName: contact.lastName,
-          email: contact.email,
-          phone: contact.phone,
           stage: contact.stage,
         },
       }).catch(() => {});
@@ -926,8 +920,11 @@ export const contactsRouter = createTRPCRouter({
         ).catch((err) => console.error("Sequence auto-enroll error:", err));
       }
 
+      const workflowsSkipped = newContacts.length > CONTACT_TRIGGER_BATCH_THRESHOLD;
+      const workflowsSkippedCount = workflowsSkipped ? newContacts.length : 0;
+
       // Avoid flooding workflow events for very large CSV imports.
-      if (newContacts.length <= 20) {
+      if (!workflowsSkipped) {
         for (const createdContact of newContacts) {
           fireWorkflowTrigger({
             triggerType: "CONTACT_CREATED",
@@ -935,14 +932,14 @@ export const contactsRouter = createTRPCRouter({
               workspaceId: createdContact.workspaceId,
               contactId: createdContact.id,
               source: createdContact.source,
-              firstName: createdContact.firstName,
-              lastName: createdContact.lastName,
-              email: createdContact.email,
-              phone: createdContact.phone,
               stage: createdContact.stage,
             },
           }).catch(() => {});
         }
+      } else if (newContacts.length > 0) {
+        console.warn(
+          `[contacts.batchCreate] Skipped CONTACT_CREATED triggers for ${newContacts.length} contacts (threshold: ${CONTACT_TRIGGER_BATCH_THRESHOLD})`,
+        );
       }
 
       return {
@@ -950,6 +947,8 @@ export const contactsRouter = createTRPCRouter({
         skipped: skipped.length,
         skippedPhones: skipped,
         total: input.contacts.length,
+        workflowsSkipped,
+        workflowsSkippedCount,
       };
     }),
 

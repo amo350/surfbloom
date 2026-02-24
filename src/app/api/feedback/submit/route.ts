@@ -220,9 +220,6 @@ export async function POST(req: NextRequest) {
           contactId,
           rating,
           message,
-          contactName: name,
-          contactEmail: email,
-          contactPhone: phone,
         },
       }).catch(() => {});
     }

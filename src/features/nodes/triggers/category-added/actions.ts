@@ -1,7 +1,7 @@
 "use server";
 
-import { getSubscriptionToken, Realtime } from "@inngest/realtime";
-import { inngest } from "@/inngest/client";
+import { Realtime } from "@inngest/realtime";
+import { createTriggerActions } from "@/features/nodes/triggers/lib/create-trigger-actions";
 import { categoryAddedChannel } from "./channel";
 
 export type CategoryAddedToken = Realtime.Token<
@@ -9,10 +9,7 @@ export type CategoryAddedToken = Realtime.Token<
   ["status"]
 >;
 
-export async function fetchCategoryAddedRealtimeToken(): Promise<CategoryAddedToken> {
-  const token = await getSubscriptionToken(inngest, {
-    channel: categoryAddedChannel(),
-    topics: ["status"],
-  });
-  return token;
-}
+const { fetchRealtimeToken } = createTriggerActions(categoryAddedChannel);
+
+export const fetchCategoryAddedRealtimeToken =
+  fetchRealtimeToken as () => Promise<CategoryAddedToken>;

@@ -5,10 +5,17 @@ import { MemberRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 
+// Keep this list small and explicit; expand as teams normalize column names.
+const COMPLETED_COLUMN_NAMES = ["complete", "completed", "done", "finished", "closed"];
+const COMPLETED_COLUMN_PATTERN = new RegExp(
+  `\\b(?:${COMPLETED_COLUMN_NAMES.join("|")})\\b`,
+  "i",
+);
+
 function isCompletedColumnName(name: string | null | undefined): boolean {
   if (!name) return false;
   const normalized = name.trim().toLowerCase();
-  return normalized === "completed" || normalized === "done";
+  return COMPLETED_COLUMN_PATTERN.test(normalized);
 }
 
 export const tasksRouter = createTRPCRouter({
@@ -285,12 +292,12 @@ export const tasksRouter = createTRPCRouter({
           fireWorkflowTrigger({
             triggerType: "TASK_COMPLETED",
             payload: {
-              workspaceId: existingTask.workspaceId,
-              contactId: existingTask.contactId || undefined,
-              taskId: existingTask.id,
-              taskName: existingTask.name,
-              assigneeId: existingTask.assigneeId,
-              reviewId: existingTask.reviewId || undefined,
+              workspaceId: updatedTask.workspaceId,
+              contactId: updatedTask.contactId || undefined,
+              taskId: updatedTask.id,
+              taskName: updatedTask.name,
+              assigneeId: updatedTask.assigneeId,
+              reviewId: updatedTask.reviewId || undefined,
             },
           }).catch(() => {});
         }

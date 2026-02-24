@@ -508,7 +508,7 @@ export async function POST(req: NextRequest) {
         payload: {
           workspaceId,
           contactId,
-          messageBody: body,
+          messageBody: body || "",
           fromPhone: from,
         },
       }).catch(() => {});

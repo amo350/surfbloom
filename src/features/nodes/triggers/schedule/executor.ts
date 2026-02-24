@@ -21,11 +21,29 @@ export const scheduleExecutor: NodeExecutor<ScheduleData> = async ({
   try {
     const result = await step.run("schedule-trigger", async () => {
       const safeContext = context as Record<string, unknown>;
+      const rawTimestamp = safeContext.timestamp;
+      let firedAt = new Date().toISOString();
+
+      if (
+        typeof rawTimestamp === "string" ||
+        typeof rawTimestamp === "number" ||
+        rawTimestamp instanceof Date
+      ) {
+        const parsedTimestamp = new Date(rawTimestamp);
+        if (!Number.isNaN(parsedTimestamp.getTime())) {
+          firedAt = parsedTimestamp.toISOString();
+        }
+      }
+
       return {
         ...safeContext,
         schedule: {
           frequency: data.frequency,
-          firedAt: safeContext.timestamp || new Date().toISOString(),
+          hour: data.hour,
+          minute: data.minute,
+          dayOfWeek: data.dayOfWeek,
+          dayOfMonth: data.dayOfMonth,
+          firedAt,
         },
       };
     });

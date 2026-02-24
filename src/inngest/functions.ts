@@ -157,6 +157,7 @@ export const executeWorkflow = inngest.createFunction(
         });
 
         const nodeStartedAt = new Date();
+        let nodeCompletedAt = nodeStartedAt;
         let branch: string | undefined;
 
         try {
@@ -168,6 +169,7 @@ export const executeWorkflow = inngest.createFunction(
             step,
             publish,
           });
+          nodeCompletedAt = new Date();
 
           branch = getBranch(context);
           if (branch) {
@@ -245,7 +247,8 @@ export const executeWorkflow = inngest.createFunction(
                 status: "success",
                 startedAt: nodeStartedAt,
                 completedAt: new Date(),
-                durationMs: Date.now() - nodeStartedAt.getTime(),
+                durationMs:
+                  nodeCompletedAt.getTime() - nodeStartedAt.getTime(),
                 outputSummary: buildOutputSummary(
                   String(node.type),
                   context,

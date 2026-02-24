@@ -141,7 +141,7 @@ export async function POST(
                 "Responses:",
                 responseSummary || "-",
               ]
-                .filter(Boolean)
+                .filter((value) => value != null)
                 .join("\n"),
               taskNumber: (lastTask?.taskNumber ?? 0) + 1,
               position: (highestTask?.position ?? 0) + 1000,

@@ -1,7 +1,7 @@
 "use server";
 
-import { getSubscriptionToken, Realtime } from "@inngest/realtime";
-import { inngest } from "@/inngest/client";
+import { Realtime } from "@inngest/realtime";
+import { createTriggerActions } from "@/features/nodes/triggers/lib/create-trigger-actions";
 import { contactCreatedChannel } from "./channel";
 
 export type ContactCreatedToken = Realtime.Token<
@@ -9,10 +9,7 @@ export type ContactCreatedToken = Realtime.Token<
   ["status"]
 >;
 
-export async function fetchContactCreatedRealtimeToken(): Promise<ContactCreatedToken> {
-  const token = await getSubscriptionToken(inngest, {
-    channel: contactCreatedChannel(),
-    topics: ["status"],
-  });
-  return token;
-}
+const { fetchRealtimeToken } = createTriggerActions(contactCreatedChannel);
+
+export const fetchContactCreatedRealtimeToken =
+  fetchRealtimeToken as () => Promise<ContactCreatedToken>;
