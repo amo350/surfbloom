@@ -47,6 +47,7 @@ const OPERATORS: ConditionOperator[] = [
 ];
 
 const NO_VALUE_OPERATORS: ConditionOperator[] = ["exists", "not_exists"];
+const NUMERIC_OPERATORS: ConditionOperator[] = ["gt", "gte", "lt", "lte"];
 
 export function IfElseDialog({
   open,
@@ -62,6 +63,7 @@ export function IfElseDialog({
     existing?.operator || "eq",
   );
   const [value, setValue] = useState(existing?.value?.toString() || "");
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -69,6 +71,7 @@ export function IfElseDialog({
       setField(existing?.field || "");
       setOperator(existing?.operator || "eq");
       setValue(existing?.value?.toString() || "");
+      setValidationError(null);
     }
   }, [open, existing]);
 
@@ -83,12 +86,32 @@ export function IfElseDialog({
   };
 
   const handleSave = () => {
-    const isNumeric = ["gt", "gte", "lt", "lte"].includes(operator);
-    const parsedValue = NO_VALUE_OPERATORS.includes(operator)
+    const trimmedValue = value.trim();
+    const isCategoryField = field === "_categories";
+    const needsValue =
+      isCategoryField || !NO_VALUE_OPERATORS.includes(operator);
+
+    if (needsValue && trimmedValue.length === 0) {
+      setValidationError("Value is required for this condition.");
+      return;
+    }
+
+    const isNumeric = NUMERIC_OPERATORS.includes(operator);
+    if (isNumeric) {
+      const numericValue = Number(trimmedValue);
+      if (trimmedValue.length === 0 || !Number.isFinite(numericValue)) {
+        setValidationError("Value must be a valid number for this operator.");
+        return;
+      }
+    }
+
+    const parsedValue = !needsValue
       ? undefined
       : isNumeric
-        ? parseFloat(value) || 0
-        : value;
+        ? Number(trimmedValue)
+        : trimmedValue;
+
+    setValidationError(null);
 
     onSubmit({
       condition: {
@@ -101,7 +124,8 @@ export function IfElseDialog({
     onOpenChange(false);
   };
 
-  const needsValue = !NO_VALUE_OPERATORS.includes(operator);
+  const needsValue =
+    field === "_categories" || !NO_VALUE_OPERATORS.includes(operator);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,6 +214,9 @@ export function IfElseDialog({
                 <p className="text-[10px] text-muted-foreground">
                   Comma-separated list of values
                 </p>
+              )}
+              {validationError && (
+                <p className="text-[10px] text-red-500">{validationError}</p>
               )}
             </div>
           )}

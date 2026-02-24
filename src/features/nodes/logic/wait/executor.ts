@@ -22,9 +22,18 @@ export const waitExecutor: NodeExecutor<WaitData> = async ({
   await publish(waitChannel().status({ nodeId, status: "loading" }));
 
   try {
-    const amount = data.amount || 1;
+    const amount = data.amount ?? 1;
     const unit = data.unit || "hours";
-    const multiplier = UNIT_TO_SECONDS[unit] || 3600;
+
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+      throw new Error("Wait amount must be a finite number greater than 0");
+    }
+
+    const multiplier = UNIT_TO_SECONDS[unit];
+    if (!multiplier) {
+      throw new Error(`Unsupported wait unit: ${unit}`);
+    }
+
     const totalSeconds = amount * multiplier;
 
     const result = await step.run("wait-compute", async () => {
