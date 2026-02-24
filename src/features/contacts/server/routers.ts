@@ -2,11 +2,12 @@
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { fireWorkflowTrigger } from "@/features/nodes/lib/trigger-dispatcher";
 import {
   autoEnrollOnContactCreated,
   autoEnrollOnStageChange,
 } from "@/features/sequences/server/auto-enroll";
+import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { DEFAULT_STAGES } from "./default-stages";
 import { logActivity } from "./log-activity";
@@ -299,6 +300,19 @@ export const contactsRouter = createTRPCRouter({
       autoEnrollOnContactCreated(input.workspaceId, contact.id).catch((err) =>
         console.error("Sequence auto-enroll error:", err),
       );
+      fireWorkflowTrigger({
+        triggerType: "CONTACT_CREATED",
+        payload: {
+          workspaceId: input.workspaceId,
+          contactId: contact.id,
+          source: contact.source,
+          firstName: contact.firstName,
+          lastName: contact.lastName,
+          email: contact.email,
+          phone: contact.phone,
+          stage: contact.stage,
+        },
+      }).catch(() => {});
 
       return contact;
     }),
@@ -343,6 +357,19 @@ export const contactsRouter = createTRPCRouter({
       autoEnrollOnContactCreated(contact.workspaceId, contact.id).catch((err) =>
         console.error("Sequence auto-enroll error:", err),
       );
+      fireWorkflowTrigger({
+        triggerType: "CONTACT_CREATED",
+        payload: {
+          workspaceId: contact.workspaceId,
+          contactId: contact.id,
+          source: contact.source,
+          firstName: contact.firstName,
+          lastName: contact.lastName,
+          email: contact.email,
+          phone: contact.phone,
+          stage: contact.stage,
+        },
+      }).catch(() => {});
 
       return contact;
     }),
@@ -416,6 +443,16 @@ export const contactsRouter = createTRPCRouter({
         autoEnrollOnStageChange(current.workspaceId, id, input.stage).catch(
           (err) => console.error("Sequence auto-enroll error:", err),
         );
+
+        fireWorkflowTrigger({
+          triggerType: "STAGE_CHANGED",
+          payload: {
+            workspaceId: current.workspaceId,
+            contactId: id,
+            previousStage: current.stage,
+            newStage: input.stage,
+          },
+        }).catch(() => {});
       }
 
       return contact;
@@ -500,13 +537,42 @@ export const contactsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await verifyContactAccess(ctx.auth.user.id, input.contactId);
-      return prisma.contactCategory.create({
+      const contact = await verifyContactAccess(
+        ctx.auth.user.id,
+        input.contactId,
+      );
+      const category = await prisma.category.findFirst({
+        where: {
+          id: input.categoryId,
+          workspaceId: contact.workspaceId,
+        },
+        select: { name: true },
+      });
+      if (!category) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Category does not belong to this workspace.",
+        });
+      }
+
+      const created = await prisma.contactCategory.create({
         data: {
           contactId: input.contactId,
           categoryId: input.categoryId,
         },
       });
+
+      fireWorkflowTrigger({
+        triggerType: "CATEGORY_ADDED",
+        payload: {
+          workspaceId: contact.workspaceId,
+          contactId: input.contactId,
+          categoryId: input.categoryId,
+          categoryName: category.name,
+        },
+      }).catch(() => {});
+
+      return created;
     }),
 
   removeCategoryFromContact: protectedProcedure
@@ -809,7 +875,16 @@ export const contactsRouter = createTRPCRouter({
       }
 
       let created = 0;
-      let newContacts: { id: string; workspaceId: string }[] = [];
+      let newContacts: {
+        id: string;
+        workspaceId: string;
+        source: string;
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
+        phone: string | null;
+        stage: string;
+      }[] = [];
 
       if (toCreate.length > 0) {
         // Use transaction to get IDs back
@@ -817,7 +892,16 @@ export const contactsRouter = createTRPCRouter({
           toCreate.map((data) =>
             prisma.chatContact.create({
               data,
-              select: { id: true, workspaceId: true },
+              select: {
+                id: true,
+                workspaceId: true,
+                source: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                stage: true,
+              },
             }),
           ),
         );
@@ -840,6 +924,25 @@ export const contactsRouter = createTRPCRouter({
           createdContact.workspaceId,
           createdContact.id,
         ).catch((err) => console.error("Sequence auto-enroll error:", err));
+      }
+
+      // Avoid flooding workflow events for very large CSV imports.
+      if (newContacts.length <= 20) {
+        for (const createdContact of newContacts) {
+          fireWorkflowTrigger({
+            triggerType: "CONTACT_CREATED",
+            payload: {
+              workspaceId: createdContact.workspaceId,
+              contactId: createdContact.id,
+              source: createdContact.source,
+              firstName: createdContact.firstName,
+              lastName: createdContact.lastName,
+              email: createdContact.email,
+              phone: createdContact.phone,
+              stage: createdContact.stage,
+            },
+          }).catch(() => {});
+        }
       }
 
       return {

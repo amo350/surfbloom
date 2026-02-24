@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { logActivity } from "@/features/contacts/server/log-activity";
+import { fireWorkflowTrigger } from "@/features/nodes/lib/trigger-dispatcher";
 import { sendMail } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
 
@@ -211,6 +212,19 @@ export async function POST(req: NextRequest) {
         description: `Submitted feedback${message ? `: "${message.slice(0, 60)}${message.length > 60 ? "..." : ""}"` : ""}`,
         metadata: { rating: rating ?? undefined },
       });
+
+      fireWorkflowTrigger({
+        triggerType: "FEEDBACK_SUBMITTED",
+        payload: {
+          workspaceId,
+          contactId,
+          rating,
+          message,
+          contactName: name,
+          contactEmail: email,
+          contactPhone: phone,
+        },
+      }).catch(() => {});
     }
 
     // 5) Email notification to owner/admins

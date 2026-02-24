@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { fireWorkflowTrigger } from "@/features/nodes/lib/trigger-dispatcher";
 import { prisma } from "@/lib/prisma";
 
 const completeBodySchema = z.object({
@@ -41,7 +42,9 @@ export async function POST(
   let didComplete = false;
 
   if (enrollment.status !== "completed") {
-    const npsResponse = enrollment.responses.find((r) => r.question.type === "nps");
+    const npsResponse = enrollment.responses.find(
+      (r) => r.question.type === "nps",
+    );
     if (npsResponse?.answerNumber != null) {
       score = npsResponse.answerNumber;
     } else {
@@ -92,59 +95,62 @@ export async function POST(
 
       const responseSummary = enrollment.responses
         .map((r) => {
-          const answer = r.answerNumber ?? r.answerChoice ?? r.answerText ?? "-";
+          const answer =
+            r.answerNumber ?? r.answerChoice ?? r.answerText ?? "-";
           return `${r.question.text}: ${answer}`;
         })
         .join("\n");
 
-      await prisma.$transaction(async (tx) => {
-        const defaultColumn = await tx.taskColumn.findFirst({
-          where: { workspaceId: enrollment.workspaceId },
-          orderBy: { position: "asc" },
-          select: { id: true },
-        });
-
-        if (!defaultColumn) {
-          return;
-        }
-
-        const [lastTask, highestTask] = await Promise.all([
-          tx.task.findFirst({
+      await prisma
+        .$transaction(async (tx) => {
+          const defaultColumn = await tx.taskColumn.findFirst({
             where: { workspaceId: enrollment.workspaceId },
-            orderBy: { taskNumber: "desc" },
-            select: { taskNumber: true },
-          }),
-          tx.task.findFirst({
-            where: {
+            orderBy: { position: "asc" },
+            select: { id: true },
+          });
+
+          if (!defaultColumn) {
+            return;
+          }
+
+          const [lastTask, highestTask] = await Promise.all([
+            tx.task.findFirst({
+              where: { workspaceId: enrollment.workspaceId },
+              orderBy: { taskNumber: "desc" },
+              select: { taskNumber: true },
+            }),
+            tx.task.findFirst({
+              where: {
+                workspaceId: enrollment.workspaceId,
+                columnId: defaultColumn.id,
+              },
+              orderBy: { position: "desc" },
+              select: { position: true },
+            }),
+          ]);
+
+          await tx.task.create({
+            data: {
               workspaceId: enrollment.workspaceId,
               columnId: defaultColumn.id,
+              name: `Low survey score from ${contactName}${score != null ? ` (${score.toFixed(1)}/10)` : ""}`,
+              description: [
+                `Survey: ${enrollment.survey.name}`,
+                score != null ? `Score: ${score.toFixed(1)}/10` : null,
+                "",
+                "Responses:",
+                responseSummary || "-",
+              ]
+                .filter(Boolean)
+                .join("\n"),
+              taskNumber: (lastTask?.taskNumber ?? 0) + 1,
+              position: (highestTask?.position ?? 0) + 1000,
+              assigneeId: enrollment.survey.taskAssigneeId || null,
+              contactId: enrollment.contactId,
             },
-            orderBy: { position: "desc" },
-            select: { position: true },
-          }),
-        ]);
-
-        await tx.task.create({
-          data: {
-            workspaceId: enrollment.workspaceId,
-            columnId: defaultColumn.id,
-            name: `Low survey score from ${contactName}${score != null ? ` (${score.toFixed(1)}/10)` : ""}`,
-            description: [
-              `Survey: ${enrollment.survey.name}`,
-              score != null ? `Score: ${score.toFixed(1)}/10` : null,
-              "",
-              "Responses:",
-              responseSummary || "-",
-            ]
-              .filter(Boolean)
-              .join("\n"),
-            taskNumber: (lastTask?.taskNumber ?? 0) + 1,
-            position: (highestTask?.position ?? 0) + 1000,
-            assigneeId: enrollment.survey.taskAssigneeId || null,
-            contactId: enrollment.contactId,
-          },
-        });
-      }).catch(() => {});
+          });
+        })
+        .catch(() => {});
     }
 
     await prisma.activity
@@ -157,6 +163,18 @@ export async function POST(
         },
       })
       .catch(() => {});
+
+    fireWorkflowTrigger({
+      triggerType: "SURVEY_COMPLETED",
+      payload: {
+        workspaceId: enrollment.workspaceId,
+        contactId: enrollment.contactId,
+        surveyId: enrollment.surveyId,
+        score,
+        npsCategory,
+        channel: enrollment.channel,
+      },
+    }).catch(() => {});
   }
 
   let reviewRedirect: string | null = null;

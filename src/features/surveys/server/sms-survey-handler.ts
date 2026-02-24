@@ -1,8 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import { fireWorkflowTrigger } from "@/features/nodes/lib/trigger-dispatcher";
 import {
   evaluateDisplayCondition,
   parseDisplayCondition,
 } from "@/features/surveys/shared/display-conditions";
+import { prisma } from "@/lib/prisma";
 
 interface SurveyHandlerResult {
   handled: boolean;
@@ -92,7 +93,9 @@ export async function handleSurveyResponse(
       return completeSurvey(enrollment.id);
     }
 
-    const timeoutAt = new Date(Date.now() + DEFAULT_TIMEOUT_HOURS * 60 * 60 * 1000);
+    const timeoutAt = new Date(
+      Date.now() + DEFAULT_TIMEOUT_HOURS * 60 * 60 * 1000,
+    );
 
     await prisma.surveyEnrollment.update({
       where: { id: enrollment.id },
@@ -109,7 +112,9 @@ export async function handleSurveyResponse(
     };
   }
 
-  const currentQuestion = questions.find((q) => q.order === enrollment.currentStep);
+  const currentQuestion = questions.find(
+    (q) => q.order === enrollment.currentStep,
+  );
   if (!currentQuestion) {
     return advanceToNextQuestion(
       enrollment.id,
@@ -211,13 +216,19 @@ async function advanceToNextQuestion(
   currentStep: number,
   responses: SurveyResponseForFlow[],
 ): Promise<SurveyHandlerResult> {
-  const nextQuestion = getNextDisplayableQuestion(questions, currentStep, responses);
+  const nextQuestion = getNextDisplayableQuestion(
+    questions,
+    currentStep,
+    responses,
+  );
 
   if (!nextQuestion) {
     return completeSurvey(enrollmentId);
   }
 
-  const timeoutAt = new Date(Date.now() + DEFAULT_TIMEOUT_HOURS * 60 * 60 * 1000);
+  const timeoutAt = new Date(
+    Date.now() + DEFAULT_TIMEOUT_HOURS * 60 * 60 * 1000,
+  );
   await prisma.surveyEnrollment.update({
     where: { id: enrollmentId },
     data: {
@@ -304,11 +315,17 @@ function parseResponse(
       }
 
       const numIndex = parseInt(body, 10) - 1;
-      if (!Number.isNaN(numIndex) && numIndex >= 0 && numIndex < options.length) {
+      if (
+        !Number.isNaN(numIndex) &&
+        numIndex >= 0 &&
+        numIndex < options.length
+      ) {
         return { valid: true, answerChoice: options[numIndex] };
       }
 
-      const exactMatch = options.find((opt) => opt.toLowerCase() === normalized);
+      const exactMatch = options.find(
+        (opt) => opt.toLowerCase() === normalized,
+      );
       if (exactMatch) {
         return { valid: true, answerChoice: exactMatch };
       }
@@ -383,7 +400,9 @@ function formatQuestionAsSms(
   return text;
 }
 
-async function completeSurvey(enrollmentId: string): Promise<SurveyHandlerResult> {
+async function completeSurvey(
+  enrollmentId: string,
+): Promise<SurveyHandlerResult> {
   const enrollment = await prisma.surveyEnrollment.findUnique({
     where: { id: enrollmentId },
     include: {
@@ -402,14 +421,17 @@ async function completeSurvey(enrollmentId: string): Promise<SurveyHandlerResult
   let score: number | null = null;
   let npsCategory: string | null = null;
 
-  const npsResponse = enrollment.responses.find((r) => r.question.type === "nps");
+  const npsResponse = enrollment.responses.find(
+    (r) => r.question.type === "nps",
+  );
   if (npsResponse?.answerNumber != null) {
     score = npsResponse.answerNumber;
   } else {
     const numeric = enrollment.responses.filter((r) => r.answerNumber != null);
     if (numeric.length > 0) {
       score =
-        numeric.reduce((sum, r) => sum + (r.answerNumber ?? 0), 0) / numeric.length;
+        numeric.reduce((sum, r) => sum + (r.answerNumber ?? 0), 0) /
+        numeric.length;
     }
   }
 
@@ -446,55 +468,57 @@ async function completeSurvey(enrollmentId: string): Promise<SurveyHandlerResult
       })
       .join("\n");
 
-    await prisma.$transaction(async (tx) => {
-      const defaultColumn = await tx.taskColumn.findFirst({
-        where: { workspaceId: enrollment.workspaceId },
-        orderBy: { position: "asc" },
-        select: { id: true },
-      });
-
-      if (!defaultColumn) {
-        return;
-      }
-
-      const [lastTask, highestTask] = await Promise.all([
-        tx.task.findFirst({
+    await prisma
+      .$transaction(async (tx) => {
+        const defaultColumn = await tx.taskColumn.findFirst({
           where: { workspaceId: enrollment.workspaceId },
-          orderBy: { taskNumber: "desc" },
-          select: { taskNumber: true },
-        }),
-        tx.task.findFirst({
-          where: {
+          orderBy: { position: "asc" },
+          select: { id: true },
+        });
+
+        if (!defaultColumn) {
+          return;
+        }
+
+        const [lastTask, highestTask] = await Promise.all([
+          tx.task.findFirst({
+            where: { workspaceId: enrollment.workspaceId },
+            orderBy: { taskNumber: "desc" },
+            select: { taskNumber: true },
+          }),
+          tx.task.findFirst({
+            where: {
+              workspaceId: enrollment.workspaceId,
+              columnId: defaultColumn.id,
+            },
+            orderBy: { position: "desc" },
+            select: { position: true },
+          }),
+        ]);
+
+        await tx.task.create({
+          data: {
             workspaceId: enrollment.workspaceId,
             columnId: defaultColumn.id,
+            name: `Low survey score from ${contactName}${score != null ? ` (${score.toFixed(1)}/10)` : ""}`,
+            description: [
+              `Survey: ${enrollment.survey.name}`,
+              "Channel: SMS",
+              score != null ? `Score: ${score.toFixed(1)}/10` : null,
+              "",
+              "Responses:",
+              responseSummary || "-",
+            ]
+              .filter(Boolean)
+              .join("\n"),
+            taskNumber: (lastTask?.taskNumber ?? 0) + 1,
+            position: (highestTask?.position ?? 0) + 1000,
+            assigneeId: enrollment.survey.taskAssigneeId || null,
+            contactId: enrollment.contactId,
           },
-          orderBy: { position: "desc" },
-          select: { position: true },
-        }),
-      ]);
-
-      await tx.task.create({
-        data: {
-          workspaceId: enrollment.workspaceId,
-          columnId: defaultColumn.id,
-          name: `Low survey score from ${contactName}${score != null ? ` (${score.toFixed(1)}/10)` : ""}`,
-          description: [
-            `Survey: ${enrollment.survey.name}`,
-            "Channel: SMS",
-            score != null ? `Score: ${score.toFixed(1)}/10` : null,
-            "",
-            "Responses:",
-            responseSummary || "-",
-          ]
-            .filter(Boolean)
-            .join("\n"),
-          taskNumber: (lastTask?.taskNumber ?? 0) + 1,
-          position: (highestTask?.position ?? 0) + 1000,
-          assigneeId: enrollment.survey.taskAssigneeId || null,
-          contactId: enrollment.contactId,
-        },
-      });
-    }).catch(() => {});
+        });
+      })
+      .catch(() => {});
   }
 
   await prisma.activity
@@ -508,6 +532,18 @@ async function completeSurvey(enrollmentId: string): Promise<SurveyHandlerResult
     })
     .catch(() => {});
 
+  fireWorkflowTrigger({
+    triggerType: "SURVEY_COMPLETED",
+    payload: {
+      workspaceId: enrollment.workspaceId,
+      contactId: enrollment.contactId,
+      surveyId: enrollment.surveyId,
+      score,
+      npsCategory,
+      channel: enrollment.channel,
+    },
+  }).catch(() => {});
+
   let replyMessage: string;
   if (
     score != null &&
@@ -519,7 +555,8 @@ async function completeSurvey(enrollmentId: string): Promise<SurveyHandlerResult
     replyMessage =
       "Thank you for your feedback. Our team will follow up with you shortly.";
   } else {
-    replyMessage = enrollment.survey.thankYouMessage || "Thank you for your feedback!";
+    replyMessage =
+      enrollment.survey.thankYouMessage || "Thank you for your feedback!";
   }
 
   return {

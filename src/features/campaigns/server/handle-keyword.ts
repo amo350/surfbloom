@@ -1,5 +1,4 @@
-import { prisma } from "@/lib/prisma";
-import { sendSms } from "@/lib/twilio";
+import { fireWorkflowTrigger } from "@/features/nodes/lib/trigger-dispatcher";
 import {
   autoEnrollOnContactCreated,
   autoEnrollOnKeywordJoin,
@@ -8,6 +7,8 @@ import {
   fireContactCreated,
   fireKeywordJoined,
 } from "@/features/webhooks/server/webhook-events";
+import { prisma } from "@/lib/prisma";
+import { sendSms } from "@/lib/twilio";
 
 /**
  * Check if an inbound message matches a text-to-join keyword.
@@ -34,6 +35,7 @@ export async function handleKeywordMatch(
     },
     select: {
       id: true,
+      keyword: true,
       active: true,
       autoReply: true,
       stage: true,
@@ -156,6 +158,17 @@ export async function handleKeywordMatch(
     .catch((err) => {
       console.error("Keyword counter increment failed:", err);
     });
+
+  fireWorkflowTrigger({
+    triggerType: "KEYWORD_JOINED",
+    payload: {
+      workspaceId,
+      contactId: contact.id,
+      keyword: match.keyword,
+      keywordId: match.id,
+      phone: fromPhone,
+    },
+  }).catch(() => {});
 
   return true;
 }

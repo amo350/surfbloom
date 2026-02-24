@@ -1,7 +1,8 @@
 import { NonRetriableError } from "inngest";
-import { inngest } from "./client";
+import { fireWorkflowTrigger } from "@/features/nodes/lib/trigger-dispatcher";
 import { prisma } from "@/lib/prisma";
 import { getWorkspaceData } from "@/lib/workspace-data";
+import { inngest } from "./client";
 
 export const syncReviews = inngest.createFunction(
   {
@@ -20,6 +21,18 @@ export const syncReviews = inngest.createFunction(
   { event: "workspace/sync.reviews" },
   async ({ event, step }) => {
     const { workspaceId, forceRefresh } = event.data;
+
+    // Snapshot existing reviews so we can fire only for newly inserted ones.
+    const existingGoogleReviewIds = await step.run(
+      "load-existing-review-ids",
+      async () => {
+        const existingReviews = await prisma.review.findMany({
+          where: { workspaceId },
+          select: { googleReviewId: true },
+        });
+        return existingReviews.map((review) => review.googleReviewId);
+      },
+    );
 
     // Build query from workspace data
     const query = await step.run("build-query", async () => {
@@ -48,7 +61,7 @@ export const syncReviews = inngest.createFunction(
     });
 
     // Fetch place data + upsert reviews (same path as report pipeline)
-    await step.run("sync-data", async () => {
+    const syncResult = await step.run("sync-data", async () => {
       const data = await getWorkspaceData(workspaceId, {
         query,
         reviewsLimit: 200,
@@ -65,6 +78,54 @@ export const syncReviews = inngest.createFunction(
       };
     });
 
-    return { workspaceId, success: true };
+    if (syncResult.fromCache) {
+      return {
+        workspaceId,
+        success: true,
+        fromCache: true,
+        triggeredReviews: 0,
+      };
+    }
+
+    const existingSet = new Set(existingGoogleReviewIds);
+
+    const newReviews = await step.run("find-new-reviews", async () => {
+      const candidates = await prisma.review.findMany({
+        where: {
+          workspaceId,
+        },
+        select: {
+          id: true,
+          rating: true,
+          text: true,
+          authorName: true,
+          googleReviewId: true,
+        },
+      });
+
+      return candidates.filter(
+        (review) => !existingSet.has(review.googleReviewId),
+      );
+    });
+
+    for (const review of newReviews) {
+      fireWorkflowTrigger({
+        triggerType: "REVIEW_RECEIVED",
+        payload: {
+          workspaceId,
+          reviewId: review.id,
+          rating: review.rating,
+          text: review.text,
+          authorName: review.authorName,
+        },
+      }).catch(() => {});
+    }
+
+    return {
+      workspaceId,
+      success: true,
+      fromCache: false,
+      triggeredReviews: newReviews.length,
+    };
   },
 );

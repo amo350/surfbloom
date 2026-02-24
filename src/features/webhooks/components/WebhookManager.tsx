@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   AlertTriangle,
   CheckCircle,
@@ -19,9 +18,9 @@ import {
   Webhook,
   XCircle,
 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { AppHeader, AppHeaderTitle } from "@/components/AppHeader";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   useDeleteWebhookEndpoint,
   useRotateWebhookSecret,
@@ -46,7 +46,9 @@ export function WebhookManager({ workspaceId }: { workspaceId: string }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editEndpoint, setEditEndpoint] = useState<any>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [visibleSecret, setVisibleSecret] = useState<Record<string, boolean>>({});
+  const [visibleSecret, setVisibleSecret] = useState<Record<string, boolean>>(
+    {},
+  );
   const [deliveryPage, setDeliveryPage] = useState<Record<string, number>>({});
 
   const { data: endpoints, isLoading } = useWebhookEndpoints(workspaceId);
@@ -145,7 +147,10 @@ export function WebhookManager({ workspaceId }: { workspaceId: string }) {
                 onRotateSecret={() => handleRotateSecret(ep.id)}
                 showSecret={!!visibleSecret[ep.id]}
                 onToggleSecretVisibility={() =>
-                  setVisibleSecret((prev) => ({ ...prev, [ep.id]: !prev[ep.id] }))
+                  setVisibleSecret((prev) => ({
+                    ...prev,
+                    [ep.id]: !prev[ep.id],
+                  }))
                 }
                 onCopyUrl={() => copyText(ep.url, "URL copied")}
                 onCopySecret={() => copyText(ep.secret, "Secret copied")}
@@ -230,7 +235,10 @@ function EndpointCard({
             </div>
             <div className="flex items-center gap-2 mt-1.5">
               <StatusPill active={endpoint.active} />
-              <DeliveryHealth status={endpoint.lastStatus} error={endpoint.lastError} />
+              <DeliveryHealth
+                status={endpoint.lastStatus}
+                error={endpoint.lastError}
+              />
               <span className="text-[10px] text-muted-foreground">
                 {endpoint._count?.deliveries || 0} deliveries
               </span>
@@ -238,7 +246,12 @@ function EndpointCard({
           </div>
 
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onEdit}
+            >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
             <Button
@@ -304,7 +317,12 @@ function EndpointCard({
                   <Eye className="h-3 w-3" />
                 )}
               </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onCopySecret}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={onCopySecret}
+              >
                 <Copy className="h-3 w-3" />
               </Button>
               <Button
@@ -327,7 +345,12 @@ function EndpointCard({
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
               URL
             </p>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onCopyUrl}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={onCopyUrl}
+            >
               <Copy className="h-3 w-3" />
             </Button>
           </div>
@@ -383,13 +406,15 @@ function EndpointCard({
           )}
 
           {!isLoading && deliveryData?.deliveries?.length === 0 && (
-            <p className="text-xs text-muted-foreground">No delivery attempts yet.</p>
+            <p className="text-xs text-muted-foreground">
+              No delivery attempts yet.
+            </p>
           )}
 
-          {!isLoading && deliveryData?.deliveries?.length > 0 && (
+          {!isLoading && (deliveryData?.deliveries?.length ?? 0) > 0 && (
             <>
               <div className="space-y-1.5">
-                {deliveryData.deliveries.map((d: any) => (
+                {deliveryData?.deliveries?.map((d: any) => (
                   <div
                     key={d.id}
                     className="flex items-center justify-between rounded-md border px-2.5 py-1.5"
@@ -399,11 +424,15 @@ function EndpointCard({
                       <p className="text-[10px] text-muted-foreground">
                         {new Date(d.createdAt).toLocaleString()}
                         {d.duration ? ` · ${d.duration}ms` : ""}
-                        {d.attemptCount > 1 ? ` · attempt ${d.attemptCount}` : ""}
+                        {d.attemptCount > 1
+                          ? ` · attempt ${d.attemptCount}`
+                          : ""}
                       </p>
                     </div>
                     <div className="text-right">
-                      {typeof d.status === "number" && d.status >= 200 && d.status < 300 ? (
+                      {typeof d.status === "number" &&
+                      d.status >= 200 &&
+                      d.status < 300 ? (
                         <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600">
                           <CheckCircle className="h-3 w-3" />
                           {d.status}
