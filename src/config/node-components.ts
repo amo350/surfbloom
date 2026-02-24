@@ -3,6 +3,8 @@ import { InitialNode } from "@/components/InitialNode";
 import { GeminiNode } from "@/features/nodes/gemini/node";
 import { GoogleFormTrigger } from "@/features/nodes/google-form-trigger/node";
 import { HttpRequestNode } from "@/features/nodes/http-requests/node";
+import { IfElseNode } from "@/features/nodes/logic/if-else/node";
+import { WaitNode } from "@/features/nodes/logic/wait/node";
 import { ManualTriggerNode } from "@/features/nodes/manual-trigger/node";
 import { OpenAiNode } from "@/features/nodes/openAi/node";
 import { SlackNode } from "@/features/nodes/slack/node";
@@ -26,6 +28,8 @@ export const nodeComponents = {
   [NodeType.SCHEDULE]: ScheduleNode,
   [NodeType.GEMINI]: GeminiNode,
   [NodeType.OPENAI]: OpenAiNode,
+  [NodeType.IF_ELSE]: IfElseNode,
+  [NodeType.WAIT]: WaitNode,
   [NodeType.GROK]: XAiNode,
   [NodeType.SLACK]: SlackNode,
 } as const satisfies NodeTypes;

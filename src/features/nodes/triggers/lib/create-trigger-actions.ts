@@ -1,9 +1,7 @@
-"use server";
-
 import { getSubscriptionToken, Realtime } from "@inngest/realtime";
 import { inngest } from "@/inngest/client";
 
-type TriggerChannelFactory = () => unknown;
+type TriggerChannelFactory = Realtime.Channel.Definition;
 
 export function createTriggerActions<C extends TriggerChannelFactory>(
   getChannel: C,

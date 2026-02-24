@@ -94,7 +94,7 @@ export const TaskHeader = ({
       workspaceId,
       columnId: defaultColumn.id,
       name: "Untitled task",
-      taskNumber: null,
+      taskNumber: 0,
       description: null,
       assigneeId: session.user.id,
       contactId: null,

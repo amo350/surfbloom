@@ -1,6 +1,8 @@
 import { geminiExecutor } from "@/features/nodes/gemini/executor";
 import { googleFormTriggerExecutor } from "@/features/nodes/google-form-trigger/executor";
 import { HttpRequestExecutor } from "@/features/nodes/http-requests/executor";
+import { ifElseExecutor } from "@/features/nodes/logic/if-else/executor";
+import { waitExecutor } from "@/features/nodes/logic/wait/executor";
 import { manualTriggerExecutor } from "@/features/nodes/manual-trigger/executor";
 import { openAiExecutor } from "@/features/nodes/openAi/executor";
 import { slackExecutor } from "@/features/nodes/slack/executor";
@@ -25,6 +27,8 @@ export const executorRegistry: Partial<Record<NodeType, NodeExecutor>> = {
   [NodeType.SCHEDULE]: scheduleExecutor,
   [NodeType.GEMINI]: geminiExecutor,
   [NodeType.OPENAI]: openAiExecutor,
+  [NodeType.IF_ELSE]: ifElseExecutor,
+  [NodeType.WAIT]: waitExecutor,
   // TODO: Implement these executors
   [NodeType.GROK]: xAiExecutor,
   [NodeType.SLACK]: slackExecutor,

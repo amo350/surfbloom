@@ -7,11 +7,13 @@ import { openAiChannel } from "@/features/nodes/channels/openAi";
 import { slackChannel } from "@/features/nodes/channels/slack";
 import { stripeTriggerChannel } from "@/features/nodes/channels/stripe-trigger";
 import { xAiChannel } from "@/features/nodes/channels/xAi";
+import { getExecutor } from "@/features/nodes/lib/executor-registry";
+import { ifElseChannel } from "@/features/nodes/logic/if-else/channel";
+import { waitChannel } from "@/features/nodes/logic/wait/channel";
 import { categoryAddedChannel } from "@/features/nodes/triggers/category-added/channel";
 import { contactCreatedChannel } from "@/features/nodes/triggers/contact-created/channel";
 import { reviewReceivedChannel } from "@/features/nodes/triggers/review-received/channel";
 import { scheduleChannel } from "@/features/nodes/triggers/schedule/channel";
-import { getExecutor } from "@/features/nodes/lib/executor-registry";
 import type { WorkflowContext } from "@/features/nodes/types";
 import { ExecutionStatus, NodeType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
@@ -68,6 +70,8 @@ export const executeWorkflow = inngest.createFunction(
       openAiChannel(),
       xAiChannel(),
       slackChannel(),
+      ifElseChannel(),
+      waitChannel(),
     ],
   },
   async ({ event, step, publish }) => {
@@ -247,8 +251,7 @@ export const executeWorkflow = inngest.createFunction(
                 status: "success",
                 startedAt: nodeStartedAt,
                 completedAt: new Date(),
-                durationMs:
-                  nodeCompletedAt.getTime() - nodeStartedAt.getTime(),
+                durationMs: nodeCompletedAt.getTime() - nodeStartedAt.getTime(),
                 outputSummary: buildOutputSummary(
                   String(node.type),
                   context,
@@ -257,7 +260,6 @@ export const executeWorkflow = inngest.createFunction(
               },
             });
           });
-
         } catch (nodeErr) {
           const message =
             nodeErr instanceof Error ? nodeErr.message : String(nodeErr);
