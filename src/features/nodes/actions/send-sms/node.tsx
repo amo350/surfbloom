@@ -6,6 +6,7 @@ import { memo, useState } from "react";
 import { BaseExecutionNode } from "@/features/nodes/components/BaseExecutionNode";
 import { useNodeStatus } from "@/features/nodes/hooks/use-node-status";
 import { fetchSendSmsRealtimeToken } from "./actions";
+import { SEND_SMS_CHANNEL_NAME } from "./channel";
 import { SendSmsDialog } from "./dialog";
 
 type SendSmsNodeData = { messageBody?: string };
@@ -28,7 +29,7 @@ export const SendSmsNode = memo((props: NodeProps) => {
 
   const nodeStatus = useNodeStatus({
     nodeId: props.id,
-    channel: "send-sms-execution",
+    channel: SEND_SMS_CHANNEL_NAME,
     topic: "status",
     refreshToken: fetchSendSmsRealtimeToken,
   });
@@ -51,7 +52,6 @@ export const SendSmsNode = memo((props: NodeProps) => {
       />
       <BaseExecutionNode
         {...props}
-        id={props.id}
         icon={MessageSquare}
         name="Send SMS"
         description={description}

@@ -23,7 +23,7 @@ export const waitExecutor: NodeExecutor<WaitData> = async ({
 
   try {
     const amount = data.amount ?? 1;
-    const unit = data.unit || "hours";
+    const unit = data.unit ?? "hours";
 
     if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
       throw new Error("Wait amount must be a finite number greater than 0");

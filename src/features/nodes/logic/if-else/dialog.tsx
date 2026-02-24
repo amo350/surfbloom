@@ -49,6 +49,10 @@ const OPERATORS: ConditionOperator[] = [
 const NO_VALUE_OPERATORS: ConditionOperator[] = ["exists", "not_exists"];
 const NUMERIC_OPERATORS: ConditionOperator[] = ["gt", "gte", "lt", "lte"];
 
+function needsValueFor(field: string, operator: ConditionOperator): boolean {
+  return field === "_categories" || !NO_VALUE_OPERATORS.includes(operator);
+}
+
 export function IfElseDialog({
   open,
   onOpenChange,
@@ -76,6 +80,7 @@ export function IfElseDialog({
   }, [open, existing]);
 
   const handlePresetChange = (id: string) => {
+    setValidationError(null);
     setPresetId(id);
     const preset = CONDITION_PRESETS.find((p) => p.id === id);
     if (!preset) return;
@@ -87,9 +92,7 @@ export function IfElseDialog({
 
   const handleSave = () => {
     const trimmedValue = value.trim();
-    const isCategoryField = field === "_categories";
-    const needsValue =
-      isCategoryField || !NO_VALUE_OPERATORS.includes(operator);
+    const needsValue = needsValueFor(field, operator);
 
     if (needsValue && trimmedValue.length === 0) {
       setValidationError("Value is required for this condition.");
@@ -125,7 +128,7 @@ export function IfElseDialog({
   };
 
   const needsValue =
-    field === "_categories" || !NO_VALUE_OPERATORS.includes(operator);
+    needsValueFor(field, operator);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -169,7 +172,10 @@ export function IfElseDialog({
             <Label className="text-xs">Field (context path)</Label>
             <Input
               value={field}
-              onChange={(event) => setField(event.target.value)}
+              onChange={(event) => {
+                setValidationError(null);
+                setField(event.target.value);
+              }}
               placeholder="e.g. review.rating, contact.stage"
               className="h-9 font-mono text-xs"
             />
@@ -182,7 +188,10 @@ export function IfElseDialog({
             <Label className="text-xs">Operator</Label>
             <Select
               value={operator}
-              onValueChange={(next) => setOperator(next as ConditionOperator)}
+              onValueChange={(next) => {
+                setValidationError(null);
+                setOperator(next as ConditionOperator);
+              }}
             >
               <SelectTrigger className="h-9">
                 <SelectValue />
@@ -202,7 +211,10 @@ export function IfElseDialog({
               <Label className="text-xs">Value</Label>
               <Input
                 value={value}
-                onChange={(event) => setValue(event.target.value)}
+                onChange={(event) => {
+                  setValidationError(null);
+                  setValue(event.target.value);
+                }}
                 placeholder={
                   operator === "in"
                     ? "e.g. hot,warm,new"

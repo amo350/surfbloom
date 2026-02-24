@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,13 +28,16 @@ export function SendEmailDialog({
 }: SendEmailDialogProps) {
   const [subject, setSubject] = useState(defaultValues?.subject || "");
   const [htmlBody, setHtmlBody] = useState(defaultValues?.htmlBody || "");
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (open) {
+    const isOpening = open && !wasOpenRef.current;
+    if (isOpening) {
       setSubject(defaultValues?.subject || "");
       setHtmlBody(defaultValues?.htmlBody || "");
     }
-  }, [open, defaultValues]);
+    wasOpenRef.current = open;
+  }, [open, defaultValues?.subject, defaultValues?.htmlBody]);
 
   const handleSave = () => {
     onSubmit({ subject, htmlBody });
