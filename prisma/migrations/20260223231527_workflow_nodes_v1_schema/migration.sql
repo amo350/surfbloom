@@ -61,6 +61,9 @@ ADD COLUMN     "waitingAtNodeId" TEXT;
 -- AlterTable
 ALTER TABLE "workflow" ADD COLUMN     "active" BOOLEAN NOT NULL DEFAULT false;
 
+-- Preserve existing workflows as active on upgrade.
+UPDATE "workflow" SET "active" = true;
+
 -- AlterTable
 ALTER TABLE "workspace" ADD COLUMN     "aiDailyCallLimit" INTEGER,
 ADD COLUMN     "aiMonthlyBudgetCents" INTEGER,
@@ -72,8 +75,8 @@ ADD COLUMN     "brandServices" TEXT,
 ADD COLUMN     "brandTone" TEXT,
 ADD COLUMN     "brandUsps" TEXT;
 
--- DropTable
-DROP TABLE "SurveyTemplate";
+-- Preserve SurveyTemplate data while moving to snake_case table name.
+ALTER TABLE "SurveyTemplate" RENAME TO "survey_template";
 
 -- CreateTable
 CREATE TABLE "ai_usage_log" (
@@ -93,18 +96,6 @@ CREATE TABLE "ai_usage_log" (
     CONSTRAINT "ai_usage_log_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "survey_template" (
-    "id" TEXT NOT NULL,
-    "createdBy" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "description" TEXT,
-    "questions" JSONB NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "survey_template_pkey" PRIMARY KEY ("id")
-);
-
 -- CreateIndex
 CREATE INDEX "ai_usage_log_workspaceId_idx" ON "ai_usage_log"("workspaceId");
 
@@ -113,6 +104,24 @@ CREATE INDEX "ai_usage_log_workspaceId_createdAt_idx" ON "ai_usage_log"("workspa
 
 -- CreateIndex
 CREATE INDEX "survey_template_createdBy_idx" ON "survey_template"("createdBy");
+
+-- Remove duplicate chat rooms before enforcing uniqueness.
+WITH ranked_chat_rooms AS (
+  SELECT
+    ctid,
+    ROW_NUMBER() OVER (
+      PARTITION BY "workspaceId", "contactId", "channel"
+      ORDER BY "updatedAt" DESC, "id" DESC
+    ) AS row_num
+  FROM "chat_room"
+  WHERE "contactId" IS NOT NULL
+)
+DELETE FROM "chat_room"
+WHERE ctid IN (
+  SELECT ctid
+  FROM ranked_chat_rooms
+  WHERE row_num > 1
+);
 
 -- CreateIndex
 CREATE UNIQUE INDEX "chat_room_workspaceId_contactId_channel_key" ON "chat_room"("workspaceId", "contactId", "channel");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -49,6 +49,9 @@ export function ScheduleDialog({
   onSubmit,
   defaultValues,
 }: ScheduleDialogProps) {
+  const defaultsRef = useRef(defaultValues);
+  const lastAppliedDefaultsRef = useRef<ScheduleValues | null>(null);
+
   const [frequency, setFrequency] = useState(defaultValues?.frequency || "daily");
   const [hour, setHour] = useState(defaultValues?.hour?.toString() || "9");
   const [minute, setMinute] = useState(defaultValues?.minute?.toString() || "0");
@@ -60,14 +63,38 @@ export function ScheduleDialog({
   );
 
   useEffect(() => {
-    if (open) {
-      setFrequency(defaultValues?.frequency || "daily");
-      setHour(defaultValues?.hour?.toString() || "9");
-      setMinute(defaultValues?.minute?.toString() || "0");
-      setDayOfWeek(defaultValues?.dayOfWeek?.toString() || "1");
-      setDayOfMonth(defaultValues?.dayOfMonth?.toString() || "1");
-    }
-  }, [open, defaultValues]);
+    defaultsRef.current = defaultValues;
+  }, [defaultValues]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const incomingDefaults: ScheduleValues = {
+      frequency: defaultsRef.current?.frequency,
+      hour: defaultsRef.current?.hour,
+      minute: defaultsRef.current?.minute,
+      dayOfWeek: defaultsRef.current?.dayOfWeek,
+      dayOfMonth: defaultsRef.current?.dayOfMonth,
+    };
+
+    const lastApplied = lastAppliedDefaultsRef.current;
+    const hasChanged =
+      !lastApplied ||
+      lastApplied.frequency !== incomingDefaults.frequency ||
+      lastApplied.hour !== incomingDefaults.hour ||
+      lastApplied.minute !== incomingDefaults.minute ||
+      lastApplied.dayOfWeek !== incomingDefaults.dayOfWeek ||
+      lastApplied.dayOfMonth !== incomingDefaults.dayOfMonth;
+
+    if (!hasChanged) return;
+
+    setFrequency(incomingDefaults.frequency || "daily");
+    setHour(incomingDefaults.hour?.toString() || "9");
+    setMinute(incomingDefaults.minute?.toString() || "0");
+    setDayOfWeek(incomingDefaults.dayOfWeek?.toString() || "1");
+    setDayOfMonth(incomingDefaults.dayOfMonth?.toString() || "1");
+    lastAppliedDefaultsRef.current = incomingDefaults;
+  }, [open]);
 
   const handleSave = () => {
     onSubmit({

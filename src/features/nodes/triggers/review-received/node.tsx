@@ -41,10 +41,10 @@ export const ReviewReceivedNode = memo((props: NodeProps) => {
   const description =
     nodeData?.minRating != null || nodeData?.maxRating != null
       ? `Rating ${
-          nodeData.minRating != null ? `>= ${nodeData.minRating}` : ""
+          nodeData?.minRating != null ? `>= ${nodeData.minRating}` : ""
         }${
-          nodeData.minRating != null && nodeData.maxRating != null ? ", " : ""
-        }${nodeData.maxRating != null ? `<= ${nodeData.maxRating}` : ""}`
+          nodeData?.minRating != null && nodeData?.maxRating != null ? ", " : ""
+        }${nodeData?.maxRating != null ? `<= ${nodeData.maxRating}` : ""}`
       : "Any rating";
 
   return (

@@ -17,9 +17,6 @@ CREATE TABLE "node_execution_log" (
 );
 
 -- CreateIndex
-CREATE INDEX "node_execution_log_executionId_idx" ON "node_execution_log"("executionId");
-
--- CreateIndex
 CREATE INDEX "node_execution_log_executionId_startedAt_idx" ON "node_execution_log"("executionId", "startedAt");
 
 -- AddForeignKey

@@ -30,7 +30,7 @@ export const TaskModal = ({
   );
   const updateTask = useUpdateTask();
 
-  const taskNumber = task?.taskNumber ?? 0;
+  const taskNumber = task?.taskNumber ?? null;
   const statusColor = task?.column?.color ?? "#6B7280";
   const creatorEmail = task?.assignee?.name ?? "user";
 

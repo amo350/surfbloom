@@ -1,12 +1,7 @@
 import type { NodeExecutor } from "@/features/nodes/types";
 import { reviewReceivedChannel } from "./channel";
 
-interface ReviewReceivedData {
-  minRating?: number;
-  maxRating?: number;
-}
-
-export const reviewReceivedExecutor: NodeExecutor<ReviewReceivedData> = async ({
+export const reviewReceivedExecutor: NodeExecutor = async ({
   nodeId,
   context,
   step,

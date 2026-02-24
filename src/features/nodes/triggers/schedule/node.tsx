@@ -93,7 +93,11 @@ export const ScheduleNode = memo((props: NodeProps) => {
 ScheduleNode.displayName = "ScheduleNode";
 
 function ordinal(n: number): string {
-  const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
-  return s[(v - 20) % 10] || s[v] || s[0];
+  if (v >= 11 && v <= 13) return "th";
+  const d = v % 10;
+  if (d === 1) return "st";
+  if (d === 2) return "nd";
+  if (d === 3) return "rd";
+  return "th";
 }

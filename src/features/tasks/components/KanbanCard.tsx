@@ -9,7 +9,7 @@ import { TaskActions } from "./TaskActions";
 type KanbanCardProps = {
   id: string;
   name: string;
-  taskNumber: number;
+  taskNumber: number | null;
   statusColor: string;
   creatorName: string;
   workspaceId: string;
@@ -62,7 +62,9 @@ export const KanbanCard = ({
                 <SquareIcon className="size-2 text-white" />
               )}
             </div>
-            <span className="font-mono">#{taskNumber}</span>
+            <span className="font-mono">
+              {taskNumber != null && taskNumber > 0 ? `#${taskNumber}` : "#-"}
+            </span>
             <div className="w-px h-2.5 bg-border shrink-0" />
             <span>@{creatorInitials}</span>
           </div>

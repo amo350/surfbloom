@@ -66,9 +66,11 @@ export function ContactCreatedDialog({
 
         <div className="space-y-3 py-2">
           <div className="space-y-1.5">
-            <Label className="text-xs">Filter by source (optional)</Label>
+            <Label htmlFor="contact-created-source" className="text-xs">
+              Filter by source (optional)
+            </Label>
             <Select value={source} onValueChange={setSource}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger id="contact-created-source" className="h-9">
                 <SelectValue placeholder="Any source" />
               </SelectTrigger>
               <SelectContent>

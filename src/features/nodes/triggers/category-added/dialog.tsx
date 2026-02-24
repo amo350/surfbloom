@@ -49,8 +49,11 @@ export function CategoryAddedDialog({
 
         <div className="space-y-3 py-2">
           <div className="space-y-1.5">
-            <Label className="text-xs">Category name (optional)</Label>
+            <Label htmlFor="category-added-name" className="text-xs">
+              Category name (optional)
+            </Label>
             <Input
+              id="category-added-name"
               value={categoryName}
               onChange={(e) => setCategoryName(e.target.value)}
               placeholder="e.g. no-show, promoter, vip"

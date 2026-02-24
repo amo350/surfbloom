@@ -108,18 +108,25 @@ export const syncReviews = inngest.createFunction(
       );
     });
 
-    for (const review of newReviews) {
-      fireWorkflowTrigger({
-        triggerType: "REVIEW_RECEIVED",
-        payload: {
-          workspaceId,
-          reviewId: review.id,
-          rating: review.rating,
-          text: review.text,
-          authorName: review.authorName,
-        },
-      }).catch(() => {});
-    }
+    await step.run("dispatch-review-triggers", async () => {
+      for (const review of newReviews) {
+        await fireWorkflowTrigger({
+          triggerType: "REVIEW_RECEIVED",
+          payload: {
+            workspaceId,
+            reviewId: review.id,
+            rating: review.rating,
+            text: review.text,
+            authorName: review.authorName,
+          },
+        }).catch((err) => {
+          console.error(
+            `[sync-reviews] Failed trigger dispatch for workspace ${workspaceId}, review ${review.id} (${review.authorName || "unknown"}):`,
+            err,
+          );
+        });
+      }
+    });
 
     return {
       workspaceId,

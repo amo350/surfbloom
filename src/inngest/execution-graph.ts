@@ -141,6 +141,8 @@ export function getNextNodeIds(
     return first || [];
   }
 
+  // No implicit default when multiple outputs exist: branch nodes must set
+  // `_branch`, and accidental multi-output wiring should not pick arbitrarily.
   return [];
 }
 

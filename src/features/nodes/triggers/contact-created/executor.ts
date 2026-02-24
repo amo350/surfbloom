@@ -1,11 +1,7 @@
 import type { NodeExecutor } from "@/features/nodes/types";
 import { contactCreatedChannel } from "./channel";
 
-interface ContactCreatedData {
-  source?: string;
-}
-
-export const contactCreatedExecutor: NodeExecutor<ContactCreatedData> = async ({
+export const contactCreatedExecutor: NodeExecutor = async ({
   nodeId,
   context,
   step,
