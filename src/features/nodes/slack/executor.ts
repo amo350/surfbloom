@@ -1,16 +1,8 @@
-import Handlebars from "handlebars";
 import { decode } from "html-entities";
 import { NonRetriableError } from "inngest";
-import ky from "ky";
 import { slackChannel } from "@/features/nodes/channels/slack";
+import { resolveTemplate } from "@/features/nodes/actions/lib/resolve-template";
 import type { NodeExecutor } from "@/features/nodes/types";
-
-Handlebars.registerHelper("json", (context) => {
-  const jsonString = JSON.stringify(context, null, 2);
-  const safeString = new Handlebars.SafeString(jsonString);
-
-  return safeString;
-});
 
 type SlackData = {
   variableName?: string;
@@ -63,24 +55,30 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
     throw new NonRetriableError("Slack node: Message content is missing");
   }
 
+  const webhookTemplate = data.webhookUrl;
+  const contentTemplate = data.content;
+
   try {
     const result = await step.run("slack-webhook", async () => {
-      // Compile Handlebars templates
-      const webhookUrl = Handlebars.compile(data.webhookUrl)(context);
-      const rawContent = Handlebars.compile(data.content)(context);
+      // Resolve both campaign tokens and Handlebars variables
+      const templateContext = context as Record<string, unknown>;
+      const webhookUrl = resolveTemplate(webhookTemplate, templateContext);
+      const rawContent = resolveTemplate(contentTemplate, templateContext);
       const content = decode(rawContent);
 
       // Send message to Slack webhook
-      const response = await ky.post(webhookUrl, {
-        json: {
-          content: content,
-        },
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
       });
 
       const responseText = await response.text();
+      if (!response.ok) {
+        throw new Error(
+          `Slack webhook request failed: ${response.status} ${response.statusText} ${responseText}`.trim(),
+        );
+      }
 
       return {
         status: response.status,

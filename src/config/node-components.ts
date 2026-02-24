@@ -4,6 +4,7 @@ import { CreateTaskNode } from "@/features/nodes/actions/create-task/node";
 import { SendEmailNode } from "@/features/nodes/actions/send-email/node";
 import { SendSmsNode } from "@/features/nodes/actions/send-sms/node";
 import { UpdateContactNode } from "@/features/nodes/actions/update-contact/node";
+import { AiNodeNode } from "@/features/nodes/ai/ai-node/node";
 import { GeminiNode } from "@/features/nodes/gemini/node";
 import { GoogleFormTrigger } from "@/features/nodes/google-form-trigger/node";
 import { HttpRequestNode } from "@/features/nodes/http-requests/node";
@@ -38,8 +39,10 @@ export const nodeComponents = {
   [NodeType.SEND_EMAIL]: SendEmailNode,
   [NodeType.CREATE_TASK]: CreateTaskNode,
   [NodeType.UPDATE_CONTACT]: UpdateContactNode,
+  [NodeType.AI_NODE]: AiNodeNode,
   [NodeType.GROK]: XAiNode,
   [NodeType.SLACK]: SlackNode,
+  [NodeType.POST_SLACK]: SlackNode,
 } as const satisfies NodeTypes;
 
 export type RegisteredNodeType = keyof typeof nodeComponents;

@@ -39,12 +39,23 @@ export const createTaskExecutor: NodeExecutor<CreateTaskData> = async ({
       // Get target column (first column if not specified)
       let columnId = data.columnId;
       if (!columnId) {
-        const firstColumn = await prisma.taskColumn.findFirst({
+        let firstColumn = await prisma.taskColumn.findFirst({
           where: { workspaceId },
           orderBy: { position: "asc" },
           select: { id: true },
         });
-        if (!firstColumn) throw new Error("No task columns in workspace");
+
+        if (!firstColumn) {
+          firstColumn = await prisma.taskColumn.create({
+            data: {
+              workspaceId,
+              name: "To Do",
+              position: 0,
+            },
+            select: { id: true },
+          });
+        }
+
         columnId = firstColumn.id;
       }
 

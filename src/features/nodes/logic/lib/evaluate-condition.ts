@@ -134,7 +134,12 @@ async function evaluateCategoryCondition(
     | undefined;
   const workspaceId = context.workspaceId as string | undefined;
 
-  if (!contactId || !workspaceId) return false;
+  if (!contactId || !workspaceId) {
+    console.info(
+      "[if-else] Category condition evaluated without contact/workspace context; returning false.",
+    );
+    return false;
+  }
 
   const categoryName = String(condition.value || "").trim();
   if (!categoryName) return false;

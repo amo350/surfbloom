@@ -108,8 +108,62 @@ export const syncReviews = inngest.createFunction(
       );
     });
 
+    const newReviewsWithContact = await step.run(
+      "resolve-review-contacts",
+      async () => {
+        const results: Array<
+          (typeof newReviews)[number] & {
+            contactId: string | null;
+            contact: {
+              id: string;
+              firstName: string | null;
+              lastName: string | null;
+              email: string | null;
+              phone: string | null;
+              stage: string;
+              source: string;
+            } | null;
+          }
+        > = [];
+
+        for (const review of newReviews) {
+          const parsedName = parseAuthorName(review.authorName);
+          if (!parsedName?.firstName) {
+            results.push({
+              ...review,
+              contactId: null,
+              contact: null,
+            });
+            continue;
+          }
+
+          const contact = await findOrCreateReviewContact({
+            workspaceId,
+            firstName: parsedName.firstName,
+            lastName: parsedName.lastName,
+          });
+
+          results.push({
+            ...review,
+            contactId: contact.id,
+            contact: {
+              id: contact.id,
+              firstName: contact.firstName,
+              lastName: contact.lastName,
+              email: contact.email,
+              phone: contact.phone,
+              stage: contact.stage,
+              source: contact.source,
+            },
+          });
+        }
+
+        return results;
+      },
+    );
+
     await step.run("dispatch-review-triggers", async () => {
-      for (const review of newReviews) {
+      for (const review of newReviewsWithContact) {
         await fireWorkflowTrigger({
           triggerType: "REVIEW_RECEIVED",
           payload: {
@@ -118,6 +172,8 @@ export const syncReviews = inngest.createFunction(
             rating: review.rating,
             text: review.text,
             authorName: review.authorName,
+            contactId: review.contactId || undefined,
+            contact: review.contact || undefined,
           },
         }).catch((err) => {
           console.error(
@@ -136,3 +192,93 @@ export const syncReviews = inngest.createFunction(
     };
   },
 );
+
+type ParsedName = {
+  firstName: string;
+  lastName: string | null;
+};
+
+function parseAuthorName(authorName: string | null): ParsedName | null {
+  const normalized = authorName?.replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+
+  const parts = normalized.split(" ");
+  const firstName = parts[0] || "";
+  const lastName = parts.length > 1 ? parts.slice(1).join(" ") : null;
+
+  if (!firstName) return null;
+  return { firstName, lastName };
+}
+
+async function findOrCreateReviewContact({
+  workspaceId,
+  firstName,
+  lastName,
+}: {
+  workspaceId: string;
+  firstName: string;
+  lastName: string | null;
+}) {
+  const exactMatch = await prisma.chatContact.findFirst({
+    where: {
+      workspaceId,
+      isContact: true,
+      firstName: { equals: firstName, mode: "insensitive" },
+      ...(lastName
+        ? {
+            lastName: { equals: lastName, mode: "insensitive" },
+          }
+        : {}),
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      stage: true,
+      source: true,
+    },
+  });
+
+  if (exactMatch) return exactMatch;
+
+  const softMatch = await prisma.chatContact.findFirst({
+    where: {
+      workspaceId,
+      isContact: true,
+      firstName: { contains: firstName, mode: "insensitive" },
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      stage: true,
+      source: true,
+    },
+  });
+
+  if (softMatch) return softMatch;
+
+  return prisma.chatContact.create({
+    data: {
+      workspaceId,
+      firstName,
+      lastName,
+      source: "review_campaign",
+      stage: "new_lead",
+      isContact: true,
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      stage: true,
+      source: true,
+    },
+  });
+}

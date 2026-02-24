@@ -3,6 +3,7 @@ import { createTaskChannel } from "@/features/nodes/actions/create-task/channel"
 import { sendEmailChannel } from "@/features/nodes/actions/send-email/channel";
 import { sendSmsChannel } from "@/features/nodes/actions/send-sms/channel";
 import { updateContactChannel } from "@/features/nodes/actions/update-contact/channel";
+import { aiNodeChannel } from "@/features/nodes/ai/ai-node/channel";
 import { geminiChannel } from "@/features/nodes/channels/gemini";
 import { googleFormTriggerChannel } from "@/features/nodes/channels/google-form-trigger";
 import { httpRequestChannel } from "@/features/nodes/channels/http-request";
@@ -70,6 +71,7 @@ export const executeWorkflow = inngest.createFunction(
       reviewReceivedChannel(),
       categoryAddedChannel(),
       scheduleChannel(),
+      aiNodeChannel(),
       geminiChannel(),
       openAiChannel(),
       xAiChannel(),
@@ -127,11 +129,36 @@ export const executeWorkflow = inngest.createFunction(
         const sorted = topologicalSort(workflow.nodes, workflow.connections);
 
         return {
+          workspaceId: workflow.workspaceId,
           adjacency: serializeAdjacency(adjacency),
           nodeMap: Object.fromEntries(buildNodeMap(workflow.nodes)),
           sortedOrder: serializeSortedOrder(sorted),
           entryNodeId: entryNode.id,
         };
+      });
+
+      const workspace = await step.run("load-workspace-context", async () => {
+        return prisma.workspace.findUniqueOrThrow({
+          where: { id: prepared.workspaceId },
+          select: {
+            id: true,
+            userId: true,
+            name: true,
+            phone: true,
+            feedbackSlug: true,
+            googleReviewUrl: true,
+            brandTone: true,
+            brandIndustry: true,
+            brandServices: true,
+            brandUsps: true,
+            brandInstructions: true,
+            twilioPhoneNumber: {
+              select: { phoneNumber: true },
+            },
+            fromEmail: true,
+            fromEmailName: true,
+          },
+        });
       });
 
       const adjacency = deserializeAdjacency(prepared.adjacency);
@@ -140,7 +167,50 @@ export const executeWorkflow = inngest.createFunction(
         { id: string; type: NodeType; name?: string; data: unknown }
       >;
 
-      let context = initialData;
+      let context: WorkflowContext = {
+        ...initialData,
+        workspaceId: workspace.id,
+        workspace,
+        location_name: workspace.name,
+        location_phone: workspace.phone,
+      };
+      const hydratedContact = await step.run("load-contact-context", async () => {
+        const contactId =
+          (context.contactId as string | undefined) ||
+          ((context.contact as { id?: string } | undefined)?.id as
+            | string
+            | undefined);
+
+        if (!contactId) return null;
+
+        const contact = await prisma.chatContact.findUnique({
+          where: { id: contactId },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            stage: true,
+            source: true,
+            optedOut: true,
+            workspaceId: true,
+            assignedToId: true,
+          },
+        });
+
+        if (!contact) return null;
+        if (contact.workspaceId !== workspace.id) return null;
+        return contact;
+      });
+
+      if (hydratedContact) {
+        context = {
+          ...context,
+          contactId: hydratedContact.id,
+          contact: hydratedContact,
+        };
+      }
       const active = new Set<string>([prepared.entryNodeId]);
       const visited = new Set<string>();
       let nodesExecuted = 0;
@@ -264,6 +334,7 @@ export const executeWorkflow = inngest.createFunction(
                   String(node.type),
                   context,
                   currentId,
+                  (node.data || {}) as Record<string, unknown>,
                 ),
               },
             });
@@ -389,6 +460,7 @@ function buildOutputSummary(
   nodeType: string,
   context: WorkflowContext,
   nodeId: string,
+  data: Record<string, unknown>,
 ): string | null {
   const ctx = context as Record<string, unknown>;
 
@@ -416,10 +488,10 @@ function buildOutputSummary(
         return "Contact updated";
       }
       case "AI_NODE": {
-        const aiOutput = readString(ctx.aiOutput);
-        return aiOutput
-          ? `AI: ${aiOutput.slice(0, 100)}`
-          : "AI generated output";
+        const variableName = readString(data.variableName);
+        // biome-ignore format: keep this compact inline fallback expression.
+        const output = ctx.aiOutput || (variableName ? ctx[variableName] : null);
+        return `AI: ${String(output || "").slice(0, 100)}`;
       }
       case "POST_SLACK":
         return "Posted to Slack";

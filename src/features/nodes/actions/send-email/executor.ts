@@ -1,6 +1,5 @@
 import type { NodeExecutor } from "@/features/nodes/types";
 import { prisma } from "@/lib/prisma";
-import { loadContact, loadWorkspace } from "../lib/load-contact";
 import { resolveTemplate } from "../lib/resolve-template";
 import { sendEmailChannel } from "./channel";
 
@@ -20,12 +19,24 @@ export const sendEmailExecutor: NodeExecutor<SendEmailData> = async ({
 
   try {
     const result = await step.run("send-email", async () => {
-      const contact = await loadContact(context);
+      const contact = context.contact as
+        | {
+            id: string;
+            email: string | null;
+          }
+        | undefined;
       if (!contact) throw new Error("No contact in workflow context");
       if (!contact.email) throw new Error("Contact has no email address");
 
       const workspaceId = context.workspaceId as string;
-      const workspace = await loadWorkspace(workspaceId);
+      const workspace = context.workspace as
+        | {
+            name: string;
+            phone: string | null;
+            fromEmail: string | null;
+            fromEmailName: string | null;
+          }
+        | undefined;
       if (!workspace?.fromEmail)
         throw new Error("Workspace has no from email configured");
 

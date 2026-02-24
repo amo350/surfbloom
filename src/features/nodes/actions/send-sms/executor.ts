@@ -1,7 +1,6 @@
 import type { NodeExecutor } from "@/features/nodes/types";
 import { prisma } from "@/lib/prisma";
 import { sendSms } from "@/lib/twilio";
-import { loadContact, loadWorkspace } from "../lib/load-contact";
 import { resolveTemplate } from "../lib/resolve-template";
 import { sendSmsChannel } from "./channel";
 
@@ -20,16 +19,38 @@ export const sendSmsExecutor: NodeExecutor<SendSmsData> = async ({
 
   try {
     const result = await step.run("send-sms", async () => {
-      const contact = await loadContact(context);
+      const contact = context.contact as
+        | {
+            id: string;
+            phone: string | null;
+            optedOut: boolean;
+          }
+        | undefined;
       if (!contact) throw new Error("No contact in workflow context");
       if (!contact.phone) throw new Error("Contact has no phone number");
       if (contact.optedOut) throw new Error("Contact has opted out");
+
+      // Compliance safety: re-check latest opt-out state before sending.
+      const currentOptOut = await prisma.chatContact.findUnique({
+        where: { id: contact.id },
+        select: { optedOut: true },
+      });
+      if (currentOptOut?.optedOut) {
+        throw new Error("Contact has opted out of SMS");
+      }
 
       const workspaceId = context.workspaceId as string | undefined;
       if (!workspaceId)
         throw new Error("Missing workspaceId in workflow context");
 
-      const workspace = await loadWorkspace(workspaceId);
+      const workspace = context.workspace as
+        | {
+            userId: string | null;
+            name: string;
+            phone: string | null;
+            twilioPhoneNumber?: { phoneNumber: string | null } | null;
+          }
+        | undefined;
       if (!workspace) throw new Error("Workspace not found");
       if (!workspace.userId) throw new Error("Workspace user not found");
       if (!workspace.twilioPhoneNumber?.phoneNumber) {

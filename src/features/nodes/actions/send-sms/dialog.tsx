@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TokenPicker } from "@/features/nodes/components/TokenPicker";
 
 interface SendSmsDialogProps {
   open: boolean;
@@ -51,11 +52,14 @@ export function SendSmsDialog({
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div className="space-y-1.5">
-            <Label className="text-xs">Message body</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Message body</Label>
+              <TokenPicker onInsert={(token) => setBody((prev) => prev + token)} />
+            </div>
             <Textarea
               value={body}
               onChange={(event) => setBody(event.target.value)}
-              placeholder="Hi {{contact.firstName}}, thanks for visiting!"
+              placeholder="Hi {first_name}, thanks for visiting {location_name}!"
               rows={4}
               className="text-sm"
             />
@@ -66,14 +70,14 @@ export function SendSmsDialog({
           </div>
           <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
             <p className="text-[10px] font-medium text-muted-foreground">
-              Template variables:
+              Workflow context (advanced):
             </p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
               <code className="text-[10px]">{"{{contact.firstName}}"}</code>
               <code className="text-[10px]">{"{{contact.lastName}}"}</code>
               <code className="text-[10px]">{"{{contact.phone}}"}</code>
-              <code className="text-[10px]">{"{{location_name}}"}</code>
-              <code className="text-[10px]">{"{{location_phone}}"}</code>
+              <code className="text-[10px]">{"{{workspace.name}}"}</code>
+              <code className="text-[10px]">{"{{workspace.phone}}"}</code>
               <code className="text-[10px]">{"{{review.rating}}"}</code>
               <code className="text-[10px]">{"{{aiOutput}}"}</code>
             </div>

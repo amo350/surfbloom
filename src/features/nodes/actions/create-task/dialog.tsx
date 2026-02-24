@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { TokenPicker } from "@/features/nodes/components/TokenPicker";
 
 interface CreateTaskDialogProps {
   open: boolean;
@@ -83,20 +84,26 @@ export function CreateTaskDialog({
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div className="space-y-1.5">
-            <Label className="text-xs">Title</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Title</Label>
+              <TokenPicker onInsert={(token) => setTitle((prev) => prev + token)} />
+            </div>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Follow up: {{contact.firstName}}"
+              placeholder="Follow up: {first_name}"
               className="h-9"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Description (optional)</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Description (optional)</Label>
+              <TokenPicker onInsert={(token) => setDesc((prev) => prev + token)} />
+            </div>
             <Textarea
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              placeholder="{{aiOutput}}"
+              placeholder="{ai_output}"
               rows={3}
               className="text-sm"
             />
@@ -130,8 +137,8 @@ export function CreateTaskDialog({
           </div>
           <div className="rounded-lg bg-muted/30 border p-3 space-y-1">
             <p className="text-[10px] font-medium text-muted-foreground">
-              Variables: {"{{contact.firstName}}"}, {"{{review.rating}}"},{" "}
-              {"{{aiOutput}}"}
+              Workflow context (advanced): {"{{contact.firstName}}"},{" "}
+              {"{{review.rating}}"}, {"{{aiOutput}}"}
             </p>
           </div>
         </div>
