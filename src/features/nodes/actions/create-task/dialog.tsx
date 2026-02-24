@@ -20,20 +20,22 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { TokenPicker } from "@/features/nodes/components/TokenPicker";
+import { useGetTaskColumns } from "@/features/tasks/hooks/use-task-columns";
 
 interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  workspaceId?: string;
   onSubmit: (values: {
     titleTemplate: string;
     descriptionTemplate?: string;
-    priority?: string;
+    columnId?: string;
     dueDateOffset?: number;
   }) => void;
   defaultValues?: {
     titleTemplate?: string;
     descriptionTemplate?: string;
-    priority?: string;
+    columnId?: string;
     dueDateOffset?: number;
   };
 }
@@ -41,26 +43,29 @@ interface CreateTaskDialogProps {
 export function CreateTaskDialog({
   open,
   onOpenChange,
+  workspaceId,
   onSubmit,
   defaultValues,
 }: CreateTaskDialogProps) {
   const [title, setTitle] = useState(defaultValues?.titleTemplate || "");
   const [desc, setDesc] = useState(defaultValues?.descriptionTemplate || "");
-  const [priority, setPriority] = useState(defaultValues?.priority || "medium");
+  const [statusId, setStatusId] = useState(defaultValues?.columnId || "");
   const [dueOffset, setDueOffset] = useState(
     defaultValues?.dueDateOffset?.toString() || "",
   );
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descInputRef = useRef<HTMLTextAreaElement>(null);
+  const { data: statuses } = useGetTaskColumns(workspaceId || "");
 
   useEffect(() => {
     if (open) {
       setTitle(defaultValues?.titleTemplate || "");
       setDesc(defaultValues?.descriptionTemplate || "");
-      setPriority(defaultValues?.priority || "medium");
+      const defaultStatus = defaultValues?.columnId || statuses?.[0]?.id || "";
+      setStatusId(defaultStatus);
       setDueOffset(defaultValues?.dueDateOffset?.toString() || "");
     }
-  }, [open, defaultValues]);
+  }, [open, defaultValues, statuses]);
 
   const handleSave = () => {
     const trimmedOffset = dueOffset.trim();
@@ -69,7 +74,7 @@ export function CreateTaskDialog({
     onSubmit({
       titleTemplate: title,
       descriptionTemplate: desc || undefined,
-      priority,
+      columnId: statusId || undefined,
       dueDateOffset:
         trimmedOffset && Number.isFinite(parsedOffset) && Number.isInteger(parsedOffset)
           ? parsedOffset
@@ -148,16 +153,17 @@ export function CreateTaskDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Priority</Label>
-              <Select value={priority} onValueChange={setPriority}>
+              <Label className="text-xs">Status</Label>
+              <Select value={statusId} onValueChange={setStatusId}>
                 <SelectTrigger className="h-9">
-                  <SelectValue />
+                  <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="urgent">Urgent</SelectItem>
+                  {(statuses || []).map((status) => (
+                    <SelectItem key={status.id} value={status.id}>
+                      {status.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

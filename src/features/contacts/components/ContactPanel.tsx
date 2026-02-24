@@ -4,6 +4,7 @@ import {
   ArrowUpDown,
   Ban,
   Calendar,
+  ExternalLink,
   FileText,
   Loader2,
   Mail,
@@ -16,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useContact } from "../hooks/use-contacts";
@@ -82,6 +84,7 @@ export function ContactPanel({
 }) {
   const { data: contact, isLoading } = useContact(contactId);
   const [tab, setTab] = useState<"details" | "activity">("details");
+  const pathname = usePathname();
 
   if (isLoading) {
     return (
@@ -103,6 +106,11 @@ export function ContactPanel({
     [contact.firstName, contact.lastName].filter(Boolean).join(" ") ||
     "Unknown";
   const initials = getInitials(contact.firstName, contact.lastName);
+  const isWorkspaceView = pathname.startsWith("/workspaces/");
+  const fullContactHref =
+    isWorkspaceView && contact.workspaceId
+      ? `/workspaces/${contact.workspaceId}/contacts/${contact.id}`
+      : `/index/contacts/${contact.id}`;
 
   return (
     <div className="w-[340px] border-l bg-background flex flex-col h-full shrink-0">
@@ -110,7 +118,7 @@ export function ContactPanel({
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-start gap-3">
           {/* Square avatar with rounded corners */}
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
+          <div className="h-12 w-12 rounded-xl bg-linear-to-br from-teal-400 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
             <span className="text-sm font-bold text-white">{initials}</span>
           </div>
 
@@ -129,14 +137,26 @@ export function ContactPanel({
             )}
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              asChild
+            >
+              <a href={fullContactHref} title="Open full contact page">
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

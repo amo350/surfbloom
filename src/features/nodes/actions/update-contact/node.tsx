@@ -2,6 +2,7 @@
 
 import { type NodeProps, useReactFlow } from "@xyflow/react";
 import { UserCog } from "lucide-react";
+import { useParams } from "next/navigation";
 import { memo, useState } from "react";
 import { BaseExecutionNode } from "@/features/nodes/components/BaseExecutionNode";
 import { useNodeStatus } from "@/features/nodes/hooks/use-node-status";
@@ -20,6 +21,8 @@ const ACTION_LABELS: Record<ContactAction, string> = {
 export const UpdateContactNode = memo((props: NodeProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const { setNodes } = useReactFlow();
+  const params = useParams<{ workspaceId?: string }>();
+  const workspaceId = params?.workspaceId;
 
   const handleOpenSettings = () => setDialogOpen(true);
 
@@ -71,6 +74,7 @@ export const UpdateContactNode = memo((props: NodeProps) => {
       <UpdateContactDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        workspaceId={workspaceId}
         onSubmit={handleSubmit}
         defaultValues={data}
       />

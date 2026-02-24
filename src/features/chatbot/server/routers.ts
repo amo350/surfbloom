@@ -423,6 +423,7 @@ export const chatbotRouter = createTRPCRouter({
         view: z.enum(["all", "mine", "unassigned"]).default("all"),
         stage: z.string().optional(),
         categoryId: z.string().optional(),
+        categoryIds: z.array(z.string()).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -496,12 +497,24 @@ export const chatbotRouter = createTRPCRouter({
         }
 
         // Category filter (through contact)
-        if (input.categoryId) {
+        const selectedCategoryIds =
+          input.categoryIds && input.categoryIds.length > 0
+            ? input.categoryIds
+            : input.categoryId
+              ? [input.categoryId]
+              : [];
+
+        if (selectedCategoryIds.length > 0) {
           where.contact = {
             ...where.contact,
-            categories: {
-              some: { categoryId: input.categoryId },
-            },
+            AND: [
+              ...(where.contact?.AND ?? []),
+              ...selectedCategoryIds.map((categoryId) => ({
+                categories: {
+                  some: { categoryId },
+                },
+              })),
+            ],
           };
         }
 

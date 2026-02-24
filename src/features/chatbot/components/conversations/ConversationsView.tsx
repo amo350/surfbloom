@@ -22,7 +22,7 @@ export function ConversationsView({ workspaceId }: { workspaceId?: string }) {
     "all" | "webchat" | "sms" | "feedback"
   >("all");
   const [stage, setStage] = useState<string | undefined>(undefined);
-  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [contactPanelId, setContactPanelId] = useState<string | null>(null);
   const [showCreateContact, setShowCreateContact] = useState(false);
   const [promoteContact, setPromoteContact] = useState<{
@@ -76,8 +76,8 @@ export function ConversationsView({ workspaceId }: { workspaceId?: string }) {
         onViewChange={setView}
         stage={stage}
         onStageChange={setStage}
-        categoryId={categoryId}
-        onCategoryChange={setCategoryId}
+        categoryIds={categoryIds}
+        onCategoryChange={setCategoryIds}
         channel={channel}
         onChannelChange={setChannel}
       />
@@ -88,7 +88,7 @@ export function ConversationsView({ workspaceId }: { workspaceId?: string }) {
         view={view}
         channel={channel}
         stage={stage}
-        categoryId={categoryId}
+        categoryIds={categoryIds}
       />
       {/* Right: Header + Messenger + optional Contact Panel */}
       <div className="flex-1 flex">

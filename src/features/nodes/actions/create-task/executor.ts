@@ -7,7 +7,6 @@ interface CreateTaskData {
   titleTemplate?: string;
   descriptionTemplate?: string;
   assigneeId?: string; // specific member ID, or empty for unassigned
-  priority?: string; // "low" | "medium" | "high" | "urgent"
   dueDateOffset?: number; // hours from now
   columnId?: string; // specific column, or empty for first column
 }
@@ -101,7 +100,6 @@ export const createTaskExecutor: NodeExecutor<CreateTaskData> = async ({
           assigneeId: data.assigneeId || undefined,
           contactId: contactId || undefined,
           dueDate,
-          category: data.priority || undefined,
           position: 0, // top of column
         },
       });

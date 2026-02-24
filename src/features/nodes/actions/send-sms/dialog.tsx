@@ -63,6 +63,13 @@ export function SendSmsDialog({
               rows={4}
               className="text-sm"
             />
+            {!body.trim() && (
+              <p className="text-[10px] text-red-500">
+                Message body is required. Use {"{{aiOutput}}"} to send AI-generated
+                content, or write a custom message with {"{{contact.firstName}}"}{" "}
+                variables.
+              </p>
+            )}
             <p className="text-[10px] text-muted-foreground">
               {body.length} characters ({segments} SMS segment
               {segments === 1 ? "" : "s"})

@@ -1,5 +1,5 @@
 import type { NodeType } from "@/generated/prisma/enums";
-import { sendWorkflowExecution } from "@/inngest/utils";
+import { sendWorkflowBatchTrigger, sendWorkflowExecution } from "@/inngest/utils";
 import { prisma } from "@/lib/prisma";
 
 interface TriggerPayload {
@@ -22,11 +22,16 @@ interface TriggerOptions {
   triggerDepth?: number;
 }
 
+const BATCHABLE_TRIGGERS = new Set<NodeType>([
+  "CONTACT_CREATED",
+  "KEYWORD_JOINED",
+]);
+
 /**
  * Central event bus for workflow triggers.
  *
  * 1. Finds workflows in the workspace that have a node of `triggerType`
- * 2. For each match, fires sendWorkflowExecution with the payload
+ * 2. For each match, routes to debounced batch trigger or immediate execution
  * 3. Fire-and-forget — catches and logs errors, never throws
  *
  * Call this from any handler that should potentially start a workflow.
@@ -99,24 +104,45 @@ export async function fireWorkflowTrigger({
       const nodeData = (node.data || {}) as Record<string, unknown>;
       if (!matchesTriggerFilter(triggerType, nodeData, payload)) continue;
 
-      sends.push(
-        sendWorkflowExecution({
-          workflowId: node.workflowId,
-          initialData: {
-            ...payload,
-            _trigger: {
-              type: triggerType,
-              depth: triggerDepth + 1,
-              firedAt: new Date().toISOString(),
+      if (
+        BATCHABLE_TRIGGERS.has(triggerType) &&
+        typeof payload.contactId === "string" &&
+        payload.contactId.length > 0
+      ) {
+        sends.push(
+          sendWorkflowBatchTrigger({
+            workflowId: node.workflowId,
+            workspaceId: payload.workspaceId,
+            contactId: payload.contactId,
+            triggerType,
+            triggerDepth: triggerDepth + 1,
+          }).catch((err) => {
+            console.error(
+              `[trigger-dispatcher] Failed to enqueue batch trigger for workflow ${node.workflowId}:`,
+              err,
+            );
+          }),
+        );
+      } else {
+        sends.push(
+          sendWorkflowExecution({
+            workflowId: node.workflowId,
+            initialData: {
+              ...payload,
+              _trigger: {
+                type: triggerType,
+                depth: triggerDepth + 1,
+                firedAt: new Date().toISOString(),
+              },
             },
-          },
-        }).catch((err) => {
-          console.error(
-            `[trigger-dispatcher] Failed to fire workflow ${node.workflowId} for ${triggerType}:`,
-            err,
-          );
-        }),
-      );
+          }).catch((err) => {
+            console.error(
+              `[trigger-dispatcher] Failed to fire workflow ${node.workflowId} for ${triggerType}:`,
+              err,
+            );
+          }),
+        );
+      }
     }
 
     await Promise.allSettled(sends);

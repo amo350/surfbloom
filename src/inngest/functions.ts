@@ -24,6 +24,7 @@ import { ExecutionStatus, NodeType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { inngest } from "./client";
 import {
+  type AdjacencyMap,
   buildAdjacencyMap,
   buildNodeMap,
   deserializeAdjacency,
@@ -174,6 +175,153 @@ export const executeWorkflow = inngest.createFunction(
         location_name: workspace.name,
         location_phone: workspace.phone,
       };
+      const batchContactIds = Array.isArray(context.contactIds)
+        ? context.contactIds.filter(
+            (value): value is string =>
+              typeof value === "string" && value.length > 0,
+          )
+        : [];
+      const isBatch = Boolean(context.isBatch) && batchContactIds.length > 0;
+
+      if (isBatch) {
+        const results: {
+          contactId: string;
+          status: "success" | "failed";
+          error?: string;
+        }[] = [];
+
+        for (const [index, contactId] of batchContactIds.entries()) {
+          const contactData = await step.run(
+            `load-batch-contact-${index + 1}`,
+            async () => {
+              return prisma.chatContact.findUnique({
+                where: { id: contactId },
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  phone: true,
+                  stage: true,
+                  source: true,
+                  optedOut: true,
+                  workspaceId: true,
+                  assignedToId: true,
+                },
+              });
+            },
+          );
+
+          if (!contactData) {
+            results.push({
+              contactId,
+              status: "failed",
+              error: "Contact not found",
+            });
+            if (index < batchContactIds.length - 1) {
+              await step.sleep(`batch-throttle-${index + 1}`, "1s");
+            }
+            continue;
+          }
+
+          if (contactData.workspaceId !== workspace.id) {
+            results.push({
+              contactId,
+              status: "failed",
+              error: "Contact does not belong to this workspace",
+            });
+            if (index < batchContactIds.length - 1) {
+              await step.sleep(`batch-throttle-${index + 1}`, "1s");
+            }
+            continue;
+          }
+
+          let contactContext = clearBatchFields({
+            ...context,
+            contactId: contactData.id,
+            contact: contactData,
+          });
+
+          try {
+            contactContext = await executeNodeWalk({
+              context: contactContext,
+              adjacency,
+              nodeLookup,
+              sortedOrder: prepared.sortedOrder,
+              entryNodeId: prepared.entryNodeId,
+              executionId: execution.id,
+              step,
+              publish,
+              runKey: `batch-${index + 1}`,
+            });
+            results.push({ contactId, status: "success" });
+            context = contactContext;
+          } catch (nodeErr) {
+            const errorMsg =
+              nodeErr instanceof Error ? nodeErr.message : String(nodeErr);
+            results.push({ contactId, status: "failed", error: errorMsg });
+
+            await step.run(`log-contact-error-${index + 1}`, async () => {
+              await prisma.nodeExecutionLog.create({
+                data: {
+                  executionId: execution.id,
+                  nodeId: "batch-loop",
+                  nodeType: "BATCH",
+                  nodeName: `Contact ${contactData.firstName || contactId}`,
+                  status: "failed",
+                  error: errorMsg,
+                  startedAt: new Date(),
+                  completedAt: new Date(),
+                  durationMs: 0,
+                },
+              });
+            });
+          }
+
+          if (index < batchContactIds.length - 1) {
+            await step.sleep(`batch-throttle-${index + 1}`, "1s");
+          }
+        }
+
+        const totalFailed = results.filter((result) => result.status === "failed")
+          .length;
+        const totalSuccess = results.filter((result) => result.status === "success")
+          .length;
+        const majorityFailed = totalFailed > totalSuccess;
+
+        await step.run("complete-batch-execution", async () => {
+          await prisma.execution.update({
+            where: { id: execution.id },
+            data: {
+              status: majorityFailed
+                ? ExecutionStatus.FAILED
+                : ExecutionStatus.SUCCESS,
+              output: {
+                results,
+                totalContacts: batchContactIds.length,
+                totalSuccess,
+                totalFailed,
+              } as any,
+              completeAt: new Date(),
+              currentNodeId: null,
+              waitingAtNodeId: null,
+              nextStepAt: null,
+              error: majorityFailed
+                ? `Batch failed: ${totalFailed}/${batchContactIds.length} contacts failed`
+                : null,
+            },
+          });
+        });
+
+        return {
+          executionId: execution.id,
+          workflowId,
+          batch: true,
+          totalSuccess,
+          totalFailed,
+        };
+      }
+
       const hydratedContact = await step.run("load-contact-context", async () => {
         const contactId =
           (context.contactId as string | undefined) ||
@@ -218,162 +366,17 @@ export const executeWorkflow = inngest.createFunction(
         delete (context as Record<string, unknown>).contactId;
         delete (context as Record<string, unknown>).contact;
       }
-      const active = new Set<string>([prepared.entryNodeId]);
-      const visited = new Set<string>();
-      let nodesExecuted = 0;
-
-      for (const currentId of prepared.sortedOrder) {
-        if (!active.has(currentId)) continue;
-
-        if (visited.has(currentId)) continue;
-        visited.add(currentId);
-
-        nodesExecuted++;
-        if (nodesExecuted > MAX_NODES_PER_EXECUTION) {
-          throw new Error(
-            `Execution exceeded max nodes (${MAX_NODES_PER_EXECUTION}). Possible cycle or overly complex workflow.`,
-          );
-        }
-
-        const node = nodeLookup[currentId];
-        if (!node) continue;
-
-        await step.run(`track-node-${currentId}`, async () => {
-          await prisma.execution.update({
-            where: { id: execution.id },
-            data: { currentNodeId: currentId },
-          });
-        });
-
-        const nodeStartedAt = new Date();
-        let nodeCompletedAt = nodeStartedAt;
-        let branch: string | undefined;
-
-        try {
-          const executor = getExecutor(node.type as NodeType);
-          context = await executor({
-            data: (node.data || {}) as Record<string, unknown>,
-            nodeId: currentId,
-            context,
-            step,
-            publish,
-          });
-          nodeCompletedAt = new Date();
-
-          branch = getBranch(context);
-          if (branch) {
-            delete (context as Record<string, unknown>)._branch;
-          }
-
-          const waitConfig = getWaitConfig(context);
-          if (waitConfig) {
-            delete (context as Record<string, unknown>)._wait;
-
-            await step.run(`wait-status-${currentId}`, async () => {
-              await prisma.execution.update({
-                where: { id: execution.id },
-                data: {
-                  status: ExecutionStatus.WAITING,
-                  waitingAtNodeId: currentId,
-                  nextStepAt: new Date(Date.now() + waitConfig.seconds * 1000),
-                },
-              });
-            });
-
-            await step.sleep(`wait-${currentId}`, `${waitConfig.seconds}s`);
-
-            await step.run(`resume-after-wait-${currentId}`, async () => {
-              await prisma.execution.update({
-                where: { id: execution.id },
-                data: {
-                  status: ExecutionStatus.RUNNING,
-                  waitingAtNodeId: null,
-                  nextStepAt: null,
-                },
-              });
-            });
-          }
-
-          const waitUntilConfig = getWaitUntilConfig(context);
-          if (waitUntilConfig) {
-            delete (context as Record<string, unknown>)._waitUntil;
-
-            await step.run(`wait-until-status-${currentId}`, async () => {
-              await prisma.execution.update({
-                where: { id: execution.id },
-                data: {
-                  status: ExecutionStatus.WAITING,
-                  waitingAtNodeId: currentId,
-                  nextStepAt: waitUntilConfig.timestamp,
-                },
-              });
-            });
-
-            await step.sleepUntil(
-              `wait-until-${currentId}`,
-              waitUntilConfig.timestamp,
-            );
-
-            await step.run(`resume-after-wait-until-${currentId}`, async () => {
-              await prisma.execution.update({
-                where: { id: execution.id },
-                data: {
-                  status: ExecutionStatus.RUNNING,
-                  waitingAtNodeId: null,
-                  nextStepAt: null,
-                },
-              });
-            });
-          }
-
-          await step.run(`log-node-success-${currentId}`, async () => {
-            await prisma.nodeExecutionLog.create({
-              data: {
-                executionId: execution.id,
-                nodeId: currentId,
-                nodeType: String(node.type),
-                nodeName: node.name || String(node.type),
-                status: "success",
-                startedAt: nodeStartedAt,
-                completedAt: new Date(),
-                durationMs: nodeCompletedAt.getTime() - nodeStartedAt.getTime(),
-                outputSummary: buildOutputSummary(
-                  String(node.type),
-                  context,
-                  currentId,
-                  (node.data || {}) as Record<string, unknown>,
-                ),
-              },
-            });
-          });
-        } catch (nodeErr) {
-          const message =
-            nodeErr instanceof Error ? nodeErr.message : String(nodeErr);
-
-          await step.run(`log-node-failed-${currentId}`, async () => {
-            await prisma.nodeExecutionLog.create({
-              data: {
-                executionId: execution.id,
-                nodeId: currentId,
-                nodeType: String(node.type),
-                nodeName: node.name || String(node.type),
-                status: "failed",
-                error: message,
-                startedAt: nodeStartedAt,
-                completedAt: new Date(),
-                durationMs: Date.now() - nodeStartedAt.getTime(),
-              },
-            });
-          });
-
-          throw nodeErr;
-        }
-
-        const nextIds = getNextNodeIds(adjacency, currentId, branch);
-        for (const nextId of nextIds) {
-          active.add(nextId);
-        }
-      }
+      context = await executeNodeWalk({
+        context,
+        adjacency,
+        nodeLookup,
+        sortedOrder: prepared.sortedOrder,
+        entryNodeId: prepared.entryNodeId,
+        executionId: execution.id,
+        step,
+        publish,
+        runKey: "single",
+      });
 
       await step.run("complete-execution", async () => {
         return prisma.execution.update({
@@ -420,6 +423,207 @@ export const executeWorkflow = inngest.createFunction(
 function getBranch(context: WorkflowContext): string | undefined {
   const value = (context as Record<string, unknown>)._branch;
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+async function executeNodeWalk(params: {
+  context: WorkflowContext;
+  adjacency: AdjacencyMap;
+  nodeLookup: Record<string, { id: string; type: NodeType; name?: string; data: unknown }>;
+  sortedOrder: string[];
+  entryNodeId: string;
+  executionId: string;
+  step: any;
+  publish: any;
+  runKey: string;
+}): Promise<WorkflowContext> {
+  let { context } = params;
+  const active = new Set<string>([params.entryNodeId]);
+  const visited = new Set<string>();
+  let nodesExecuted = 0;
+
+  for (const currentId of params.sortedOrder) {
+    if (!active.has(currentId)) continue;
+    if (visited.has(currentId)) continue;
+    visited.add(currentId);
+
+    nodesExecuted++;
+    if (nodesExecuted > MAX_NODES_PER_EXECUTION) {
+      throw new Error(
+        `Execution exceeded max nodes (${MAX_NODES_PER_EXECUTION}). Possible cycle or overly complex workflow.`,
+      );
+    }
+
+    const node = params.nodeLookup[currentId];
+    if (!node) continue;
+
+    await params.step.run(
+      `track-node-${params.runKey}-${currentId}`,
+      async () => {
+        await prisma.execution.update({
+          where: { id: params.executionId },
+          data: { currentNodeId: currentId },
+        });
+      },
+    );
+
+    const nodeStartedAt = new Date();
+    let nodeCompletedAt = nodeStartedAt;
+    let branch: string | undefined;
+
+    try {
+      const executor = getExecutor(node.type as NodeType);
+      context = await executor({
+        data: (node.data || {}) as Record<string, unknown>,
+        nodeId: currentId,
+        context,
+        step: params.step,
+        publish: params.publish,
+      });
+      nodeCompletedAt = new Date();
+
+      branch = getBranch(context);
+      if (branch) {
+        delete (context as Record<string, unknown>)._branch;
+      }
+
+      const waitConfig = getWaitConfig(context);
+      if (waitConfig) {
+        delete (context as Record<string, unknown>)._wait;
+
+        await params.step.run(
+          `wait-status-${params.runKey}-${currentId}`,
+          async () => {
+            await prisma.execution.update({
+              where: { id: params.executionId },
+              data: {
+                status: ExecutionStatus.WAITING,
+                waitingAtNodeId: currentId,
+                nextStepAt: new Date(Date.now() + waitConfig.seconds * 1000),
+              },
+            });
+          },
+        );
+
+        await params.step.sleep(
+          `wait-${params.runKey}-${currentId}`,
+          `${waitConfig.seconds}s`,
+        );
+
+        await params.step.run(
+          `resume-after-wait-${params.runKey}-${currentId}`,
+          async () => {
+            await prisma.execution.update({
+              where: { id: params.executionId },
+              data: {
+                status: ExecutionStatus.RUNNING,
+                waitingAtNodeId: null,
+                nextStepAt: null,
+              },
+            });
+          },
+        );
+      }
+
+      const waitUntilConfig = getWaitUntilConfig(context);
+      if (waitUntilConfig) {
+        delete (context as Record<string, unknown>)._waitUntil;
+
+        await params.step.run(
+          `wait-until-status-${params.runKey}-${currentId}`,
+          async () => {
+            await prisma.execution.update({
+              where: { id: params.executionId },
+              data: {
+                status: ExecutionStatus.WAITING,
+                waitingAtNodeId: currentId,
+                nextStepAt: waitUntilConfig.timestamp,
+              },
+            });
+          },
+        );
+
+        await params.step.sleepUntil(
+          `wait-until-${params.runKey}-${currentId}`,
+          waitUntilConfig.timestamp,
+        );
+
+        await params.step.run(
+          `resume-after-wait-until-${params.runKey}-${currentId}`,
+          async () => {
+            await prisma.execution.update({
+              where: { id: params.executionId },
+              data: {
+                status: ExecutionStatus.RUNNING,
+                waitingAtNodeId: null,
+                nextStepAt: null,
+              },
+            });
+          },
+        );
+      }
+
+      await params.step.run(
+        `log-node-success-${params.runKey}-${currentId}`,
+        async () => {
+          await prisma.nodeExecutionLog.create({
+            data: {
+              executionId: params.executionId,
+              nodeId: currentId,
+              nodeType: String(node.type),
+              nodeName: node.name || String(node.type),
+              status: "success",
+              startedAt: nodeStartedAt,
+              completedAt: new Date(),
+              durationMs: nodeCompletedAt.getTime() - nodeStartedAt.getTime(),
+              outputSummary: buildOutputSummary(
+                String(node.type),
+                context,
+                currentId,
+                (node.data || {}) as Record<string, unknown>,
+              ),
+            },
+          });
+        },
+      );
+    } catch (nodeErr) {
+      const message = nodeErr instanceof Error ? nodeErr.message : String(nodeErr);
+
+      await params.step.run(
+        `log-node-failed-${params.runKey}-${currentId}`,
+        async () => {
+          await prisma.nodeExecutionLog.create({
+            data: {
+              executionId: params.executionId,
+              nodeId: currentId,
+              nodeType: String(node.type),
+              nodeName: node.name || String(node.type),
+              status: "failed",
+              error: message,
+              startedAt: nodeStartedAt,
+              completedAt: new Date(),
+              durationMs: Date.now() - nodeStartedAt.getTime(),
+            },
+          });
+        },
+      );
+
+      throw nodeErr;
+    }
+
+    const nextIds = getNextNodeIds(params.adjacency, currentId, branch);
+    for (const nextId of nextIds) {
+      active.add(nextId);
+    }
+  }
+
+  return context;
+}
+
+function clearBatchFields(context: WorkflowContext): WorkflowContext {
+  const nextContext = { ...context } as Record<string, unknown>;
+  delete nextContext.isBatch;
+  delete nextContext.contactIds;
+  return nextContext;
 }
 
 function getWaitConfig(

@@ -2,9 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTRPC } from "@/trpc/client";
 
-export const useGetTaskColumns = (workspaceId: string) => {
+export const useGetTaskColumns = (workspaceId?: string) => {
   const trpc = useTRPC();
-  return useQuery(trpc.taskColumns.getMany.queryOptions({ workspaceId }));
+  return useQuery({
+    ...trpc.taskColumns.getMany.queryOptions({ workspaceId: workspaceId || "" }),
+    enabled: Boolean(workspaceId),
+  });
 };
 
 export const useUpdateTaskColumn = () => {

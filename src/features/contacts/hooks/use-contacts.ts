@@ -92,10 +92,9 @@ export const useCategories = (
   const trpc = useTRPC();
   return useQuery({
     ...trpc.contacts.getCategories.queryOptions({
-      workspaceId: workspaceId!,
+      workspaceId,
       search,
     }),
-    enabled: !!workspaceId,
   });
 };
 
