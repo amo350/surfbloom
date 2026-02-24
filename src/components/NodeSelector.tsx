@@ -2,7 +2,14 @@
 
 import { createId } from "@paralleldrive/cuid2";
 import { useReactFlow } from "@xyflow/react";
-import { GlobeIcon, MousePointerIcon } from "lucide-react";
+import {
+  Clock,
+  GlobeIcon,
+  MousePointerIcon,
+  Star,
+  Tag,
+  UserPlus,
+} from "lucide-react";
 import Image from "next/image";
 import { useCallback } from "react";
 import { toast } from "sonner";
@@ -43,6 +50,30 @@ const triggerNodes: NodeTypeOption[] = [
     label: "Stripe Event",
     description: "Runs the flow when a Stripe Event is captured",
     icon: "/logos/stripe.svg",
+  },
+  {
+    type: NodeType.CONTACT_CREATED,
+    label: "Contact Created",
+    description: "Fires when a new contact is created",
+    icon: UserPlus,
+  },
+  {
+    type: NodeType.REVIEW_RECEIVED,
+    label: "Review Received",
+    description: "Fires when a Google review is synced",
+    icon: Star,
+  },
+  {
+    type: NodeType.CATEGORY_ADDED,
+    label: "Category Added",
+    description: "Fires when a category is applied to a contact",
+    icon: Tag,
+  },
+  {
+    type: NodeType.SCHEDULE,
+    label: "Schedule",
+    description: "Fires on a recurring schedule",
+    icon: Clock,
   },
 ];
 

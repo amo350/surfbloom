@@ -1,8 +1,15 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { fireWorkflowTrigger } from "@/features/nodes/lib/trigger-dispatcher";
 import { MemberRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
+
+function isCompletedColumnName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  const normalized = name.trim().toLowerCase();
+  return normalized === "completed" || normalized === "done";
+}
 
 export const tasksRouter = createTRPCRouter({
   // Get all tasks for a workspace
@@ -222,8 +229,27 @@ export const tasksRouter = createTRPCRouter({
       }
 
       const { id, workspaceId, ...updateData } = input;
+      const existingTask = await prisma.task.findFirst({
+        where: { id, workspaceId },
+        select: {
+          id: true,
+          workspaceId: true,
+          columnId: true,
+          contactId: true,
+          name: true,
+          assigneeId: true,
+          reviewId: true,
+        },
+      });
 
-      return prisma.task.update({
+      if (!existingTask) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Task not found",
+        });
+      }
+
+      const updatedTask = await prisma.task.update({
         where: { id, workspaceId },
         data: updateData,
         include: {
@@ -233,6 +259,44 @@ export const tasksRouter = createTRPCRouter({
           },
         },
       });
+
+      if (
+        updateData.columnId &&
+        updateData.columnId !== existingTask.columnId
+      ) {
+        const columns = await prisma.taskColumn.findMany({
+          where: {
+            workspaceId,
+            id: { in: [existingTask.columnId, updateData.columnId] },
+          },
+          select: { id: true, name: true },
+        });
+        const columnById = new Map(
+          columns.map((column) => [column.id, column]),
+        );
+
+        const previousColumnName = columnById.get(existingTask.columnId)?.name;
+        const nextColumnName = columnById.get(updateData.columnId)?.name;
+        const movedIntoCompleted =
+          !isCompletedColumnName(previousColumnName) &&
+          isCompletedColumnName(nextColumnName);
+
+        if (movedIntoCompleted) {
+          fireWorkflowTrigger({
+            triggerType: "TASK_COMPLETED",
+            payload: {
+              workspaceId: existingTask.workspaceId,
+              contactId: existingTask.contactId || undefined,
+              taskId: existingTask.id,
+              taskName: existingTask.name,
+              assigneeId: existingTask.assigneeId,
+              reviewId: existingTask.reviewId || undefined,
+            },
+          }).catch(() => {});
+        }
+      }
+
+      return updatedTask;
     }),
 
   // Delete task (ADMIN only)
@@ -291,6 +355,40 @@ export const tasksRouter = createTRPCRouter({
         });
       }
 
+      const taskIds = input.updates.map((update) => update.id);
+      const existingTasks = await prisma.task.findMany({
+        where: {
+          workspaceId: input.workspaceId,
+          id: { in: taskIds },
+        },
+        select: {
+          id: true,
+          workspaceId: true,
+          columnId: true,
+          contactId: true,
+          name: true,
+          assigneeId: true,
+          reviewId: true,
+        },
+      });
+      const existingTaskById = new Map(
+        existingTasks.map((task) => [task.id, task]),
+      );
+
+      const targetColumnIds = input.updates.map((update) => update.columnId);
+      const allColumnIds = new Set<string>();
+      for (const task of existingTasks) allColumnIds.add(task.columnId);
+      for (const columnId of targetColumnIds) allColumnIds.add(columnId);
+
+      const columns = await prisma.taskColumn.findMany({
+        where: {
+          workspaceId: input.workspaceId,
+          id: { in: Array.from(allColumnIds) },
+        },
+        select: { id: true, name: true },
+      });
+      const columnById = new Map(columns.map((column) => [column.id, column]));
+
       await prisma.$transaction(
         input.updates.map((update) =>
           prisma.task.update({
@@ -302,6 +400,32 @@ export const tasksRouter = createTRPCRouter({
           }),
         ),
       );
+
+      for (const update of input.updates) {
+        const task = existingTaskById.get(update.id);
+        if (!task) continue;
+        if (task.columnId === update.columnId) continue;
+
+        const previousColumnName = columnById.get(task.columnId)?.name;
+        const nextColumnName = columnById.get(update.columnId)?.name;
+        const movedIntoCompleted =
+          !isCompletedColumnName(previousColumnName) &&
+          isCompletedColumnName(nextColumnName);
+
+        if (!movedIntoCompleted) continue;
+
+        fireWorkflowTrigger({
+          triggerType: "TASK_COMPLETED",
+          payload: {
+            workspaceId: task.workspaceId,
+            contactId: task.contactId || undefined,
+            taskId: task.id,
+            taskName: task.name,
+            assigneeId: task.assigneeId,
+            reviewId: task.reviewId || undefined,
+          },
+        }).catch(() => {});
+      }
 
       return { success: true };
     }),

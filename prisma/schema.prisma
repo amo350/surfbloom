@@ -144,6 +144,19 @@ model Workspace {
   feedbackHeading String? // "How was your experience?"
   feedbackMessage String? @db.Text // optional subtext
 
+  // Brand profile (feeds AI node context)
+  brandTone         String?
+  brandIndustry     String?
+  brandServices     String? @db.Text
+  brandUsps         String? @db.Text
+  brandInstructions String? @db.Text
+
+  // AI usage budget (schema only)
+  aiMonthlyBudgetCents Int?
+  aiDailyCallLimit     Int?
+  aiPreferredProvider  String?
+  aiPreferredModel     String?
+
   members        Member[]
   workflows      Workflow[]
   invitations    Invitation[]
@@ -165,6 +178,7 @@ model Workspace {
   surveyEnrollments  SurveyEnrollment[]
   textToJoinKeywords TextToJoinKeyword[]
   webhookEndpoints   WebhookEndpoint[]
+  aiUsageLogs        AiUsageLog[]
 
   twilioPhoneNumber TwilioPhoneNumber?
   smsMessages       SmsMessage[]
@@ -175,6 +189,28 @@ model Workspace {
 
   @@index([userId])
   @@map("workspace")
+}
+
+model AiUsageLog {
+  id            String  @id @default(cuid())
+  workspaceId   String
+  nodeId        String?
+  workflowId    String?
+  executionId   String?
+  provider      String
+  model         String
+  inputTokens   Int
+  outputTokens  Int
+  estimatedCost Float
+  purpose       String?
+
+  createdAt DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([workspaceId, createdAt])
+  @@map("ai_usage_log")
 }
 
 model Stage {
@@ -260,6 +296,7 @@ model Workflow {
   updatedAt   DateTime @updatedAt
   workspaceId String
   createdById String
+  active      Boolean  @default(false)
 
   nodes       Node[]
   connections Connection[]
@@ -283,6 +320,37 @@ enum NodeType {
   GEMINI
   OPENAI
   SLACK
+  CONTACT_CREATED
+  REVIEW_RECEIVED
+  SMS_RECEIVED
+  FEEDBACK_SUBMITTED
+  STAGE_CHANGED
+  CATEGORY_ADDED
+  SURVEY_COMPLETED
+  KEYWORD_JOINED
+  TASK_COMPLETED
+  SCHEDULE
+  SEND_SMS
+  SEND_EMAIL
+  CREATE_TASK
+  UPDATE_STAGE
+  ADD_CATEGORY
+  REMOVE_CATEGORY
+  REQUEST_REVIEW
+  ENROLL_SEQUENCE
+  POST_SLACK
+  POST_SOCIAL
+  LOG_NOTE
+  QUERY_CONTACTS
+  ASSIGN_CONTACT
+  SEND_WEBHOOK
+  IF_ELSE
+  SWITCH
+  WAIT
+  WAIT_UNTIL
+  FOR_EACH
+  GOAL
+  AI_NODE
 }
 
 model Node {
@@ -330,6 +398,7 @@ enum ExecutionStatus {
   RUNNING
   SUCCESS
   FAILED
+  WAITING
 }
 
 model Execution {
@@ -347,10 +416,41 @@ model Execution {
 
   inngestEventId String @unique
 
-  output Json?
+  output          Json?
+  waitingAtNodeId String?
+  nextStepAt      DateTime?
+  triggerType     String?
+  triggerDepth    Int                @default(0)
+  currentNodeId   String?
+  nodeLogs        NodeExecutionLog[]
 
   @@index([workflowId])
   @@map("execution")
+}
+
+model NodeExecutionLog {
+  id          String    @id @default(cuid())
+  executionId String
+  execution   Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  nodeId   String
+  nodeType String
+  nodeName String
+
+  status String
+  error  String? @db.Text
+
+  startedAt   DateTime
+  completedAt DateTime?
+  durationMs  Int?
+
+  outputSummary String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([executionId])
+  @@index([executionId, startedAt])
+  @@map("node_execution_log")
 }
 
 enum InvitationStatus {
@@ -663,14 +763,14 @@ model SurveyTemplate {
 }
 
 model SurveyQuestion {
-  id       String  @id @default(cuid())
-  surveyId String
-  survey   Survey  @relation(fields: [surveyId], references: [id], onDelete: Cascade)
-  order    Int
-  type     String // nps, star, multiple_choice, free_text, yes_no
-  text     String // "How was your experience today?"
-  required Boolean @default(true)
-  options  Json? // For multiple_choice: ["Staff", "Speed", "Quality", "Cleanliness"]
+  id               String  @id @default(cuid())
+  surveyId         String
+  survey           Survey  @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  order            Int
+  type             String // nps, star, multiple_choice, free_text, yes_no
+  text             String // "How was your experience today?"
+  required         Boolean @default(true)
+  options          Json? // For multiple_choice: ["Staff", "Speed", "Quality", "Cleanliness"]
   displayCondition Json?
 
   responses SurveyResponse[]
@@ -689,16 +789,16 @@ model SurveyEnrollment {
   workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   campaignId  String? // which campaign distributed it
 
-  status      String           @default("pending") // pending, in_progress, completed, timed_out
-  channel     String           @default("web") // web, sms
-  currentStep Int              @default(0) // 0 = not started, 1+ = question order
+  status        String           @default("pending") // pending, in_progress, completed, timed_out
+  channel       String           @default("web") // web, sms
+  currentStep   Int              @default(0) // 0 = not started, 1+ = question order
   lastMessageAt DateTime?
-  timeoutAt   DateTime? // defaults to 72h after last message at write-time
-  retryCount  Int              @default(0) // invalid response retries for current question
-  score       Float? // computed overall score (NPS answer or average stars)
-  npsCategory String? // promoter, passive, detractor
-  completedAt DateTime?
-  responses   SurveyResponse[]
+  timeoutAt     DateTime? // defaults to 72h after last message at write-time
+  retryCount    Int              @default(0) // invalid response retries for current question
+  score         Float? // computed overall score (NPS answer or average stars)
+  npsCategory   String? // promoter, passive, detractor
+  completedAt   DateTime?
+  responses     SurveyResponse[]
 
   createdAt DateTime @default(now())
 
@@ -1287,11 +1387,11 @@ model ChatRoom {
   messages    ChatMessage[]
   smsMessages SmsMessage[]
 
+  @@unique([workspaceId, contactId, channel])
   @@index([domainId])
   @@index([workspaceId])
   @@index([contactId])
   @@index([domainId, createdAt])
-  @@unique([workspaceId, contactId, channel])
   @@map("chat_room")
 }
 

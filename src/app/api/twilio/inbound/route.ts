@@ -3,12 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleCampaignAutoReply } from "@/features/campaigns/server/handle-auto-reply";
 import { handleKeywordMatch } from "@/features/campaigns/server/handle-keyword";
 import { updateCampaignStats } from "@/features/campaigns/server/update-campaign-stats";
+import { logActivity } from "@/features/contacts/server/log-activity";
+import { fireWorkflowTrigger } from "@/features/nodes/lib/trigger-dispatcher";
 import { handleSurveyResponse } from "@/features/surveys/server/sms-survey-handler";
 import {
   fireContactOptedOut,
   fireContactReplied,
 } from "@/features/webhooks/server/webhook-events";
-import { logActivity } from "@/features/contacts/server/log-activity";
 import { prisma } from "@/lib/prisma";
 import { sendSms } from "@/lib/twilio";
 
@@ -213,12 +214,15 @@ export async function POST(req: NextRequest) {
           },
         })
         .catch((error) => {
-          console.error("[Inbound SMS] Failed to upsert inbound survey smsMessage", {
-            messageSid,
-            workspaceId,
-            surveyRoomId,
-            error,
-          });
+          console.error(
+            "[Inbound SMS] Failed to upsert inbound survey smsMessage",
+            {
+              messageSid,
+              workspaceId,
+              surveyRoomId,
+              error,
+            },
+          );
         });
 
       if (surveyResult.replyMessage) {
@@ -247,12 +251,15 @@ export async function POST(req: NextRequest) {
               },
             })
             .catch((error) => {
-              console.error("[Inbound SMS] Failed to store outbound survey reply", {
-                messageSid: surveyReply.sid,
-                workspaceId,
-                surveyRoomId,
-                error,
-              });
+              console.error(
+                "[Inbound SMS] Failed to store outbound survey reply",
+                {
+                  messageSid: surveyReply.sid,
+                  workspaceId,
+                  surveyRoomId,
+                  error,
+                },
+              );
             });
         }
       }
@@ -347,13 +354,14 @@ export async function POST(req: NextRequest) {
 
     // ─── Mark sequence logs replied for condition evaluation ───
     if (contactId) {
-      const activeEnrollments = await prisma.campaignSequenceEnrollment.findMany({
-        where: {
-          contactId,
-          status: "active",
-        },
-        select: { id: true },
-      });
+      const activeEnrollments =
+        await prisma.campaignSequenceEnrollment.findMany({
+          where: {
+            contactId,
+            status: "active",
+          },
+          select: { id: true },
+        });
 
       if (activeEnrollments.length > 0) {
         await (prisma.campaignSequenceStepLog as any)
@@ -494,6 +502,16 @@ export async function POST(req: NextRequest) {
         description: `SMS received: "${(body || "").slice(0, 60)}${(body || "").length > 60 ? "..." : ""}"`,
         metadata: { from, direction: "inbound" },
       });
+
+      fireWorkflowTrigger({
+        triggerType: "SMS_RECEIVED",
+        payload: {
+          workspaceId,
+          contactId,
+          messageBody: body,
+          fromPhone: from,
+        },
+      }).catch(() => {});
     }
 
     console.log("[Inbound SMS] Stored message in room:", savedRoomId);

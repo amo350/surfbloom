@@ -48,7 +48,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import type { Workspace } from "@/generated/prisma/client";
 import { useEntitySearch } from "@/hooks/use-entity-search";
 import {
   useCreateWorkspace,
@@ -57,6 +56,14 @@ import {
   useUpdateWorkspaceName,
 } from "../hooks/use-workspaces";
 import { useWorkspacesParams } from "../hooks/use-workspaces-params";
+
+type WorkspaceListItem = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 const createWorkspaceSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -295,7 +302,7 @@ export const WorkspacesEmpty = () => {
   );
 };
 
-export const WorkspaceCard = ({ data }: { data: Workspace }) => {
+export const WorkspaceCard = ({ data }: { data: WorkspaceListItem }) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const removeWorkspace = useRemoveWorkspace();
 
@@ -419,7 +426,7 @@ export const CreateWorkspaceDialog = ({
 };
 
 type EditWorkspaceDialogProps = {
-  workspace: Workspace;
+  workspace: WorkspaceListItem;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
