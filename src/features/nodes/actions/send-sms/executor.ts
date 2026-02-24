@@ -1,5 +1,6 @@
 import type { NodeExecutor } from "@/features/nodes/types";
 import { prisma } from "@/lib/prisma";
+import { sendSms } from "@/lib/twilio";
 import { loadContact, loadWorkspace } from "../lib/load-contact";
 import { resolveTemplate } from "../lib/resolve-template";
 import { sendSmsChannel } from "./channel";
@@ -49,7 +50,6 @@ export const sendSmsExecutor: NodeExecutor<SendSmsData> = async ({
 
       const fromPhone = workspace.twilioPhoneNumber.phoneNumber;
 
-      const { sendSms } = await import("@/lib/twilio");
       const twilioResult = await sendSms({
         to: contact.phone,
         from: fromPhone,

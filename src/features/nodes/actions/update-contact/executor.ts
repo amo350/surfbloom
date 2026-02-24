@@ -6,23 +6,9 @@ import { prisma } from "@/lib/prisma";
 import { loadContact } from "../lib/load-contact";
 import { resolveTemplate } from "../lib/resolve-template";
 import { updateContactChannel } from "./channel";
+import type { UpdateContactNodeData } from "./types";
 
-type ContactAction =
-  | "update_stage"
-  | "add_category"
-  | "remove_category"
-  | "log_note"
-  | "assign_contact";
-
-interface UpdateContactData {
-  action?: ContactAction;
-  stage?: string;
-  categoryName?: string;
-  noteTemplate?: string;
-  assigneeId?: string;
-}
-
-export const updateContactExecutor: NodeExecutor<UpdateContactData> = async ({
+export const updateContactExecutor: NodeExecutor<UpdateContactNodeData> = async ({
   data,
   nodeId,
   context,
@@ -70,7 +56,7 @@ export const updateContactExecutor: NodeExecutor<UpdateContactData> = async ({
               newStage,
             },
             triggerDepth: depth,
-          }).catch(() => {});
+          });
 
           return { ...context, _lastStage: newStage };
         }
@@ -79,14 +65,11 @@ export const updateContactExecutor: NodeExecutor<UpdateContactData> = async ({
           const categoryName = data.categoryName?.trim();
           if (!categoryName) throw new Error("No category name configured");
 
-          let category = await prisma.category.findUnique({
+          const category = await prisma.category.upsert({
             where: { workspaceId_name: { workspaceId, name: categoryName } },
+            update: {},
+            create: { workspaceId, name: categoryName },
           });
-          if (!category) {
-            category = await prisma.category.create({
-              data: { workspaceId, name: categoryName },
-            });
-          }
 
           await prisma.contactCategory.upsert({
             where: {
@@ -108,7 +91,7 @@ export const updateContactExecutor: NodeExecutor<UpdateContactData> = async ({
               categoryName: category.name,
             },
             triggerDepth: depth,
-          }).catch(() => {});
+          });
 
           return { ...context, _lastCategory: categoryName };
         }

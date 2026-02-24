@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,15 +26,22 @@ export function SendSmsDialog({
   defaultValues,
 }: SendSmsDialogProps) {
   const [body, setBody] = useState(defaultValues?.messageBody || "");
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (open) setBody(defaultValues?.messageBody || "");
-  }, [open, defaultValues]);
+    const isOpening = open && !wasOpenRef.current;
+    if (isOpening) {
+      setBody(defaultValues?.messageBody || "");
+    }
+    wasOpenRef.current = open;
+  }, [open, defaultValues?.messageBody]);
 
   const handleSave = () => {
     onSubmit({ messageBody: body });
     onOpenChange(false);
   };
+
+  const segments = calculateSmsSegments(body);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,7 +60,8 @@ export function SendSmsDialog({
               className="text-sm"
             />
             <p className="text-[10px] text-muted-foreground">
-              {body.length}/160 characters (1 SMS segment)
+              {body.length} characters ({segments} SMS segment
+              {segments === 1 ? "" : "s"})
             </p>
           </div>
           <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
@@ -79,4 +87,40 @@ export function SendSmsDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+const GSM_7_BASIC_CHARACTERS = new Set(
+  "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ`¿abcdefghijklmnopqrstuvwxyzäöñüà"
+    .split(""),
+);
+
+const GSM_7_EXTENDED_CHARACTERS = new Set("^{}\\[~]|€".split(""));
+
+function calculateSmsSegments(message: string): number {
+  if (!message) return 0;
+
+  let usesGsm7 = true;
+  let gsm7Length = 0;
+
+  for (const char of message) {
+    if (GSM_7_BASIC_CHARACTERS.has(char)) {
+      gsm7Length += 1;
+      continue;
+    }
+    if (GSM_7_EXTENDED_CHARACTERS.has(char)) {
+      gsm7Length += 2;
+      continue;
+    }
+    usesGsm7 = false;
+    break;
+  }
+
+  if (usesGsm7) {
+    if (gsm7Length <= 160) return 1;
+    return Math.ceil(gsm7Length / 153);
+  }
+
+  const ucs2Length = Array.from(message).length;
+  if (ucs2Length <= 70) return 1;
+  return Math.ceil(ucs2Length / 67);
 }

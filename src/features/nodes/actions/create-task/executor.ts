@@ -58,7 +58,7 @@ export const createTaskExecutor: NodeExecutor<CreateTaskData> = async ({
 
       // Compute due date
       let dueDate: Date | undefined;
-      if (data.dueDateOffset) {
+      if (data.dueDateOffset != null) {
         dueDate = new Date(Date.now() + data.dueDateOffset * 3600 * 1000);
       }
 

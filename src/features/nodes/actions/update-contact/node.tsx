@@ -7,23 +7,9 @@ import { BaseExecutionNode } from "@/features/nodes/components/BaseExecutionNode
 import { useNodeStatus } from "@/features/nodes/hooks/use-node-status";
 import { fetchUpdateContactRealtimeToken } from "./actions";
 import { UpdateContactDialog } from "./dialog";
+import type { ContactAction, UpdateContactNodeData } from "./types";
 
-type ContactAction =
-  | "update_stage"
-  | "add_category"
-  | "remove_category"
-  | "log_note"
-  | "assign_contact";
-
-type UpdateContactNodeData = {
-  action?: ContactAction;
-  stage?: string;
-  categoryName?: string;
-  noteTemplate?: string;
-  assigneeId?: string;
-};
-
-const ACTION_LABELS: Record<string, string> = {
+const ACTION_LABELS: Record<ContactAction, string> = {
   update_stage: "Update Stage",
   add_category: "Add Category",
   remove_category: "Remove Category",
@@ -53,7 +39,7 @@ export const UpdateContactNode = memo((props: NodeProps) => {
   });
 
   const data = props.data as UpdateContactNodeData | undefined;
-  const actionLabel = ACTION_LABELS[data?.action || ""] || "Not configured";
+  const actionLabel = data?.action ? ACTION_LABELS[data.action] : "Not configured";
 
   let detail = "";
   switch (data?.action) {
@@ -90,7 +76,6 @@ export const UpdateContactNode = memo((props: NodeProps) => {
       />
       <BaseExecutionNode
         {...props}
-        id={props.id}
         icon={UserCog}
         name="Update Contact"
         description={description}

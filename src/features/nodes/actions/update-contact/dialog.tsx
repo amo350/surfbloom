@@ -19,24 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-
-type ContactAction =
-  | "update_stage"
-  | "add_category"
-  | "remove_category"
-  | "log_note"
-  | "assign_contact";
+import type {
+  ContactAction,
+  UpdateContactDialogDefaults,
+} from "./types";
 
 interface UpdateContactDialogValues {
   action: ContactAction;
-  stage?: string;
-  categoryName?: string;
-  noteTemplate?: string;
-  assigneeId?: string;
-}
-
-interface UpdateContactDialogDefaults {
-  action?: ContactAction;
   stage?: string;
   categoryName?: string;
   noteTemplate?: string;

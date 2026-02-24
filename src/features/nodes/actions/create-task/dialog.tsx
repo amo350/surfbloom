@@ -60,11 +60,17 @@ export function CreateTaskDialog({
   }, [open, defaultValues]);
 
   const handleSave = () => {
+    const trimmedOffset = dueOffset.trim();
+    const parsedOffset = trimmedOffset ? Number.parseInt(trimmedOffset, 10) : NaN;
+
     onSubmit({
       titleTemplate: title,
       descriptionTemplate: desc || undefined,
       priority,
-      dueDateOffset: dueOffset ? parseInt(dueOffset, 10) : undefined,
+      dueDateOffset:
+        trimmedOffset && Number.isFinite(parsedOffset) && Number.isInteger(parsedOffset)
+          ? parsedOffset
+          : undefined,
     });
     onOpenChange(false);
   };

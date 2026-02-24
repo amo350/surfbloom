@@ -173,7 +173,6 @@ function NodeGroup({ title, nodes, onSelect }: NodeGroupProps) {
           <button
             key={nodeType.type}
             type="button"
-            aria-label={nodeType.label}
             className="w-full justify-start h-auto py-5 px-4 rounded-none cursor-pointer border-l-2 border-transparent hover:border-l-primary"
             onClick={() => onSelect(nodeType)}
           >
