@@ -233,6 +233,20 @@ export function IfElseDialog({
             </div>
           )}
 
+          {field === "_categories" && (
+            <p className="text-[10px] text-muted-foreground">
+              Category checks require a contact in workflow context. Without a
+              contact, this condition evaluates to false.
+            </p>
+          )}
+
+          {field === "contact.phone" && operator === "exists" && (
+            <p className="text-[10px] text-amber-600">
+              Tip: If your false branch sends email, also ensure the contact has
+              an email address to avoid downstream send errors.
+            </p>
+          )}
+
           <div className="rounded-lg border bg-muted/30 p-3">
             <p className="mb-1 text-[10px] font-medium text-muted-foreground">
               Condition preview:

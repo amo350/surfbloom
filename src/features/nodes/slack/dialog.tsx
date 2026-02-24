@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { TokenPicker } from "@/features/nodes/components/TokenPicker";
 
 const formSchema = z.object({
   variableName: z
@@ -141,10 +142,19 @@ export const SlackDialog = ({
               name="content"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Message Content</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Message Content</FormLabel>
+                    <TokenPicker
+                      onInsert={(token) =>
+                        form.setValue("content", `${field.value ?? ""}${token}`, {
+                          shouldDirty: true,
+                        })
+                      }
+                    />
+                  </div>
                   <FormControl>
                     <Textarea
-                      placeholder="Hello from workflow! {{json data}}"
+                      placeholder="Hello {first_name}, update from {location_name}."
                       className="min-h-[120px] rounded-2xl font-mono text-sm"
                       {...field}
                       value={field.value ?? ""}

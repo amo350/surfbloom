@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TokenPicker } from "@/features/nodes/components/TokenPicker";
 
 interface SendEmailDialogProps {
   open: boolean;
@@ -52,32 +53,38 @@ export function SendEmailDialog({
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div className="space-y-1.5">
-            <Label className="text-xs">Subject</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Subject</Label>
+              <TokenPicker onInsert={(token) => setSubject((prev) => prev + token)} />
+            </div>
             <Input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Thanks for visiting, {{contact.firstName}}!"
+              placeholder="Thanks for visiting, {first_name}!"
               className="h-9"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Body (HTML supported)</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Body (HTML supported)</Label>
+              <TokenPicker onInsert={(token) => setHtmlBody((prev) => prev + token)} />
+            </div>
             <Textarea
               value={htmlBody}
               onChange={(e) => setHtmlBody(e.target.value)}
-              placeholder="<p>Hi {{contact.firstName}},</p><p>We'd love your feedback...</p>"
+              placeholder="<p>Hi {first_name},</p><p>We'd love your feedback on {location_name}...</p>"
               rows={8}
               className="text-sm font-mono"
             />
           </div>
           <div className="rounded-lg bg-muted/30 border p-3 space-y-1">
             <p className="text-[10px] font-medium text-muted-foreground">
-              Template variables:
+              Workflow context (advanced):
             </p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
               <code className="text-[10px]">{"{{contact.firstName}}"}</code>
               <code className="text-[10px]">{"{{contact.email}}"}</code>
-              <code className="text-[10px]">{"{{location_name}}"}</code>
+              <code className="text-[10px]">{"{{workspace.name}}"}</code>
               <code className="text-[10px]">{"{{aiOutput}}"}</code>
             </div>
           </div>

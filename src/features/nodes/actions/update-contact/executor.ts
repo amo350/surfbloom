@@ -3,7 +3,6 @@ import { fireWorkflowTrigger } from "@/features/nodes/lib/trigger-dispatcher";
 import type { NodeExecutor } from "@/features/nodes/types";
 import { NodeType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { loadContact } from "../lib/load-contact";
 import { resolveTemplate } from "../lib/resolve-template";
 import { updateContactChannel } from "./channel";
 import type { UpdateContactNodeData } from "./types";
@@ -19,7 +18,12 @@ export const updateContactExecutor: NodeExecutor<UpdateContactNodeData> = async 
 
   try {
     const result = await step.run("update-contact", async () => {
-      const contact = await loadContact(context);
+      const contact = context.contact as
+        | {
+            id: string;
+            stage: string;
+          }
+        | undefined;
       if (!contact) throw new Error("No contact in workflow context");
 
       const workspaceId = context.workspaceId as string | undefined;
@@ -58,7 +62,11 @@ export const updateContactExecutor: NodeExecutor<UpdateContactNodeData> = async 
             triggerDepth: depth,
           });
 
-          return { ...context, _lastStage: newStage };
+          return {
+            ...context,
+            contact: { ...contact, stage: newStage },
+            _lastStage: newStage,
+          };
         }
 
         case "add_category": {

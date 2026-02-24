@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { TokenPicker } from "@/features/nodes/components/TokenPicker";
 import type {
   ContactAction,
   UpdateContactDialogDefaults,
@@ -158,14 +159,19 @@ export function UpdateContactDialog({
 
           {action === "log_note" && (
             <div className="space-y-1.5">
-              <Label htmlFor="update-contact-note" className="text-xs">
-                Note
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="update-contact-note" className="text-xs">
+                  Note
+                </Label>
+                <TokenPicker
+                  onInsert={(token) => setNoteTemplate((prev) => prev + token)}
+                />
+              </div>
               <Textarea
                 id="update-contact-note"
                 value={noteTemplate}
                 onChange={(e) => setNoteTemplate(e.target.value)}
-                placeholder="Review received: {{review.rating}} stars - {{review.text}}"
+                placeholder="Review received: {review_rating} stars - {{review.text}}"
                 rows={3}
                 className="text-sm"
               />

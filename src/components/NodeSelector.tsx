@@ -1,289 +1,382 @@
 "use client";
 
-import { createId } from "@paralleldrive/cuid2";
-import { useReactFlow } from "@xyflow/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckSquare,
   Clock,
+  FileText,
   GitBranch,
-  GlobeIcon,
+  Globe,
+  Hash,
+  Link,
   Mail,
   MessageSquare,
-  MousePointerIcon,
+  Play,
+  Search,
+  Sparkles,
   Star,
   Tag,
   Timer,
   UserCog,
   UserPlus,
+  type LucideIcon,
 } from "lucide-react";
-import Image from "next/image";
-import { useCallback } from "react";
-import { toast } from "sonner";
 import { NodeType } from "@/generated/prisma/enums";
-import { Separator } from "./ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "./ui/sheet";
+import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-export type NodeTypeOption = {
+interface NodeOption {
   type: NodeType;
   label: string;
   description: string;
-  icon: React.ComponentType<{ className?: string }> | string;
-};
-
-const triggerNodes: NodeTypeOption[] = [
-  {
-    type: NodeType.MANUAL_TRIGGER,
-    label: "Trigger manually",
-    description:
-      "Runs the flow on clicking a button. Good for getting started quickly",
-    icon: MousePointerIcon,
-  },
-  {
-    type: NodeType.GOOGLE_FORM_TRIGGER,
-    label: "Google Form",
-    description: "Runs the flow when a Google Form is submitted",
-    icon: "/logos/googleform.svg",
-  },
-  {
-    type: NodeType.STRIPE_TRIGGER,
-    label: "Stripe Event",
-    description: "Runs the flow when a Stripe Event is captured",
-    icon: "/logos/stripe.svg",
-  },
-  {
-    type: NodeType.CONTACT_CREATED,
-    label: "Contact Created",
-    description: "Fires when a new contact is created",
-    icon: UserPlus,
-  },
-  {
-    type: NodeType.REVIEW_RECEIVED,
-    label: "Review Received",
-    description: "Fires when a Google review is synced",
-    icon: Star,
-  },
-  {
-    type: NodeType.CATEGORY_ADDED,
-    label: "Category Added",
-    description: "Fires when a category is applied to a contact",
-    icon: Tag,
-  },
-  {
-    type: NodeType.SCHEDULE,
-    label: "Schedule",
-    description: "Fires on a recurring schedule",
-    icon: Clock,
-  },
-];
-
-const executionNodes: NodeTypeOption[] = [
-  {
-    type: NodeType.HTTP_REQUEST,
-    label: "HTTP Request",
-    description: "Makes an HTTP request",
-    icon: GlobeIcon,
-  },
-  {
-    type: NodeType.OPENAI,
-    label: "ChatGPT (recommended)",
-    description: "Use ChatGPT to generate text",
-    icon: "/logos/openai.svg",
-  },
-  {
-    type: NodeType.GEMINI,
-    label: "Gemini",
-    description: "Use Google Gemini to generate text",
-    icon: "/logos/gemini.svg",
-  },
-  {
-    type: NodeType.GROK,
-    label: "xAi",
-    description: "Use Grok to generate text",
-    icon: "/logos/grok.svg",
-  },
-  {
-    type: NodeType.SLACK,
-    label: "Slack",
-    description: "Send a message to Slack",
-    icon: "/logos/slack.svg",
-  },
-  {
-    type: NodeType.SEND_SMS,
-    label: "Send SMS",
-    description: "Send an SMS to the contact",
-    icon: MessageSquare,
-  },
-  {
-    type: NodeType.SEND_EMAIL,
-    label: "Send Email",
-    description: "Send an email to the contact",
-    icon: Mail,
-  },
-  {
-    type: NodeType.CREATE_TASK,
-    label: "Create Task",
-    description: "Create a task from workflow data",
-    icon: CheckSquare,
-  },
-  {
-    type: NodeType.UPDATE_CONTACT,
-    label: "Update Contact",
-    description: "Change stage, categories, notes, or assignment",
-    icon: UserCog,
-  },
-];
-
-const logicNodes: NodeTypeOption[] = [
-  {
-    type: NodeType.IF_ELSE,
-    label: "If/Else",
-    description: "Branch workflow based on a condition",
-    icon: GitBranch,
-  },
-  {
-    type: NodeType.WAIT,
-    label: "Wait",
-    description: "Pause workflow for a duration",
-    icon: Timer,
-  },
-];
-
-type NodeGroupProps = {
-  title: string;
-  nodes: NodeTypeOption[];
-  onSelect: (nodeType: NodeTypeOption) => void;
-};
-
-function NodeGroup({ title, nodes, onSelect }: NodeGroupProps) {
-  return (
-    <div>
-      <p className="px-4 py-2 text-xs font-semibold text-muted-foreground">
-        {title}
-      </p>
-      {nodes.map((nodeType) => {
-        const Icon = nodeType.icon;
-        return (
-          <button
-            key={nodeType.type}
-            type="button"
-            className="w-full justify-start h-auto py-5 px-4 rounded-none cursor-pointer border-l-2 border-transparent hover:border-l-primary"
-            onClick={() => onSelect(nodeType)}
-          >
-            <div className="flex items-center gap-6 w-full overflow-hidden">
-              {typeof Icon === "string" ? (
-                <Image
-                  src={Icon}
-                  alt={nodeType.label}
-                  width={20}
-                  height={20}
-                  className="size-5 object-contain rounded-sm"
-                />
-              ) : (
-                <Icon className="size-5" />
-              )}
-              <div className="flex flex-col items-start text-left">
-                <span className="font-medium text-sm">{nodeType.label}</span>
-                <span className="text-xs text-muted-foreground">
-                  {nodeType.description}
-                </span>
-              </div>
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
+  icon: LucideIcon;
+  keywords?: string[];
 }
+
+interface NodeCategory {
+  id: string;
+  label: string;
+  nodes: NodeOption[];
+}
+
+const NODE_CATEGORIES: NodeCategory[] = [
+  {
+    id: "triggers",
+    label: "Triggers",
+    nodes: [
+      {
+        type: NodeType.CONTACT_CREATED,
+        label: "Contact Created",
+        description: "New contact is added",
+        icon: UserPlus,
+        keywords: ["lead", "new", "signup"],
+      },
+      {
+        type: NodeType.REVIEW_RECEIVED,
+        label: "Review Received",
+        description: "Google review is synced",
+        icon: Star,
+        keywords: ["rating", "google", "feedback", "stars"],
+      },
+      {
+        type: NodeType.CATEGORY_ADDED,
+        label: "Category Added",
+        description: "Tag is applied to contact",
+        icon: Tag,
+        keywords: ["tag", "label", "segment"],
+      },
+      {
+        type: NodeType.SCHEDULE,
+        label: "Schedule",
+        description: "Recurring time-based trigger",
+        icon: Clock,
+        keywords: ["cron", "recurring", "daily", "weekly", "timer"],
+      },
+      {
+        type: NodeType.MANUAL_TRIGGER,
+        label: "Manual Trigger",
+        description: "Run workflow manually",
+        icon: Play,
+        keywords: ["start", "test", "run"],
+      },
+      {
+        type: NodeType.GOOGLE_FORM_TRIGGER,
+        label: "Google Form",
+        description: "Form submission received",
+        icon: FileText,
+        keywords: ["form", "submission", "intake"],
+      },
+    ],
+  },
+  {
+    id: "actions",
+    label: "Actions",
+    nodes: [
+      {
+        type: NodeType.SEND_SMS,
+        label: "Send SMS",
+        description: "Send a text message",
+        icon: MessageSquare,
+        keywords: ["text", "message", "twilio", "sms"],
+      },
+      {
+        type: NodeType.SEND_EMAIL,
+        label: "Send Email",
+        description: "Send an email",
+        icon: Mail,
+        keywords: ["email", "mail", "resend"],
+      },
+      {
+        type: NodeType.CREATE_TASK,
+        label: "Create Task",
+        description: "Add a task to the board",
+        icon: CheckSquare,
+        keywords: ["todo", "task", "kanban", "board", "action item"],
+      },
+      {
+        type: NodeType.UPDATE_CONTACT,
+        label: "Update Contact",
+        description: "Stage, category, note, or assignment",
+        icon: UserCog,
+        keywords: ["stage", "category", "tag", "note", "assign", "pipeline"],
+      },
+      {
+        type: NodeType.POST_SLACK,
+        label: "Post to Slack",
+        description: "Send a Slack notification",
+        icon: Hash,
+        keywords: ["slack", "notify", "alert", "webhook"],
+      },
+    ],
+  },
+  {
+    id: "logic",
+    label: "Logic",
+    nodes: [
+      {
+        type: NodeType.IF_ELSE,
+        label: "If/Else",
+        description: "Branch on a condition",
+        icon: GitBranch,
+        keywords: ["branch", "condition", "filter", "check", "split"],
+      },
+      {
+        type: NodeType.WAIT,
+        label: "Wait",
+        description: "Pause for a duration",
+        icon: Timer,
+        keywords: ["delay", "pause", "sleep", "timer"],
+      },
+    ],
+  },
+  {
+    id: "ai",
+    label: "AI",
+    nodes: [
+      {
+        type: NodeType.AI_NODE,
+        label: "AI Node",
+        description: "Generate, analyze, or summarize",
+        icon: Sparkles,
+        keywords: ["claude", "gpt", "gemini", "grok", "llm", "generate", "ai"],
+      },
+    ],
+  },
+  {
+    id: "advanced",
+    label: "Advanced",
+    nodes: [
+      {
+        type: NodeType.HTTP_REQUEST,
+        label: "HTTP Request",
+        description: "Call any API endpoint",
+        icon: Globe,
+        keywords: ["api", "webhook", "http", "rest", "fetch", "request"],
+      },
+      {
+        type: NodeType.STRIPE_TRIGGER,
+        label: "Stripe Trigger",
+        description: "Stripe payment event",
+        icon: Link,
+        keywords: ["payment", "stripe", "billing", "charge"],
+      },
+    ],
+  },
+];
 
 interface NodeSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  children: React.ReactNode;
+  onSelect: (type: NodeType) => void;
 }
 
-export function NodeSelector({
-  open,
-  onOpenChange,
-  children,
-}: NodeSelectorProps) {
-  const { setNodes, getNodes, screenToFlowPosition } = useReactFlow();
+export function NodeSelector({ open, onOpenChange, onSelect }: NodeSelectorProps) {
+  const [search, setSearch] = useState("");
+  const [focusIndex, setFocusIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  const handleNodeSelect = useCallback(
-    (nodeType: NodeTypeOption) => {
-      if (nodeType.type === NodeType.MANUAL_TRIGGER) {
-        const nodes = getNodes();
-        const hasManualTrigger = nodes.some(
-          (node) => node.type === NodeType.MANUAL_TRIGGER,
-        );
-        if (hasManualTrigger) {
-          toast.error("too many manual triggers");
-          return;
-        }
-      }
+  useEffect(() => {
+    if (open) {
+      setSearch("");
+      setFocusIndex(0);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [open]);
 
-      setNodes((nodes) => {
-        const hasInitialTrigger = nodes.some(
-          (node) => node.type === NodeType.INITIAL,
-        );
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
+  const filteredCategories = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return NODE_CATEGORIES;
 
-        const flowPosition = screenToFlowPosition({
-          x: centerX + (Math.random() - 0.5) * 200,
-          y: centerY + (Math.random() - 0.5) * 200,
-        });
+    return NODE_CATEGORIES.map((category) => ({
+      ...category,
+      nodes: category.nodes.filter((node) => {
+        const haystack = [node.label, node.description, ...(node.keywords || [])]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(q);
+      }),
+    })).filter((category) => category.nodes.length > 0);
+  }, [search]);
 
-        const newNode = {
-          id: createId(),
-          data: {},
-          position: flowPosition,
-          type: nodeType.type,
-        };
-        if (hasInitialTrigger) {
-          return [newNode];
-        }
+  const flatNodes = useMemo(
+    () => filteredCategories.flatMap((category) => category.nodes),
+    [filteredCategories],
+  );
 
-        return [...nodes, newNode];
-      });
+  useEffect(() => {
+    setFocusIndex((index) =>
+      index >= flatNodes.length ? Math.max(0, flatNodes.length - 1) : index,
+    );
+  }, [flatNodes.length]);
+
+  useEffect(() => {
+    if (!listRef.current) return;
+    const focused = listRef.current.querySelector(
+      `[data-node-index="${focusIndex}"]`,
+    );
+    if (focused) {
+      focused.scrollIntoView({ block: "nearest" });
+    }
+  }, [focusIndex]);
+
+  const handleSelect = useCallback(
+    (type: NodeType) => {
+      onSelect(type);
       onOpenChange(false);
     },
-    [setNodes, getNodes, screenToFlowPosition, onOpenChange],
+    [onOpenChange, onSelect],
   );
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      switch (event.key) {
+        case "ArrowDown":
+          event.preventDefault();
+          setFocusIndex((index) => Math.min(index + 1, flatNodes.length - 1));
+          break;
+        case "ArrowUp":
+          event.preventDefault();
+          setFocusIndex((index) => Math.max(index - 1, 0));
+          break;
+        case "Enter":
+          event.preventDefault();
+          if (flatNodes[focusIndex]) {
+            handleSelect(flatNodes[focusIndex].type);
+          }
+          break;
+        case "Escape":
+          event.preventDefault();
+          onOpenChange(false);
+          break;
+      }
+    },
+    [flatNodes, focusIndex, handleSelect, onOpenChange],
+  );
+
+  let runningIndex = 0;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetTrigger asChild>{children}</SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>What triggers this workflow?</SheetTitle>
-          <SheetDescription>
-            A trigger is a step that starts workflow
-          </SheetDescription>
+      <SheetContent
+        side="right"
+        className="w-[360px] p-0 flex flex-col sm:w-[400px]"
+        onKeyDown={handleKeyDown}
+      >
+        <SheetHeader className="px-4 pt-4 pb-0">
+          <SheetTitle className="text-sm font-medium">Add Node</SheetTitle>
+          <div className="relative mt-2">
+            <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+            <Input
+              ref={inputRef}
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setFocusIndex(0);
+              }}
+              placeholder="Search nodes..."
+              className="h-9 pl-8 text-sm"
+              autoComplete="off"
+            />
+          </div>
         </SheetHeader>
-        <div className="space-y-4">
-          <NodeGroup
-            title="Triggers"
-            nodes={triggerNodes}
-            onSelect={handleNodeSelect}
-          />
-          <Separator />
-          <NodeGroup
-            title="Actions"
-            nodes={executionNodes}
-            onSelect={handleNodeSelect}
-          />
-          <Separator />
-          <NodeGroup
-            title="Logic"
-            nodes={logicNodes}
-            onSelect={handleNodeSelect}
-          />
+
+        <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          {filteredCategories.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No nodes match &quot;{search}&quot;
+            </p>
+          )}
+
+          {filteredCategories.map((category) => {
+            return (
+              <div key={category.id}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {category.label}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  {category.nodes.map((node) => {
+                    const currentIndex = runningIndex++;
+                    const isFocused = currentIndex === focusIndex;
+
+                    return (
+                      <button
+                        key={node.type}
+                        type="button"
+                        data-focused={isFocused}
+                        data-node-index={currentIndex}
+                        onClick={() => handleSelect(node.type)}
+                        onMouseEnter={() => setFocusIndex(currentIndex)}
+                        className={cn(
+                          "flex items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors",
+                          "hover:bg-accent hover:border-accent-foreground/20",
+                          isFocused &&
+                            "bg-accent border-accent-foreground/20 ring-1 ring-accent-foreground/10",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "flex size-7 shrink-0 items-center justify-center rounded-md",
+                            category.id === "triggers" && "bg-blue-500/10 text-blue-600",
+                            category.id === "actions" && "bg-green-500/10 text-green-600",
+                            category.id === "logic" && "bg-amber-500/10 text-amber-600",
+                            category.id === "ai" && "bg-purple-500/10 text-purple-600",
+                            category.id === "advanced" && "bg-slate-500/10 text-slate-600",
+                          )}
+                        >
+                          <node.icon className="size-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium leading-none mb-0.5">
+                            {node.label}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground leading-tight">
+                            {node.description}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="px-4 py-2 border-t bg-muted/30">
+          <p className="text-[10px] text-muted-foreground text-center">
+            <kbd className="px-1 py-0.5 rounded bg-muted border text-[9px]">↑↓</kbd>{" "}
+            navigate{" "}
+            <kbd className="px-1 py-0.5 rounded bg-muted border text-[9px]">↵</kbd>{" "}
+            select{" "}
+            <kbd className="px-1 py-0.5 rounded bg-muted border text-[9px]">esc</kbd>{" "}
+            close
+          </p>
         </div>
       </SheetContent>
     </Sheet>

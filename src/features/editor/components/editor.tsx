@@ -17,6 +17,7 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import { ErrorView, LoadingView } from "@/components/EntityComponents";
 import { useSuspenseWorkflow } from "@/features/workflows/hooks/use-workflows";
+import { useNodeSelectorHotkey } from "@/features/workflows/hooks/use-node-selector-hotkey";
 
 import "@xyflow/react/dist/style.css";
 import { useSetAtom } from "jotai";
@@ -61,6 +62,9 @@ export const Editor = ({
 
   const [nodes, setNodes] = useState<Node[]>(workflow.nodes);
   const [edges, setEdges] = useState<Edge[]>(workflow.edges);
+  const [selectorOpen, setSelectorOpen] = useState(false);
+
+  useNodeSelectorHotkey(() => setSelectorOpen(true));
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) =>
@@ -102,7 +106,10 @@ export const Editor = ({
         <Controls />
         <MiniMap />
         <Panel position="top-right">
-          <AddNodeButton />
+          <AddNodeButton
+            selectorOpen={selectorOpen}
+            onSelectorOpenChange={setSelectorOpen}
+          />
         </Panel>
         {hasManualTrigger && (
           <Panel position="bottom-center">
