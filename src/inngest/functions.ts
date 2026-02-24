@@ -1,4 +1,8 @@
 import { NonRetriableError } from "inngest";
+import { createTaskChannel } from "@/features/nodes/actions/create-task/channel";
+import { sendEmailChannel } from "@/features/nodes/actions/send-email/channel";
+import { sendSmsChannel } from "@/features/nodes/actions/send-sms/channel";
+import { updateContactChannel } from "@/features/nodes/actions/update-contact/channel";
 import { geminiChannel } from "@/features/nodes/channels/gemini";
 import { googleFormTriggerChannel } from "@/features/nodes/channels/google-form-trigger";
 import { httpRequestChannel } from "@/features/nodes/channels/http-request";
@@ -70,6 +74,10 @@ export const executeWorkflow = inngest.createFunction(
       openAiChannel(),
       xAiChannel(),
       slackChannel(),
+      sendSmsChannel(),
+      sendEmailChannel(),
+      createTaskChannel(),
+      updateContactChannel(),
       ifElseChannel(),
       waitChannel(),
     ],
@@ -399,12 +407,14 @@ function buildOutputSummary(
         return `Wait node executed (${nodeId})`;
       case "WAIT_UNTIL":
         return `Wait until node executed (${nodeId})`;
-      case "UPDATE_STAGE":
-        return `Stage -> ${readString(ctx._lastStage) || ""}`.trim();
-      case "ADD_CATEGORY":
-        return `Added category: ${readString(ctx._lastCategory) || ""}`.trim();
-      case "REMOVE_CATEGORY":
-        return `Removed category: ${readString(ctx._lastCategory) || ""}`.trim();
+      case "UPDATE_CONTACT": {
+        const stage = readString(ctx._lastStage);
+        if (stage) return `Stage -> ${stage}`;
+        const category = readString(ctx._lastCategory);
+        if (category) return `Category: ${category}`;
+        if (readString(ctx._lastAssignee)) return "Assigned to member";
+        return "Contact updated";
+      }
       case "AI_NODE": {
         const aiOutput = readString(ctx.aiOutput);
         return aiOutput
@@ -413,8 +423,6 @@ function buildOutputSummary(
       }
       case "POST_SLACK":
         return "Posted to Slack";
-      case "LOG_NOTE":
-        return "Note logged";
       default:
         return null;
     }

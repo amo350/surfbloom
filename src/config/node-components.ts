@@ -1,5 +1,9 @@
 import { NodeTypes } from "@xyflow/react";
 import { InitialNode } from "@/components/InitialNode";
+import { CreateTaskNode } from "@/features/nodes/actions/create-task/node";
+import { SendEmailNode } from "@/features/nodes/actions/send-email/node";
+import { SendSmsNode } from "@/features/nodes/actions/send-sms/node";
+import { UpdateContactNode } from "@/features/nodes/actions/update-contact/node";
 import { GeminiNode } from "@/features/nodes/gemini/node";
 import { GoogleFormTrigger } from "@/features/nodes/google-form-trigger/node";
 import { HttpRequestNode } from "@/features/nodes/http-requests/node";
@@ -30,6 +34,10 @@ export const nodeComponents = {
   [NodeType.OPENAI]: OpenAiNode,
   [NodeType.IF_ELSE]: IfElseNode,
   [NodeType.WAIT]: WaitNode,
+  [NodeType.SEND_SMS]: SendSmsNode,
+  [NodeType.SEND_EMAIL]: SendEmailNode,
+  [NodeType.CREATE_TASK]: CreateTaskNode,
+  [NodeType.UPDATE_CONTACT]: UpdateContactNode,
   [NodeType.GROK]: XAiNode,
   [NodeType.SLACK]: SlackNode,
 } as const satisfies NodeTypes;

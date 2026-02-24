@@ -3,13 +3,17 @@
 import { createId } from "@paralleldrive/cuid2";
 import { useReactFlow } from "@xyflow/react";
 import {
+  CheckSquare,
   Clock,
   GitBranch,
   GlobeIcon,
+  Mail,
+  MessageSquare,
   MousePointerIcon,
   Star,
   Tag,
   Timer,
+  UserCog,
   UserPlus,
 } from "lucide-react";
 import Image from "next/image";
@@ -110,6 +114,30 @@ const executionNodes: NodeTypeOption[] = [
     description: "Send a message to Slack",
     icon: "/logos/slack.svg",
   },
+  {
+    type: NodeType.SEND_SMS,
+    label: "Send SMS",
+    description: "Send an SMS to the contact",
+    icon: MessageSquare,
+  },
+  {
+    type: NodeType.SEND_EMAIL,
+    label: "Send Email",
+    description: "Send an email to the contact",
+    icon: Mail,
+  },
+  {
+    type: NodeType.CREATE_TASK,
+    label: "Create Task",
+    description: "Create a task from workflow data",
+    icon: CheckSquare,
+  },
+  {
+    type: NodeType.UPDATE_CONTACT,
+    label: "Update Contact",
+    description: "Change stage, categories, notes, or assignment",
+    icon: UserCog,
+  },
 ];
 
 const logicNodes: NodeTypeOption[] = [
@@ -142,8 +170,10 @@ function NodeGroup({ title, nodes, onSelect }: NodeGroupProps) {
       {nodes.map((nodeType) => {
         const Icon = nodeType.icon;
         return (
-          <div
+          <button
             key={nodeType.type}
+            type="button"
+            aria-label={nodeType.label}
             className="w-full justify-start h-auto py-5 px-4 rounded-none cursor-pointer border-l-2 border-transparent hover:border-l-primary"
             onClick={() => onSelect(nodeType)}
           >
@@ -166,7 +196,7 @@ function NodeGroup({ title, nodes, onSelect }: NodeGroupProps) {
                 </span>
               </div>
             </div>
-          </div>
+          </button>
         );
       })}
     </div>

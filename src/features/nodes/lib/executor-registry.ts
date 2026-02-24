@@ -1,3 +1,7 @@
+import { createTaskExecutor } from "@/features/nodes/actions/create-task/executor";
+import { sendEmailExecutor } from "@/features/nodes/actions/send-email/executor";
+import { sendSmsExecutor } from "@/features/nodes/actions/send-sms/executor";
+import { updateContactExecutor } from "@/features/nodes/actions/update-contact/executor";
 import { geminiExecutor } from "@/features/nodes/gemini/executor";
 import { googleFormTriggerExecutor } from "@/features/nodes/google-form-trigger/executor";
 import { HttpRequestExecutor } from "@/features/nodes/http-requests/executor";
@@ -29,6 +33,10 @@ export const executorRegistry: Partial<Record<NodeType, NodeExecutor>> = {
   [NodeType.OPENAI]: openAiExecutor,
   [NodeType.IF_ELSE]: ifElseExecutor,
   [NodeType.WAIT]: waitExecutor,
+  [NodeType.SEND_SMS]: sendSmsExecutor,
+  [NodeType.SEND_EMAIL]: sendEmailExecutor,
+  [NodeType.CREATE_TASK]: createTaskExecutor,
+  [NodeType.UPDATE_CONTACT]: updateContactExecutor,
   // TODO: Implement these executors
   [NodeType.GROK]: xAiExecutor,
   [NodeType.SLACK]: slackExecutor,
