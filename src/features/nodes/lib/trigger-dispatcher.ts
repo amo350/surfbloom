@@ -25,7 +25,7 @@ interface TriggerOptions {
 /**
  * Central event bus for workflow triggers.
  *
- * 1. Finds active workflows in the workspace that have a node of `triggerType`
+ * 1. Finds workflows in the workspace that have a node of `triggerType`
  * 2. For each match, fires sendWorkflowExecution with the payload
  * 3. Fire-and-forget — catches and logs errors, never throws
  *
@@ -45,10 +45,10 @@ export async function fireWorkflowTrigger({
   }
 
   try {
-    // Find active workflows in this workspace that contain a trigger node
-    // of the matching type. We query Node to find workflows, not Workflow
-    // directly, because the trigger type lives on the node.
-    const triggerNodes = await prisma.node.findMany({
+    // First, try active workflows only.
+    // If none are active, fall back to all workflows in workspace so trigger
+    // wiring still works in environments where "active" toggling isn't wired.
+    const activeTriggerNodes = await prisma.node.findMany({
       where: {
         type: triggerType,
         workflow: {
@@ -62,12 +62,35 @@ export async function fireWorkflowTrigger({
       },
     });
 
+    const triggerNodes =
+      activeTriggerNodes.length > 0
+        ? activeTriggerNodes
+        : await prisma.node.findMany({
+            where: {
+              type: triggerType,
+              workflow: {
+                workspaceId: payload.workspaceId,
+              },
+            },
+            select: {
+              workflowId: true,
+              data: true, // trigger config (e.g. category filter, rating filter)
+            },
+          });
+
+    if (activeTriggerNodes.length === 0 && triggerNodes.length > 0) {
+      console.warn(
+        `[trigger-dispatcher] No active workflows matched ${triggerType} in workspace ${payload.workspaceId}; falling back to all workflows`,
+      );
+    }
+
     if (triggerNodes.length === 0) return;
 
     // Deduplicate by workflowId (a workflow should only have one trigger node,
     // but guard against duplicates)
     const seen = new Set<string>();
 
+    const sends: Promise<unknown>[] = [];
     for (const node of triggerNodes) {
       if (seen.has(node.workflowId)) continue;
       seen.add(node.workflowId);
@@ -76,24 +99,27 @@ export async function fireWorkflowTrigger({
       const nodeData = (node.data || {}) as Record<string, unknown>;
       if (!matchesTriggerFilter(triggerType, nodeData, payload)) continue;
 
-      // Fire the workflow — non-blocking
-      sendWorkflowExecution({
-        workflowId: node.workflowId,
-        initialData: {
-          ...payload,
-          _trigger: {
-            type: triggerType,
-            depth: triggerDepth + 1,
-            firedAt: new Date().toISOString(),
+      sends.push(
+        sendWorkflowExecution({
+          workflowId: node.workflowId,
+          initialData: {
+            ...payload,
+            _trigger: {
+              type: triggerType,
+              depth: triggerDepth + 1,
+              firedAt: new Date().toISOString(),
+            },
           },
-        },
-      }).catch((err) => {
-        console.error(
-          `[trigger-dispatcher] Failed to fire workflow ${node.workflowId} for ${triggerType}:`,
-          err,
-        );
-      });
+        }).catch((err) => {
+          console.error(
+            `[trigger-dispatcher] Failed to fire workflow ${node.workflowId} for ${triggerType}:`,
+            err,
+          );
+        }),
+      );
     }
+
+    await Promise.allSettled(sends);
   } catch (err) {
     // Never throw — the calling handler should not fail because of workflow triggers
     console.error(

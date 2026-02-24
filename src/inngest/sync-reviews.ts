@@ -228,7 +228,7 @@ async function findOrCreateReviewContact({
         ? {
             lastName: { equals: lastName, mode: "insensitive" },
           }
-        : {}),
+        : { lastName: null }),
     },
     select: {
       id: true,
@@ -242,25 +242,6 @@ async function findOrCreateReviewContact({
   });
 
   if (exactMatch) return exactMatch;
-
-  const softMatch = await prisma.chatContact.findFirst({
-    where: {
-      workspaceId,
-      isContact: true,
-      firstName: { contains: firstName, mode: "insensitive" },
-    },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      phone: true,
-      stage: true,
-      source: true,
-    },
-  });
-
-  if (softMatch) return softMatch;
 
   return prisma.chatContact.create({
     data: {

@@ -77,6 +77,9 @@ export const sendSmsExecutor: NodeExecutor<SendSmsData> = async ({
         body,
         userId: workspace.userId,
       });
+      if (!twilioResult?.sid) {
+        throw new Error("SMS provider returned no SID for outbound send");
+      }
 
       const chatRoom = await prisma.chatRoom.upsert({
         where: {
@@ -102,7 +105,7 @@ export const sendSmsExecutor: NodeExecutor<SendSmsData> = async ({
           from: fromPhone,
           to: contact.phone,
           body,
-          twilioSid: twilioResult?.sid || null,
+          twilioSid: twilioResult.sid,
           status: "SENT",
         },
       });

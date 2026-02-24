@@ -7,6 +7,7 @@ export interface AiPreset {
   systemPrompt: string;
   userPromptTemplate: string; // Handlebars against context
   description: string;
+  isCustom?: boolean;
 }
 
 export const AI_PRESETS: AiPreset[] = [
@@ -88,6 +89,7 @@ export const AI_PRESETS: AiPreset[] = [
     description: "Write your own generation prompt",
     systemPrompt: "",
     userPromptTemplate: "",
+    isCustom: true,
   },
 
   // ─── Analyze ──────────────────────────────────────
@@ -127,6 +129,7 @@ export const AI_PRESETS: AiPreset[] = [
     description: "Write your own analysis prompt",
     systemPrompt: "",
     userPromptTemplate: "",
+    isCustom: true,
   },
 
   // ─── Summarize ────────────────────────────────────
@@ -157,6 +160,7 @@ export const AI_PRESETS: AiPreset[] = [
     description: "Write your own summarization prompt",
     systemPrompt: "",
     userPromptTemplate: "",
+    isCustom: true,
   },
 ];
 

@@ -224,6 +224,13 @@ export function NodeSelector({ open, onOpenChange, onSelect }: NodeSelectorProps
     () => filteredCategories.flatMap((category) => category.nodes),
     [filteredCategories],
   );
+  const nodeIndexMap = useMemo(() => {
+    const map = new Map<NodeType, number>();
+    flatNodes.forEach((node, index) => {
+      map.set(node.type, index);
+    });
+    return map;
+  }, [flatNodes]);
 
   useEffect(() => {
     setFocusIndex((index) =>
@@ -275,8 +282,6 @@ export function NodeSelector({ open, onOpenChange, onSelect }: NodeSelectorProps
     [flatNodes, focusIndex, handleSelect, onOpenChange],
   );
 
-  let runningIndex = 0;
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -321,7 +326,7 @@ export function NodeSelector({ open, onOpenChange, onSelect }: NodeSelectorProps
 
                 <div className="grid grid-cols-2 gap-1.5">
                   {category.nodes.map((node) => {
-                    const currentIndex = runningIndex++;
+                    const currentIndex = nodeIndexMap.get(node.type) ?? 0;
                     const isFocused = currentIndex === focusIndex;
 
                     return (

@@ -56,7 +56,7 @@ const PROVIDERS = [
   {
     value: "google",
     label: "Google (Gemini)",
-    models: ["gemini-2.0-flash", "gemini-2.0-pro"],
+    models: ["gemini-2.0-flash-001", "gemini-2.5-pro"],
   },
   { value: "xai", label: "xAI (Grok)", models: ["grok-3-mini"] },
 ];
@@ -127,7 +127,8 @@ export function AiNodeDialog({
     onOpenChange(false);
   };
 
-  const isCustom = presetId?.includes("custom") || !presetId;
+  const selectedPreset = AI_PRESETS.find((p) => p.id === presetId);
+  const isCustom = selectedPreset?.isCustom || !presetId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -144,8 +145,14 @@ export function AiNodeDialog({
               <Select
                 value={mode}
                 onValueChange={(v) => {
+                  const currentPreset = AI_PRESETS.find((p) => p.id === presetId);
+                  const shouldPreservePrompts = currentPreset?.isCustom === true;
                   setMode(v as AiMode);
                   setPresetId("");
+                  if (!shouldPreservePrompts) {
+                    setSystemPrompt("");
+                    setUserPrompt("");
+                  }
                 }}
               >
                 <SelectTrigger className="h-9">

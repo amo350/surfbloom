@@ -28,15 +28,26 @@ export const sendEmailExecutor: NodeExecutor<SendEmailData> = async ({
       if (!contact) throw new Error("No contact in workflow context");
       if (!contact.email) throw new Error("Contact has no email address");
 
-      const workspaceId = context.workspaceId as string;
+      const rawWorkspaceId = context.workspaceId;
       const workspace = context.workspace as
         | {
+            id?: string;
             name: string;
             phone: string | null;
             fromEmail: string | null;
             fromEmailName: string | null;
           }
         | undefined;
+      const workspaceId =
+        (typeof rawWorkspaceId === "string" && rawWorkspaceId.trim()
+          ? rawWorkspaceId
+          : undefined) ||
+        (typeof workspace?.id === "string" && workspace.id.trim()
+          ? workspace.id
+          : undefined);
+      if (!workspaceId) {
+        throw new Error("No workspaceId in workflow context");
+      }
       if (!workspace?.fromEmail)
         throw new Error("Workspace has no from email configured");
 

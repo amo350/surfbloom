@@ -59,15 +59,24 @@ export function estimateCost(
 ): number {
   // Per 1M tokens pricing (in cents), rough estimates
   const pricing: Record<string, { input: number; output: number }> = {
+    "anthropic/claude-sonnet-4-20250514": { input: 300, output: 1500 },
+    "anthropic/claude-haiku-4-5-20251001": { input: 80, output: 400 },
+    "openai/gpt-4o": { input: 250, output: 1000 },
+    "openai/gpt-4o-mini": { input: 15, output: 60 },
+    "google/gemini-2.0-flash-001": { input: 10, output: 40 },
+    "google/gemini-2.5-pro": { input: 125, output: 500 },
+    "xai/grok-3-mini": { input: 30, output: 50 },
     "claude-sonnet-4-20250514": { input: 300, output: 1500 },
     "claude-haiku-4-5-20251001": { input: 80, output: 400 },
     "gpt-4o": { input: 250, output: 1000 },
     "gpt-4o-mini": { input: 15, output: 60 },
-    "gemini-2.0-flash": { input: 10, output: 40 },
+    "gemini-2.0-flash-001": { input: 10, output: 40 },
+    "gemini-2.5-pro": { input: 125, output: 500 },
     "grok-3-mini": { input: 30, output: 50 },
   };
 
-  const rates = pricing[model] || { input: 100, output: 500 }; // fallback
+  const lookupKey = `${provider}/${model}`;
+  const rates = pricing[lookupKey] || pricing[model] || { input: 100, output: 500 }; // fallback
 
   return (
     (inputTokens / 1_000_000) * rates.input +

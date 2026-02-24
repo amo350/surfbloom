@@ -52,6 +52,13 @@ export function TokenPicker({ onInsert, variant = "campaign" }: TokenPickerProps
       onInsert(`{${token}}`);
     } else if (variant === "handlebars") {
       onInsert(`{{${HANDLEBARS_TOKEN_MAP[token] || token}}}`);
+    } else if (variant === "both") {
+      const handlebarsToken = HANDLEBARS_TOKEN_MAP[token];
+      if (handlebarsToken) {
+        onInsert(`{{${handlebarsToken}}}`);
+      } else {
+        onInsert(`{${token}}`);
+      }
     } else {
       onInsert(`{${token}}`);
     }
