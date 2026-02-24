@@ -63,6 +63,18 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
       // Resolve both campaign tokens and Handlebars variables
       const templateContext = context as Record<string, unknown>;
       const webhookUrl = resolveTemplate(webhookTemplate, templateContext);
+      if (!webhookUrl.trim()) {
+        throw new Error(
+          `Slack webhook URL resolved to empty string. Template="${webhookTemplate}"`,
+        );
+      }
+      try {
+        new URL(webhookUrl);
+      } catch {
+        throw new Error(
+          `Slack webhook URL is invalid. Template="${webhookTemplate}" Resolved="${webhookUrl}"`,
+        );
+      }
       const rawContent = resolveTemplate(contentTemplate, templateContext);
       const content = decode(rawContent);
 

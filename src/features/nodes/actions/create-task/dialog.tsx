@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,6 +50,8 @@ export function CreateTaskDialog({
   const [dueOffset, setDueOffset] = useState(
     defaultValues?.dueDateOffset?.toString() || "",
   );
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const descInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -76,6 +78,40 @@ export function CreateTaskDialog({
     onOpenChange(false);
   };
 
+  const insertIntoTitle = (token: string) => {
+    const input = titleInputRef.current;
+    if (!input) {
+      setTitle((prev) => prev + token);
+      return;
+    }
+    const start = input.selectionStart ?? title.length;
+    const end = input.selectionEnd ?? title.length;
+    const next = `${title.slice(0, start)}${token}${title.slice(end)}`;
+    setTitle(next);
+    requestAnimationFrame(() => {
+      input.focus();
+      const caret = start + token.length;
+      input.setSelectionRange(caret, caret);
+    });
+  };
+
+  const insertIntoDescription = (token: string) => {
+    const input = descInputRef.current;
+    if (!input) {
+      setDesc((prev) => prev + token);
+      return;
+    }
+    const start = input.selectionStart ?? desc.length;
+    const end = input.selectionEnd ?? desc.length;
+    const next = `${desc.slice(0, start)}${token}${desc.slice(end)}`;
+    setDesc(next);
+    requestAnimationFrame(() => {
+      input.focus();
+      const caret = start + token.length;
+      input.setSelectionRange(caret, caret);
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -86,9 +122,10 @@ export function CreateTaskDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs">Title</Label>
-              <TokenPicker onInsert={(token) => setTitle((prev) => prev + token)} />
+              <TokenPicker onInsert={insertIntoTitle} />
             </div>
             <Input
+              ref={titleInputRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Follow up: {first_name}"
@@ -98,9 +135,10 @@ export function CreateTaskDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs">Description (optional)</Label>
-              <TokenPicker onInsert={(token) => setDesc((prev) => prev + token)} />
+              <TokenPicker onInsert={insertIntoDescription} />
             </div>
             <Textarea
+              ref={descInputRef}
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               placeholder="{ai_output}"

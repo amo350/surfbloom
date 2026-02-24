@@ -70,9 +70,8 @@ export const AiNodeNode = memo((props: NodeProps<AiNodeType>) => {
 
   const providerLabel = PROVIDER_LABELS[provider] || provider;
   const modeLabel = MODE_LABELS[mode] || mode;
-  const description = data?.presetId
-    ? `${modeLabel} · ${providerLabel}`
-    : data?.mode
+  const description =
+    data?.presetId || data?.mode
       ? `${modeLabel} · ${providerLabel}`
       : "Not configured";
 

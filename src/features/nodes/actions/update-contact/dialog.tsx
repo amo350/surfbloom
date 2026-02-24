@@ -171,12 +171,12 @@ export function UpdateContactDialog({
                 id="update-contact-note"
                 value={noteTemplate}
                 onChange={(e) => setNoteTemplate(e.target.value)}
-                placeholder="Review received: {review_rating} stars - {{review.text}}"
+                placeholder="Review received: {review_rating} stars - {review_text}"
                 rows={3}
                 className="text-sm"
               />
               <p className="text-[10px] text-muted-foreground">
-                Supports {"{{variables}}"} from workflow context
+                Supports {"{variables}"} from workflow context
               </p>
             </div>
           )}

@@ -302,7 +302,7 @@ export const contactsRouter = createTRPCRouter({
       autoEnrollOnContactCreated(input.workspaceId, contact.id).catch((err) =>
         console.error("Sequence auto-enroll error:", err),
       );
-      fireWorkflowTrigger({
+      await fireWorkflowTrigger({
         triggerType: "CONTACT_CREATED",
         payload: {
           workspaceId: input.workspaceId,
@@ -310,7 +310,7 @@ export const contactsRouter = createTRPCRouter({
           source: contact.source,
           stage: contact.stage,
         },
-      }).catch(() => {});
+      });
 
       return contact;
     }),
@@ -355,7 +355,7 @@ export const contactsRouter = createTRPCRouter({
       autoEnrollOnContactCreated(contact.workspaceId, contact.id).catch((err) =>
         console.error("Sequence auto-enroll error:", err),
       );
-      fireWorkflowTrigger({
+      await fireWorkflowTrigger({
         triggerType: "CONTACT_CREATED",
         payload: {
           workspaceId: contact.workspaceId,
@@ -363,7 +363,7 @@ export const contactsRouter = createTRPCRouter({
           source: contact.source,
           stage: contact.stage,
         },
-      }).catch(() => {});
+      });
 
       return contact;
     }),
@@ -438,7 +438,7 @@ export const contactsRouter = createTRPCRouter({
           (err) => console.error("Sequence auto-enroll error:", err),
         );
 
-        fireWorkflowTrigger({
+        await fireWorkflowTrigger({
           triggerType: "STAGE_CHANGED",
           payload: {
             workspaceId: current.workspaceId,
@@ -446,7 +446,7 @@ export const contactsRouter = createTRPCRouter({
             previousStage: current.stage,
             newStage: input.stage,
           },
-        }).catch(() => {});
+        });
       }
 
       return contact;
@@ -556,7 +556,7 @@ export const contactsRouter = createTRPCRouter({
         },
       });
 
-      fireWorkflowTrigger({
+      await fireWorkflowTrigger({
         triggerType: "CATEGORY_ADDED",
         payload: {
           workspaceId: contact.workspaceId,
@@ -564,7 +564,7 @@ export const contactsRouter = createTRPCRouter({
           categoryId: input.categoryId,
           categoryName: category.name,
         },
-      }).catch(() => {});
+      });
 
       return created;
     }),
@@ -925,17 +925,19 @@ export const contactsRouter = createTRPCRouter({
 
       // Avoid flooding workflow events for very large CSV imports.
       if (!workflowsSkipped) {
-        for (const createdContact of newContacts) {
-          fireWorkflowTrigger({
-            triggerType: "CONTACT_CREATED",
-            payload: {
-              workspaceId: createdContact.workspaceId,
-              contactId: createdContact.id,
-              source: createdContact.source,
-              stage: createdContact.stage,
-            },
-          }).catch(() => {});
-        }
+        await Promise.allSettled(
+          newContacts.map((createdContact) =>
+            fireWorkflowTrigger({
+              triggerType: "CONTACT_CREATED",
+              payload: {
+                workspaceId: createdContact.workspaceId,
+                contactId: createdContact.id,
+                source: createdContact.source,
+                stage: createdContact.stage,
+              },
+            }),
+          ),
+        );
       } else if (newContacts.length > 0) {
         console.warn(
           `[contacts.batchCreate] Skipped CONTACT_CREATED triggers for ${newContacts.length} contacts (threshold: ${CONTACT_TRIGGER_BATCH_THRESHOLD})`,

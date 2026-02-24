@@ -13,12 +13,19 @@ interface AiNodeData {
   variableName?: string;
 }
 
+function isAiProvider(value: string): value is AiProvider {
+  return ["anthropic", "openai", "google", "xai"].includes(value);
+}
+
 function normalizeAiNodeData(data: Record<string, unknown>): AiNodeData {
   const provider = data.provider;
   const mode = data.mode;
   return {
     mode: typeof mode === "string" ? mode : undefined,
-    provider: typeof provider === "string" ? (provider as AiProvider) : undefined,
+    provider:
+      typeof provider === "string" && isAiProvider(provider)
+        ? provider
+        : undefined,
     model: typeof data.model === "string" ? data.model : undefined,
     presetId: typeof data.presetId === "string" ? data.presetId : undefined,
     systemPrompt:
@@ -41,8 +48,10 @@ export const aiNodeExecutor: NodeExecutor = async ({
 
   try {
     const result = await step.run("ai-node-execute", async () => {
-      const workspaceId = context.workspaceId as string;
-      if (!workspaceId) throw new Error("No workspaceId in context");
+      const workspaceId = context.workspaceId;
+      if (typeof workspaceId !== "string" || !workspaceId.trim()) {
+        throw new Error("No workspaceId in context");
+      }
 
       const aiResult = await executeAiCall(
         {

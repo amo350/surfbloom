@@ -210,6 +210,13 @@ export const executeWorkflow = inngest.createFunction(
           contactId: hydratedContact.id,
           contact: hydratedContact,
         };
+      } else if (
+        (initialData as Record<string, unknown>).contactId ||
+        (initialData as Record<string, unknown>).contact
+      ) {
+        // Prevent unverified/stale contact payload from crossing workspace boundaries.
+        delete (context as Record<string, unknown>).contactId;
+        delete (context as Record<string, unknown>).contact;
       }
       const active = new Set<string>([prepared.entryNodeId]);
       const visited = new Set<string>();

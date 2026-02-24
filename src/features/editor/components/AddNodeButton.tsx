@@ -16,21 +16,21 @@ interface AddNodeButtonProps {
 
 export const AddNodeButton = memo(
   ({ selectorOpen, onSelectorOpenChange }: AddNodeButtonProps) => {
-    const { getNodes, screenToFlowPosition, setNodes } = useReactFlow();
+    const { screenToFlowPosition, setNodes } = useReactFlow();
 
     const handleAddNode = useCallback(
       (type: NodeType) => {
-        if (type === NodeType.MANUAL_TRIGGER) {
-          const hasManualTrigger = getNodes().some(
-            (node) => node.type === NodeType.MANUAL_TRIGGER,
-          );
-          if (hasManualTrigger) {
-            toast.error("too many manual triggers");
-            return;
-          }
-        }
-
         setNodes((nodes) => {
+          if (type === NodeType.MANUAL_TRIGGER) {
+            const hasManualTrigger = nodes.some(
+              (node) => node.type === NodeType.MANUAL_TRIGGER,
+            );
+            if (hasManualTrigger) {
+              toast.error("too many manual triggers");
+              return nodes;
+            }
+          }
+
           const hasInitialTrigger = nodes.some(
             (node) => node.type === NodeType.INITIAL,
           );
@@ -55,7 +55,7 @@ export const AddNodeButton = memo(
           return [...nodes, newNode];
         });
       },
-      [getNodes, screenToFlowPosition, setNodes],
+      [screenToFlowPosition, setNodes],
     );
 
     return (

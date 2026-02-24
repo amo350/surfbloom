@@ -12,6 +12,18 @@ interface CreateTaskData {
   columnId?: string; // specific column, or empty for first column
 }
 
+function getContactIdFromContext(context: Record<string, unknown>): string | undefined {
+  const directId = context.contactId;
+  if (typeof directId === "string" && directId.trim()) return directId;
+
+  const contact = context.contact;
+  if (!contact || typeof contact !== "object") return undefined;
+
+  const maybeId = (contact as { id?: unknown }).id;
+  if (typeof maybeId === "string" && maybeId.trim()) return maybeId;
+  return undefined;
+}
+
 export const createTaskExecutor: NodeExecutor<CreateTaskData> = async ({
   data,
   nodeId,
@@ -39,22 +51,26 @@ export const createTaskExecutor: NodeExecutor<CreateTaskData> = async ({
       // Get target column (first column if not specified)
       let columnId = data.columnId;
       if (!columnId) {
-        let firstColumn = await prisma.taskColumn.findFirst({
-          where: { workspaceId },
-          orderBy: { position: "asc" },
-          select: { id: true },
-        });
+        const firstColumn = await prisma.$transaction(
+          async (tx) => {
+            const existing = await tx.taskColumn.findFirst({
+              where: { workspaceId },
+              orderBy: { position: "asc" },
+              select: { id: true },
+            });
+            if (existing) return existing;
 
-        if (!firstColumn) {
-          firstColumn = await prisma.taskColumn.create({
-            data: {
-              workspaceId,
-              name: "To Do",
-              position: 0,
-            },
-            select: { id: true },
-          });
-        }
+            return tx.taskColumn.create({
+              data: {
+                workspaceId,
+                name: "To Do",
+                position: 0,
+              },
+              select: { id: true },
+            });
+          },
+          { isolationLevel: "Serializable" },
+        );
 
         columnId = firstColumn.id;
       }
@@ -73,10 +89,7 @@ export const createTaskExecutor: NodeExecutor<CreateTaskData> = async ({
         dueDate = new Date(Date.now() + data.dueDateOffset * 3600 * 1000);
       }
 
-      const contactId =
-        (context.contactId as string) ||
-        ((context.contact as any)?.id as string) ||
-        undefined;
+      const contactId = getContactIdFromContext(context as Record<string, unknown>);
 
       const task = await prisma.task.create({
         data: {

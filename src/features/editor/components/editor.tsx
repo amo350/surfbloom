@@ -64,7 +64,8 @@ export const Editor = ({
   const [edges, setEdges] = useState<Edge[]>(workflow.edges);
   const [selectorOpen, setSelectorOpen] = useState(false);
 
-  useNodeSelectorHotkey(() => setSelectorOpen(true));
+  const openSelector = useCallback(() => setSelectorOpen(true), []);
+  useNodeSelectorHotkey(openSelector);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) =>

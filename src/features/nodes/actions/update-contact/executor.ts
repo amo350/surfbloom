@@ -37,7 +37,10 @@ export const updateContactExecutor: NodeExecutor<UpdateContactNodeData> = async 
           const newStage = data.stage?.trim();
           if (!newStage) throw new Error("No target stage configured");
 
-          const previousStage = contact.stage;
+          const previousStage = contact.stage?.trim();
+          if (!previousStage) {
+            throw new Error("Contact has no current stage in workflow context");
+          }
 
           await prisma.chatContact.update({
             where: { id: contact.id },
@@ -51,7 +54,7 @@ export const updateContactExecutor: NodeExecutor<UpdateContactNodeData> = async 
             description: `Stage changed from ${previousStage} to ${newStage} (workflow)`,
           });
 
-          fireWorkflowTrigger({
+          await fireWorkflowTrigger({
             triggerType: NodeType.STAGE_CHANGED,
             payload: {
               workspaceId,
@@ -90,7 +93,7 @@ export const updateContactExecutor: NodeExecutor<UpdateContactNodeData> = async 
             create: { contactId: contact.id, categoryId: category.id },
           });
 
-          fireWorkflowTrigger({
+          await fireWorkflowTrigger({
             triggerType: NodeType.CATEGORY_ADDED,
             payload: {
               workspaceId,
