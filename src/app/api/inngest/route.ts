@@ -1,5 +1,6 @@
 import { serve } from "inngest/next";
 import { checkRecurringCampaigns } from "@/inngest/campaign-recurring";
+import { batchWorkflowTrigger } from "@/inngest/batch-workflow-trigger";
 import { sendCampaign } from "@/inngest/campaign-send";
 import { inngest } from "@/inngest/client";
 import { executeWorkflow } from "@/inngest/functions";
@@ -17,6 +18,7 @@ export const { GET, POST, PUT } = serve({
     syncReviews,
     sendCampaign,
     checkRecurringCampaigns,
+    batchWorkflowTrigger,
     processSequenceSteps,
     surveyTimeoutCheck,
     checkScheduledWorkflows,

@@ -50,7 +50,7 @@ export function ConversationsSidebar({
   view,
   channel,
   stage,
-  categoryId,
+  categoryIds,
 }: {
   workspaceId?: string;
   selectedRoomId: string | null;
@@ -58,7 +58,7 @@ export function ConversationsSidebar({
   view: "all" | "mine" | "unassigned";
   channel: "all" | "webchat" | "sms" | "feedback";
   stage?: string;
-  categoryId?: string;
+  categoryIds?: string[];
 }) {
   const [tab, setTab] = useState<"unread" | "all" | "expired" | "starred">(
     "all",
@@ -73,7 +73,7 @@ export function ConversationsSidebar({
     channel,
     view,
     stage,
-    categoryId,
+    categoryIds,
   });
 
   return (

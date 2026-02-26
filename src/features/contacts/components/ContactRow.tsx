@@ -48,12 +48,12 @@ export function ContactRow({
       </div>
 
       {/* Stage */}
-      <div className="hidden sm:block shrink-0">
+      <div className="hidden sm:flex shrink-0 w-[100px] items-center">
         <StageBadge stage={contact.stage} />
       </div>
 
       {/* Categories */}
-      <div className="hidden md:flex items-center gap-1 shrink-0 max-w-[150px]">
+      <div className="hidden md:flex items-center gap-1 shrink-0 w-[150px] overflow-hidden">
         {contact.categories.slice(0, 2).map((cc) => (
           <span
             key={cc.category.id}

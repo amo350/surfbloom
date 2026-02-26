@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Pencil, X, Plus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,10 @@ export function ContactPanelDetails({ contact }: { contact: any }) {
   const [phone, setPhone] = useState(contact.phone || "");
   const [notes, setNotes] = useState(contact.notes || "");
   const [catSearch, setCatSearch] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const categoryMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setFirstName(contact.firstName || "");
@@ -38,6 +43,18 @@ export function ContactPanelDetails({ contact }: { contact: any }) {
     contact.notes,
   ]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!categoryMenuRef.current) return;
+      if (!categoryMenuRef.current.contains(event.target as Node)) {
+        setCategoryMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const updateContact = useUpdateContact();
   const addCategory = useAddCategoryToContact();
   const removeCategory = useRemoveCategoryFromContact();
@@ -52,6 +69,11 @@ export function ContactPanelDetails({ contact }: { contact: any }) {
 
   const contactCategoryIds = new Set(
     contact.categories?.map((cc: any) => cc.category.id) || [],
+  );
+  const availableCategories = useMemo(
+    () =>
+      (allCategories || []).filter((category: any) => !contactCategoryIds.has(category.id)),
+    [allCategories, contactCategoryIds],
   );
 
   const handleSave = () => {
@@ -81,13 +103,19 @@ export function ContactPanelDetails({ contact }: { contact: any }) {
   };
 
   const handleCreateAndAdd = () => {
-    if (!catSearch.trim()) return;
+    if (!newCategoryName.trim()) {
+      toast.error("Type a category name first");
+      return;
+    }
     createCategory.mutate(
-      { workspaceId: contact.workspaceId, name: catSearch.trim() },
+      { workspaceId: contact.workspaceId, name: newCategoryName.trim() },
       {
         onSuccess: (newCat) => {
           addCategory.mutate({ contactId: contact.id, categoryId: newCat.id });
           setCatSearch("");
+          setNewCategoryName("");
+          setShowNewCategoryInput(false);
+          setCategoryMenuOpen(false);
         },
       },
     );
@@ -229,55 +257,102 @@ export function ContactPanelDetails({ contact }: { contact: any }) {
         </div>
 
         {/* Add category */}
-        <div className="relative">
+        <div className="relative" ref={categoryMenuRef}>
           <Input
             value={catSearch}
             onChange={(e) => setCatSearch(e.target.value)}
+            onFocus={() => setCategoryMenuOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setCategoryMenuOpen(false);
+            }}
             placeholder="Add category..."
             className="h-7 text-xs"
           />
-        </div>
 
-        {catSearch.trim() && (
-          <div className="border rounded-lg overflow-hidden">
-            {allCategories
-              ?.filter((c: any) => !contactCategoryIds.has(c.id))
-              .slice(0, 5)
-              .map((cat: any) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => {
-                    handleAddCategory(cat.id);
-                    setCatSearch("");
-                  }}
-                  className="w-full flex items-center px-2.5 py-1.5 text-xs hover:bg-muted/50 transition-colors"
-                >
-                  {cat.name}
-                </button>
-              ))}
+          {categoryMenuOpen && (
+            <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-20 rounded-lg border bg-popover shadow-md overflow-hidden">
+              <div className="max-h-52 overflow-y-auto">
+                {availableCategories.length > 0 ? (
+                  availableCategories.map((cat: any) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        handleAddCategory(cat.id);
+                        setCatSearch("");
+                        setNewCategoryName("");
+                        setShowNewCategoryInput(false);
+                        setCategoryMenuOpen(false);
+                      }}
+                      className="w-full flex items-center px-2.5 py-1.5 text-xs hover:bg-muted/50 transition-colors"
+                    >
+                      {cat.name}
+                    </button>
+                  ))
+                ) : (
+                  <p className="px-2.5 py-2 text-xs text-muted-foreground">
+                    No categories found
+                  </p>
+                )}
+              </div>
 
-            {allCategories &&
-              !allCategories.some(
-                (c: any) =>
-                  c.name.toLowerCase() === catSearch.trim().toLowerCase(),
-              ) && (
-                <button
-                  type="button"
-                  onClick={handleCreateAndAdd}
-                  disabled={createCategory.isPending}
-                  className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-teal-600 hover:bg-teal-50 transition-colors"
-                >
-                  {createCategory.isPending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
+              <div className="border-t">
+                {!showNewCategoryInput ? (
+                  <button
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setShowNewCategoryInput(true);
+                      setNewCategoryName(catSearch.trim());
+                    }}
+                    className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-teal-600 hover:bg-teal-50 transition-colors"
+                  >
                     <Plus className="h-3 w-3" />
-                  )}
-                  Create "{catSearch.trim()}"
-                </button>
-              )}
-          </div>
-        )}
+                    New Category
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5">
+                    <Input
+                      value={newCategoryName}
+                      onChange={(event) => setNewCategoryName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          handleCreateAndAdd();
+                        }
+                        if (event.key === "Escape") {
+                          event.preventDefault();
+                          setShowNewCategoryInput(false);
+                          setNewCategoryName("");
+                        }
+                      }}
+                      onMouseDown={(event) => event.stopPropagation()}
+                      placeholder="New category name..."
+                      className="h-7 text-xs"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={handleCreateAndAdd}
+                      disabled={createCategory.isPending}
+                      className="h-7 w-7 inline-flex items-center justify-center rounded-md border text-teal-600 hover:bg-teal-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Create category"
+                      aria-label="Create category"
+                    >
+                      {createCategory.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Plus className="h-3 w-3" />
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Notes */}

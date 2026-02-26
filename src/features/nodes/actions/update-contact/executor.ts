@@ -76,11 +76,12 @@ export const updateContactExecutor: NodeExecutor<UpdateContactNodeData> = async 
           const categoryName = data.categoryName?.trim();
           if (!categoryName) throw new Error("No category name configured");
 
-          const category = await prisma.category.upsert({
+          const category = await prisma.category.findUnique({
             where: { workspaceId_name: { workspaceId, name: categoryName } },
-            update: {},
-            create: { workspaceId, name: categoryName },
           });
+          if (!category) {
+            throw new Error(`Category "${categoryName}" does not exist`);
+          }
 
           await prisma.contactCategory.upsert({
             where: {

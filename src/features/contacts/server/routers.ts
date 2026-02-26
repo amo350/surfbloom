@@ -75,8 +75,6 @@ const SOURCES = [
   "review_campaign",
 ] as const;
 
-const CONTACT_TRIGGER_BATCH_THRESHOLD = 20;
-
 export const contactsRouter = createTRPCRouter({
   getContacts: protectedProcedure
     .input(
@@ -462,12 +460,31 @@ export const contactsRouter = createTRPCRouter({
   getCategories: protectedProcedure
     .input(
       z.object({
-        workspaceId: z.string(),
+        workspaceId: z.string().optional(),
         search: z.string().optional(),
       }),
     )
-    .query(async ({ input }) => {
-      const where: any = { workspaceId: input.workspaceId };
+    .query(async ({ ctx, input }) => {
+      const where: any = {};
+
+      if (input.workspaceId) {
+        const member = await prisma.member.findUnique({
+          where: {
+            userId_workspaceId: {
+              userId: ctx.auth.user.id,
+              workspaceId: input.workspaceId,
+            },
+          },
+        });
+        if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+        where.workspaceId = input.workspaceId;
+      } else {
+        const userWorkspaces = await prisma.member.findMany({
+          where: { userId: ctx.auth.user.id },
+          select: { workspaceId: true },
+        });
+        where.workspaceId = { in: userWorkspaces.map((w) => w.workspaceId) };
+      }
 
       if (input.search) {
         where.name = { contains: input.search, mode: "insensitive" };
@@ -475,7 +492,7 @@ export const contactsRouter = createTRPCRouter({
 
       return prisma.category.findMany({
         where,
-        orderBy: { name: "asc" },
+        orderBy: { createdAt: "desc" },
         select: {
           id: true,
           name: true,
@@ -920,37 +937,25 @@ export const contactsRouter = createTRPCRouter({
         ).catch((err) => console.error("Sequence auto-enroll error:", err));
       }
 
-      const workflowsSkipped = newContacts.length > CONTACT_TRIGGER_BATCH_THRESHOLD;
-      const workflowsSkippedCount = workflowsSkipped ? newContacts.length : 0;
-
-      // Avoid flooding workflow events for very large CSV imports.
-      if (!workflowsSkipped) {
-        await Promise.allSettled(
-          newContacts.map((createdContact) =>
-            fireWorkflowTrigger({
-              triggerType: "CONTACT_CREATED",
-              payload: {
-                workspaceId: createdContact.workspaceId,
-                contactId: createdContact.id,
-                source: createdContact.source,
-                stage: createdContact.stage,
-              },
-            }),
-          ),
-        );
-      } else if (newContacts.length > 0) {
-        console.warn(
-          `[contacts.batchCreate] Skipped CONTACT_CREATED triggers for ${newContacts.length} contacts (threshold: ${CONTACT_TRIGGER_BATCH_THRESHOLD})`,
-        );
-      }
+      await Promise.allSettled(
+        newContacts.map((createdContact) =>
+          fireWorkflowTrigger({
+            triggerType: "CONTACT_CREATED",
+            payload: {
+              workspaceId: createdContact.workspaceId,
+              contactId: createdContact.id,
+              source: createdContact.source,
+              stage: createdContact.stage,
+            },
+          }),
+        ),
+      );
 
       return {
         created,
         skipped: skipped.length,
         skippedPhones: skipped,
         total: input.contacts.length,
-        workflowsSkipped,
-        workflowsSkippedCount,
       };
     }),
 

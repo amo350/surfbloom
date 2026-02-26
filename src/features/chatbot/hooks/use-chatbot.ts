@@ -193,7 +193,7 @@ export const useConversations = (filters: {
   channel?: "all" | "webchat" | "sms" | "feedback";
   view?: "all" | "mine" | "unassigned";
   stage?: string;
-  categoryId?: string;
+  categoryIds?: string[];
 }) => {
   const trpc = useTRPC();
   return useQuery(

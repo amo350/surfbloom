@@ -1,7 +1,8 @@
 "use client";
 
-import { Inbox, Loader2, Plus, Search, User, UserX, X } from "lucide-react";
+import { Inbox, Loader2, Plus, Search, User, UserX } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { StageBadge } from "@/features/contacts/components/StageBadge";
 import {
@@ -22,7 +23,7 @@ export function ConversationsFilterSidebar({
   onViewChange,
   stage,
   onStageChange,
-  categoryId,
+  categoryIds,
   onCategoryChange,
   channel,
   onChannelChange,
@@ -32,8 +33,8 @@ export function ConversationsFilterSidebar({
   onViewChange: (v: "all" | "mine" | "unassigned") => void;
   stage: string | undefined;
   onStageChange: (s: string | undefined) => void;
-  categoryId: string | undefined;
-  onCategoryChange: (id: string | undefined) => void;
+  categoryIds: string[];
+  onCategoryChange: (ids: string[]) => void;
   channel: "all" | "webchat" | "sms" | "feedback";
   onChannelChange: (c: "all" | "webchat" | "sms" | "feedback") => void;
 }) {
@@ -48,7 +49,14 @@ export function ConversationsFilterSidebar({
   const createCategory = useCreateCategory();
 
   const handleCreateCategory = () => {
-    if (!catSearch.trim() || !workspaceId) return;
+    if (!catSearch.trim()) {
+      toast.error("Type a category name first");
+      return;
+    }
+    if (!workspaceId) {
+      toast.error("Open a workspace conversation view to create categories");
+      return;
+    }
     setCreating(true);
     createCategory.mutate(
       { workspaceId, name: catSearch.trim() },
@@ -152,30 +160,40 @@ export function ConversationsFilterSidebar({
         </p>
 
         {/* Search + create */}
-        <div className="relative mb-2">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-          <Input
-            value={catSearch}
-            onChange={(e) => setCatSearch(e.target.value)}
-            placeholder="Search or create..."
-            className="pl-7 h-7 text-xs"
-          />
+        <div className="mb-2 flex items-center gap-1.5">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+            <Input
+              value={catSearch}
+              onChange={(e) => setCatSearch(e.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  handleCreateCategory();
+                }
+              }}
+              placeholder="Search category..."
+              className="pl-7 h-7 text-xs"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleCreateCategory}
+            disabled={creating}
+            className="h-7 w-7 inline-flex items-center justify-center rounded-md border text-teal-600 hover:bg-teal-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Add new category"
+            aria-label="Add new category"
+          >
+            {creating ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Plus className="h-3 w-3" />
+            )}
+          </button>
         </div>
 
         {/* Category list */}
         <div className="flex-1 overflow-y-auto space-y-0.5">
-          {/* Active filter indicator */}
-          {categoryId && (
-            <button
-              type="button"
-              onClick={() => onCategoryChange(undefined)}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs bg-teal-50 text-teal-700 font-medium"
-            >
-              <X className="h-3 w-3" />
-              Clear filter
-            </button>
-          )}
-
           {catsLoading && (
             <div className="flex justify-center py-3">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
@@ -186,43 +204,23 @@ export function ConversationsFilterSidebar({
             <button
               key={cat.id}
               type="button"
-              onClick={() =>
-                onCategoryChange(categoryId === cat.id ? undefined : cat.id)
-              }
+              onClick={() => {
+                const isSelected = categoryIds.includes(cat.id);
+                if (isSelected) {
+                  onCategoryChange(categoryIds.filter((id) => id !== cat.id));
+                  return;
+                }
+                onCategoryChange([...categoryIds, cat.id]);
+              }}
               className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                categoryId === cat.id
-                  ? "bg-background font-medium text-foreground shadow-sm"
+                categoryIds.includes(cat.id)
+                  ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200 font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/50"
               }`}
             >
               <span className="truncate">{cat.name}</span>
-              <span className="text-[10px] text-muted-foreground/60 shrink-0 ml-1">
-                {cat._count?.contacts || 0}
-              </span>
             </button>
           ))}
-
-          {/* Create new category */}
-          {catSearch.trim() &&
-            categories &&
-            !categories.some(
-              (c: any) =>
-                c.name.toLowerCase() === catSearch.trim().toLowerCase(),
-            ) && (
-              <button
-                type="button"
-                onClick={handleCreateCategory}
-                disabled={creating}
-                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-teal-600 hover:bg-teal-50 transition-colors"
-              >
-                {creating ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Plus className="h-3 w-3" />
-                )}
-                Create "{catSearch.trim()}"
-              </button>
-            )}
         </div>
       </div>
     </div>

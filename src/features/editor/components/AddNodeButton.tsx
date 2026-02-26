@@ -62,15 +62,12 @@ export const AddNodeButton = memo(
       <>
         <Button
           onClick={() => onSelectorOpenChange(true)}
-          size="sm"
-          variant="outline"
-          className="bg-background"
+          size="icon"
+          className="h-9 w-9 rounded-full border border-black/10 bg-[linear-gradient(to_bottom,#FCF9F5,#F8F3ED)] text-black hover:brightness-95"
+          aria-label="Add node"
+          title="Add node (⌘K)"
         >
-          <PlusIcon className="mr-1.5 size-3.5" />
-          Add Node
-          <kbd className="ml-2 rounded border bg-muted px-1 py-0.5 text-[9px] text-muted-foreground">
-            ⌘K
-          </kbd>
+          <PlusIcon className="size-4" />
         </Button>
         <NodeSelector
           open={selectorOpen}

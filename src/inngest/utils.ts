@@ -56,6 +56,20 @@ export const sendWorkflowExecution = async (data: {
   });
 };
 
+export const sendWorkflowBatchTrigger = async (data: {
+  workflowId: string;
+  workspaceId: string;
+  contactId: string;
+  triggerType: string;
+  triggerDepth?: number;
+}) => {
+  return inngest.send({
+    name: "workflows/batch.trigger",
+    data,
+    id: createId(),
+  });
+};
+
 export const sendReportGeneration = async (data: {
   reportId: string;
   workspaceId: string;
