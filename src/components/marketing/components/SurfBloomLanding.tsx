@@ -197,8 +197,10 @@ export default function SurfBloomLanding() {
                 <div
                   className={`relative h-[26rem] transition-transform duration-700 [transform-style:preserve-3d] ${isHeroFlipped ? "[transform:rotateY(180deg)]" : ""}`}
                 >
-                  <div className="absolute inset-0 [backface-visibility:hidden]">
-                    <div className="relative h-full rounded-[3rem] border-2 border-[#00A5D4]/30 bg-[#F9F5E7] px-8 py-10 shadow-[0_20px_50px_rgba(0,77,64,0.12)]">
+                  <div
+                    className={`absolute inset-0 [backface-visibility:hidden] ${isHeroFlipped ? "pointer-events-none" : "pointer-events-auto"}`}
+                  >
+                    <div className="relative flex h-full flex-col rounded-[3rem] border-2 border-[#00A5D4]/30 bg-[#F9F5E7] px-8 py-10 shadow-[0_20px_50px_rgba(0,77,64,0.12)]">
                       <span className="absolute -top-3 -right-3 h-6 w-6 rounded-full border border-[#00A5D4]/40 bg-[#F9F5E7]" />
                       <span className="absolute -bottom-3 -left-2 h-4 w-4 rounded-full border border-[#FF6F61]/45 bg-[#F9F5E7]" />
                       <span className="absolute top-1/2 -left-4 h-8 w-8 -translate-y-1/2 rounded-full border border-[#00A5D4]/25 bg-[#F9F5E7]" />
@@ -227,10 +229,19 @@ export default function SurfBloomLanding() {
                           />
                         </span>
                       </h1>
+                      <button
+                        type="button"
+                        className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-[#00A5D4]/30 bg-white/85 px-4 py-2 text-sm font-semibold text-[#004D40] shadow-sm backdrop-blur-sm transition-colors hover:text-[#00A5D4]"
+                        onClick={() => setIsHeroFlipped(true)}
+                      >
+                        Flip to Workflow Preview
+                      </button>
                     </div>
                   </div>
 
-                  <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                  <div
+                    className={`absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] ${isHeroFlipped ? "pointer-events-auto" : "pointer-events-none"}`}
+                  >
                     <div className="relative h-full rounded-[3rem] border-2 border-[#00A5D4]/25 bg-[#F9F5E7] p-4 shadow-[0_20px_50px_rgba(0,77,64,0.12)]">
                       <div className="relative h-full w-full overflow-hidden rounded-[2rem] border border-[#00A5D4]/20 shadow-[0_25px_55px_rgba(0,0,0,0.16)]">
                         {WORKFLOW_SLIDES.map((src, i) => (
@@ -272,19 +283,16 @@ export default function SurfBloomLanding() {
                       >
                         <ChevronRight className="h-6 w-6" />
                       </button>
+                      <button
+                        type="button"
+                        className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-[#00A5D4]/30 bg-white/85 px-4 py-2 text-sm font-semibold text-[#004D40] shadow-sm backdrop-blur-sm transition-colors hover:text-[#00A5D4]"
+                        onClick={() => setIsHeroFlipped(false)}
+                      >
+                        Show Headline
+                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  className="rounded-full border border-[#00A5D4]/30 bg-white/80 px-4 py-2 text-sm font-semibold text-[#004D40] shadow-sm backdrop-blur-sm transition-colors hover:text-[#00A5D4]"
-                  onClick={() => setIsHeroFlipped((flipped) => !flipped)}
-                >
-                  {isHeroFlipped ? "Show Headline" : "Flip to Workflow Preview"}
-                </button>
               </div>
             </div>
 

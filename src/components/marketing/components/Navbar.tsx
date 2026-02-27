@@ -3,6 +3,7 @@
 import { ChevronDown, Menu, Sparkles, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import BookDemoModal from "./BookDemoModal";
 
@@ -55,6 +56,7 @@ const PRODUCT_SECTIONS: { title: string; links: ProductLink[] }[] = [
 ];
 
 export default function Navbar() {
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -80,6 +82,13 @@ export default function Navbar() {
           <Link
             href="/"
             className="sb-font-playfair flex items-center gap-2 text-2xl font-bold text-[#004D40] transition-opacity hover:opacity-80"
+            onClick={(event) => {
+              if (pathname === "/") {
+                event.preventDefault();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                setMobileMenuOpen(false);
+              }
+            }}
           >
             <Image
               src="/logo.png"

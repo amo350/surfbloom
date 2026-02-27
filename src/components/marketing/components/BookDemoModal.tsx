@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ArrowRight, ShieldCheck, X } from "lucide-react";
 import Image from "next/image";
-import { X, ArrowRight, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface BookDemoModalProps {
   isOpen: boolean;
@@ -36,11 +37,11 @@ export default function BookDemoModal({ isOpen, onClose }: BookDemoModalProps) {
 
   if (!isMounted) return null;
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-[100] bg-[#004D40]/40 backdrop-blur-sm transition-opacity duration-300 flex items-center justify-center p-4 md:p-6 ${
+        className={`fixed inset-0 z-[1000] bg-[#004D40]/40 backdrop-blur-sm transition-opacity duration-300 flex items-start justify-center p-4 pt-24 md:items-center md:p-6 md:pt-6 ${
           isOpen
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
@@ -49,7 +50,7 @@ export default function BookDemoModal({ isOpen, onClose }: BookDemoModalProps) {
       >
         {/* Modal Container */}
         <div
-          className={`relative w-full max-w-5xl bg-[#F9F5E7] rounded-[2rem] shadow-[0_50px_100px_rgba(0,77,64,0.3)] overflow-hidden flex flex-col md:flex-row max-h-[95vh] md:max-h-[85vh] transition-transform duration-500 delay-100 ${
+          className={`relative w-full max-w-5xl bg-[#F9F5E7] rounded-[2rem] shadow-[0_50px_100px_rgba(0,77,64,0.3)] overflow-hidden flex flex-col md:flex-row max-h-[calc(100dvh-7rem)] md:max-h-[85vh] transition-transform duration-500 delay-100 ${
             isOpen ? "translate-y-0 scale-100" : "translate-y-8 scale-95"
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -242,7 +243,7 @@ export default function BookDemoModal({ isOpen, onClose }: BookDemoModalProps) {
                         backgroundSize: "1.2em",
                       }}
                     >
-                      <option value="" disabled selected>
+                      <option value="" disabled>
                         Select...
                       </option>
                       <option value="1">1</option>
@@ -271,6 +272,7 @@ export default function BookDemoModal({ isOpen, onClose }: BookDemoModalProps) {
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
