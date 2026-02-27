@@ -62,6 +62,8 @@ export const sendWorkflowBatchTrigger = async (data: {
   contactId: string;
   triggerType: string;
   triggerDepth?: number;
+  keyword?: string;
+  triggerPayload?: Record<string, unknown>;
 }) => {
   return inngest.send({
     name: "workflows/batch.trigger",

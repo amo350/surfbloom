@@ -7,13 +7,9 @@ import { resolveTemplate } from "../lib/resolve-template";
 import { updateContactChannel } from "./channel";
 import type { UpdateContactNodeData } from "./types";
 
-export const updateContactExecutor: NodeExecutor<UpdateContactNodeData> = async ({
-  data,
-  nodeId,
-  context,
-  step,
-  publish,
-}) => {
+export const updateContactExecutor: NodeExecutor<
+  UpdateContactNodeData
+> = async ({ data, nodeId, context, step, publish }) => {
   await publish(updateContactChannel().status({ nodeId, status: "loading" }));
 
   try {
@@ -76,12 +72,14 @@ export const updateContactExecutor: NodeExecutor<UpdateContactNodeData> = async 
           const categoryName = data.categoryName?.trim();
           if (!categoryName) throw new Error("No category name configured");
 
-          const category = await prisma.category.findUnique({
+          const category = await prisma.category.upsert({
             where: { workspaceId_name: { workspaceId, name: categoryName } },
+            update: {},
+            create: {
+              workspaceId,
+              name: categoryName,
+            },
           });
-          if (!category) {
-            throw new Error(`Category "${categoryName}" does not exist`);
-          }
 
           await prisma.contactCategory.upsert({
             where: {

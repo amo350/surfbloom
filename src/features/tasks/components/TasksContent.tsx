@@ -121,7 +121,7 @@ export const TasksContent = ({
   // CALENDAR VIEW
   if (view === "calendar") {
     return (
-      <div className="h-full overflow-hidden">
+      <div className="h-full min-h-0 overflow-hidden">
         <TaskCalendar
           tasks={tasks ?? []}
           workspaceId={workspaceId}

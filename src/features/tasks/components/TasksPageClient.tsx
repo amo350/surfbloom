@@ -224,7 +224,7 @@ export const TasksPageClient = ({
   }, [filters.columnId, filters.assigneeId, filters.categoryId, view]);
 
   return (
-    <>
+    <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
       <TaskHeader
         workspaceId={workspaceId}
         view={view}
@@ -247,7 +247,7 @@ export const TasksPageClient = ({
         />
       )}
 
-      <div className="flex-1 p-6 overflow-hidden">
+      <div className="flex-1 min-h-0 p-6 overflow-hidden">
         <TasksContent
           workspaceId={workspaceId}
           columnId={filters.columnId}
@@ -266,6 +266,6 @@ export const TasksPageClient = ({
         onOpenChange={handleModalClose}
         workspaceId={workspaceId}
       />
-    </>
+    </div>
   );
 };

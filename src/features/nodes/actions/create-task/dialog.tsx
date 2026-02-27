@@ -55,28 +55,36 @@ export function CreateTaskDialog({
   );
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descInputRef = useRef<HTMLTextAreaElement>(null);
-  const { data: statuses } = useGetTaskColumns(workspaceId || "");
+  const { data: statuses } = useGetTaskColumns(workspaceId);
 
   useEffect(() => {
-    if (open) {
-      setTitle(defaultValues?.titleTemplate || "");
-      setDesc(defaultValues?.descriptionTemplate || "");
-      const defaultStatus = defaultValues?.columnId || statuses?.[0]?.id || "";
-      setStatusId(defaultStatus);
-      setDueOffset(defaultValues?.dueDateOffset?.toString() || "");
-    }
-  }, [open, defaultValues, statuses]);
+    if (!open) return;
+
+    setTitle(defaultValues?.titleTemplate || "");
+    setDesc(defaultValues?.descriptionTemplate || "");
+    setStatusId(defaultValues?.columnId || "");
+    setDueOffset(defaultValues?.dueDateOffset?.toString() || "");
+  }, [open, defaultValues]);
+
+  useEffect(() => {
+    if (!open || statusId) return;
+    setStatusId(defaultValues?.columnId || statuses?.[0]?.id || "");
+  }, [open, statusId, defaultValues?.columnId, statuses]);
 
   const handleSave = () => {
     const trimmedOffset = dueOffset.trim();
-    const parsedOffset = trimmedOffset ? Number.parseInt(trimmedOffset, 10) : NaN;
+    const parsedOffset = trimmedOffset
+      ? Number.parseInt(trimmedOffset, 10)
+      : NaN;
 
     onSubmit({
       titleTemplate: title,
       descriptionTemplate: desc || undefined,
       columnId: statusId || undefined,
       dueDateOffset:
-        trimmedOffset && Number.isFinite(parsedOffset) && Number.isInteger(parsedOffset)
+        trimmedOffset &&
+        Number.isFinite(parsedOffset) &&
+        Number.isInteger(parsedOffset)
           ? parsedOffset
           : undefined,
     });
