@@ -1,5 +1,8 @@
 import type { NodeType } from "@/generated/prisma/enums";
-import { sendWorkflowBatchTrigger, sendWorkflowExecution } from "@/inngest/utils";
+import {
+  sendWorkflowBatchTrigger,
+  sendWorkflowExecution,
+} from "@/inngest/utils";
 import { prisma } from "@/lib/prisma";
 
 interface TriggerPayload {
@@ -116,6 +119,10 @@ export async function fireWorkflowTrigger({
             contactId: payload.contactId,
             triggerType,
             triggerDepth: triggerDepth + 1,
+            ...(payload.keyword !== undefined
+              ? { keyword: String(payload.keyword) }
+              : {}),
+            triggerPayload: payload,
           }).catch((err) => {
             console.error(
               `[trigger-dispatcher] Failed to enqueue batch trigger for workflow ${node.workflowId}:`,

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-const HomePage = () => {
+const AppPage = () => {
   redirect("/index/locations");
 };
 
-export default HomePage;
+export default AppPage;

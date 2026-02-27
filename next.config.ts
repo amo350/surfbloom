@@ -9,17 +9,25 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "utfs.io",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.pexels.com",
+      },
     ],
   },
-  async redirects() {
-    return [
-      {
-        source: "/",
-        destination: "/index/locations",
-        permanent: false,
-      },
-    ];
-  },
+  // async redirects() {
+  //   return [
+  //     {
+  //       source: "/",
+  //       destination: "/index/locations",
+  //       permanent: false,
+  //     },
+  //   ];
+  // },
 };
 
 export default withSentryConfig(nextConfig, {

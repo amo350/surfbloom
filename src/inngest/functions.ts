@@ -184,6 +184,12 @@ export const executeWorkflow = inngest.createFunction(
       const isBatch = Boolean(context.isBatch) && batchContactIds.length > 0;
 
       if (isBatch) {
+        const baseContext = cloneWorkflowContext(clearBatchFields(context));
+        const batchTriggerPayloadByContactId =
+          readBatchTriggerPayloadByContactId(baseContext);
+        delete (baseContext as Record<string, unknown>)
+          .batchTriggerPayloadByContactId;
+
         const results: {
           contactId: string;
           status: "success" | "failed";
@@ -236,11 +242,20 @@ export const executeWorkflow = inngest.createFunction(
             continue;
           }
 
-          let contactContext = clearBatchFields({
-            ...context,
+          const triggerPayloadForContact =
+            batchTriggerPayloadByContactId[contactData.id];
+          let contactContext = cloneWorkflowContext(baseContext);
+          if (triggerPayloadForContact) {
+            contactContext = {
+              ...contactContext,
+              ...triggerPayloadForContact,
+            };
+          }
+          contactContext = {
+            ...contactContext,
             contactId: contactData.id,
             contact: contactData,
-          });
+          };
 
           try {
             contactContext = await executeNodeWalk({
@@ -255,7 +270,6 @@ export const executeWorkflow = inngest.createFunction(
               runKey: `batch-${index + 1}`,
             });
             results.push({ contactId, status: "success" });
-            context = contactContext;
           } catch (nodeErr) {
             const errorMsg =
               nodeErr instanceof Error ? nodeErr.message : String(nodeErr);
@@ -283,10 +297,12 @@ export const executeWorkflow = inngest.createFunction(
           }
         }
 
-        const totalFailed = results.filter((result) => result.status === "failed")
-          .length;
-        const totalSuccess = results.filter((result) => result.status === "success")
-          .length;
+        const totalFailed = results.filter(
+          (result) => result.status === "failed",
+        ).length;
+        const totalSuccess = results.filter(
+          (result) => result.status === "success",
+        ).length;
         const majorityFailed = totalFailed > totalSuccess;
 
         await step.run("complete-batch-execution", async () => {
@@ -322,35 +338,38 @@ export const executeWorkflow = inngest.createFunction(
         };
       }
 
-      const hydratedContact = await step.run("load-contact-context", async () => {
-        const contactId =
-          (context.contactId as string | undefined) ||
-          ((context.contact as { id?: string } | undefined)?.id as
-            | string
-            | undefined);
+      const hydratedContact = await step.run(
+        "load-contact-context",
+        async () => {
+          const contactId =
+            (context.contactId as string | undefined) ||
+            ((context.contact as { id?: string } | undefined)?.id as
+              | string
+              | undefined);
 
-        if (!contactId) return null;
+          if (!contactId) return null;
 
-        const contact = await prisma.chatContact.findUnique({
-          where: { id: contactId },
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            stage: true,
-            source: true,
-            optedOut: true,
-            workspaceId: true,
-            assignedToId: true,
-          },
-        });
+          const contact = await prisma.chatContact.findUnique({
+            where: { id: contactId },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              stage: true,
+              source: true,
+              optedOut: true,
+              workspaceId: true,
+              assignedToId: true,
+            },
+          });
 
-        if (!contact) return null;
-        if (contact.workspaceId !== workspace.id) return null;
-        return contact;
-      });
+          if (!contact) return null;
+          if (contact.workspaceId !== workspace.id) return null;
+          return contact;
+        },
+      );
 
       if (hydratedContact) {
         context = {
@@ -428,7 +447,10 @@ function getBranch(context: WorkflowContext): string | undefined {
 async function executeNodeWalk(params: {
   context: WorkflowContext;
   adjacency: AdjacencyMap;
-  nodeLookup: Record<string, { id: string; type: NodeType; name?: string; data: unknown }>;
+  nodeLookup: Record<
+    string,
+    { id: string; type: NodeType; name?: string; data: unknown }
+  >;
   sortedOrder: string[];
   entryNodeId: string;
   executionId: string;
@@ -586,7 +608,8 @@ async function executeNodeWalk(params: {
         },
       );
     } catch (nodeErr) {
-      const message = nodeErr instanceof Error ? nodeErr.message : String(nodeErr);
+      const message =
+        nodeErr instanceof Error ? nodeErr.message : String(nodeErr);
 
       await params.step.run(
         `log-node-failed-${params.runKey}-${currentId}`,
@@ -624,6 +647,30 @@ function clearBatchFields(context: WorkflowContext): WorkflowContext {
   delete nextContext.isBatch;
   delete nextContext.contactIds;
   return nextContext;
+}
+
+function cloneWorkflowContext(context: WorkflowContext): WorkflowContext {
+  try {
+    return JSON.parse(JSON.stringify(context)) as WorkflowContext;
+  } catch {
+    return { ...context };
+  }
+}
+
+function readBatchTriggerPayloadByContactId(
+  context: WorkflowContext,
+): Record<string, Record<string, unknown>> {
+  const payload = (context as Record<string, unknown>)
+    .batchTriggerPayloadByContactId;
+  if (!payload || typeof payload !== "object") return {};
+
+  const map: Record<string, Record<string, unknown>> = {};
+  for (const [contactId, value] of Object.entries(payload)) {
+    if (!value || typeof value !== "object") continue;
+    map[contactId] = value as Record<string, unknown>;
+  }
+
+  return map;
 }
 
 function getWaitConfig(

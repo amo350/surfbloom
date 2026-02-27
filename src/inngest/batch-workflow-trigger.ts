@@ -12,6 +12,10 @@ export const batchWorkflowTrigger = inngest.createFunction(
   { event: "workflows/batch.trigger" },
   async ({ event, events, step }) => {
     const allEvents = events || [event];
+    const triggerPayloadByContactId: Record<
+      string,
+      Record<string, unknown>
+    > = {};
 
     const contactIds = [
       ...new Set(
@@ -20,6 +24,18 @@ export const batchWorkflowTrigger = inngest.createFunction(
           .filter(Boolean),
       ),
     ];
+    for (const currentEvent of allEvents) {
+      const contactId = currentEvent.data.contactId as string | undefined;
+      if (!contactId) continue;
+
+      const triggerPayload = currentEvent.data.triggerPayload;
+      if (triggerPayload && typeof triggerPayload === "object") {
+        triggerPayloadByContactId[contactId] = triggerPayload as Record<
+          string,
+          unknown
+        >;
+      }
+    }
 
     const workflowId = event.data.workflowId as string;
     const workspaceId = event.data.workspaceId as string;
@@ -39,6 +55,9 @@ export const batchWorkflowTrigger = inngest.createFunction(
           contactIds,
           batchSize: contactIds.length,
           isBatch: true,
+          ...(Object.keys(triggerPayloadByContactId).length > 0
+            ? { batchTriggerPayloadByContactId: triggerPayloadByContactId }
+            : {}),
           _trigger: {
             type: triggerType,
             depth: triggerDepth,

@@ -181,7 +181,7 @@ export const TaskCalendar = ({
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden">
       <CalendarToolbar
         date={date}
         view={view}
@@ -189,9 +189,9 @@ export const TaskCalendar = ({
         onViewChange={setView}
       />
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* Calendar */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <DnDCalendar
             localizer={localizer}
             date={date}
